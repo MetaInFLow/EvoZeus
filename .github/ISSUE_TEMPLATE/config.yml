@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: EvoZeus contribution guide
+    url: https://github.com/MetaInFLow/EvoZeus/blob/main/CONTRIBUTING.md
+    about: Read this before submitting a Case or Factor.

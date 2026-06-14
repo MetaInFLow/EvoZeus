@@ -1,0 +1,55 @@
+name: Submit a Case
+description: Submit a session-derived finding for judgment.
+title: "[Case]: "
+labels:
+  - case
+  - needs-verdict
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Submit evidence, not raw private sessions. Redact secrets, customer data, tokens, and private paths.
+  - type: textarea
+    id: context
+    attributes:
+      label: Session context
+      description: What kind of Agent task was running?
+      placeholder: Codex was asked to debug a GitHub failure after repeated push/auth errors.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: Include only redacted, minimal evidence.
+      placeholder: gh auth status succeeded; push failed with network timeout; retry timing showed intermittent network instability.
+    validations:
+      required: true
+  - type: dropdown
+    id: verdict
+    attributes:
+      label: Proposed verdict
+      options:
+        - Preserve
+        - Promote to Skill
+        - Extract Factor
+        - Keep as Habit
+        - Fix Environment
+        - Reject Pattern
+        - Open Case
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why it matters
+      description: How would this improve future Agent sessions?
+    validations:
+      required: true
+  - type: textarea
+    id: privacy
+    attributes:
+      label: Privacy note
+      description: What did you redact or generalize?
+    validations:
+      required: true

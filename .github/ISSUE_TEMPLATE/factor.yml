@@ -1,0 +1,44 @@
+name: Propose a Factor
+description: Propose a reusable judgment factor.
+title: "[Factor]: "
+labels:
+  - factor
+  - needs-review
+body:
+  - type: input
+    id: name
+    attributes:
+      label: Factor name
+      placeholder: tool_path_resolution
+    validations:
+      required: true
+  - type: textarea
+    id: trigger
+    attributes:
+      label: Trigger
+      description: When should this factor run?
+      placeholder: When an Agent concludes a CLI is missing, unavailable, or unauthenticated.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Required evidence
+      description: What evidence should support this factor?
+      placeholder: which output, PATH, common install paths, version command, auth status, retry logs.
+    validations:
+      required: true
+  - type: textarea
+    id: verdicts
+    attributes:
+      label: Possible verdicts
+      placeholder: Fix Environment, Keep as Habit, Promote to Skill.
+    validations:
+      required: true
+  - type: textarea
+    id: examples
+    attributes:
+      label: Example sessions
+      description: Link issues, PRs, or redacted examples.
+    validations:
+      required: false

@@ -1,0 +1,13 @@
+.git
+.DS_Store
+.env
+.env.*
+.evozeus
+node_modules
+.next
+out
+dist
+build
+.venv
+venv
+__pycache__
