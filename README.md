@@ -1,4 +1,8 @@
-# EvoZeus（宙斯）
+<h1>
+  <img src="assets/icons/evozeus-gold-128.png" alt="EvoZeus gold icon" width="38" align="absmiddle">
+  EvoZeus（宙斯）
+  <img src="assets/icons/evozeus-silver-128.png" alt="EvoZeus silver icon" width="38" align="absmiddle">
+</h1>
 
 <p align="center">
   <img src="assets/evozeus-banner.png" alt="EvoZeus banner: put agent sessions on the judgment bench" width="100%">
