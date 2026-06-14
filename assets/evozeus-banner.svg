@@ -1,0 +1,30 @@
+<svg width="1200" height="360" viewBox="0 0 1200 360" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">EvoZeus banner</title>
+  <desc id="desc">A banner for EvoZeus, the agent work pattern evolution layer.</desc>
+  <rect width="1200" height="360" rx="28" fill="#F8F6F0"/>
+  <rect x="28" y="28" width="1144" height="304" rx="22" fill="#FFFFFF" stroke="#1F2937" stroke-width="3"/>
+  <path d="M150 84H1050" stroke="#C2410C" stroke-width="8" stroke-linecap="round"/>
+  <path d="M150 276H1050" stroke="#1F2937" stroke-width="3" stroke-linecap="round" stroke-dasharray="14 16"/>
+
+  <g transform="translate(118 96)">
+    <path d="M113 0L40 126H100L68 218L176 78H111L113 0Z" fill="#F59E0B" stroke="#111827" stroke-width="10" stroke-linejoin="round"/>
+    <path d="M78 134L37 204" stroke="#C2410C" stroke-width="10" stroke-linecap="round"/>
+    <path d="M160 30L207 4" stroke="#C2410C" stroke-width="10" stroke-linecap="round"/>
+    <path d="M178 82H238" stroke="#111827" stroke-width="10" stroke-linecap="round"/>
+    <circle cx="106" cy="118" r="84" stroke="#111827" stroke-width="10" stroke-dasharray="10 18"/>
+  </g>
+
+  <text x="376" y="155" fill="#111827" font-family="Inter, Arial, Helvetica, sans-serif" font-size="86" font-weight="900" letter-spacing="3">EVO</text>
+  <text x="560" y="155" fill="#C2410C" font-family="Inter, Arial, Helvetica, sans-serif" font-size="86" font-weight="900" letter-spacing="3">ZEUS</text>
+  <text x="382" y="211" fill="#374151" font-family="Inter, Arial, Helvetica, sans-serif" font-size="28" font-weight="800" letter-spacing="4">JUDGE EVERY SKILL</text>
+  <text x="382" y="250" fill="#111827" font-family="Inter, Arial, Helvetica, sans-serif" font-size="24" font-weight="700" letter-spacing="2">EVOLVE EVERY AGENT WORK PATTERN</text>
+
+  <g transform="translate(830 101)">
+    <rect x="0" y="0" width="214" height="44" rx="8" fill="#111827"/>
+    <text x="107" y="29" text-anchor="middle" fill="#FFFFFF" font-family="Inter, Arial, Helvetica, sans-serif" font-size="16" font-weight="800" letter-spacing="2">LOCAL FIRST</text>
+    <rect x="0" y="58" width="214" height="44" rx="8" fill="#C2410C"/>
+    <text x="107" y="87" text-anchor="middle" fill="#FFFFFF" font-family="Inter, Arial, Helvetica, sans-serif" font-size="16" font-weight="800" letter-spacing="2">NO SCORE</text>
+    <rect x="0" y="116" width="214" height="44" rx="8" fill="#F59E0B" stroke="#111827" stroke-width="3"/>
+    <text x="107" y="145" text-anchor="middle" fill="#111827" font-family="Inter, Arial, Helvetica, sans-serif" font-size="16" font-weight="900" letter-spacing="2">PR CANDIDATE</text>
+  </g>
+</svg>

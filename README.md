@@ -1,28 +1,48 @@
-# EvoZeus（宙斯）
+# EvoZeus（宙斯） — Agent Work Pattern Evolution Layer
 
-**全球 Agent 工作模式进化基础设施 / Global Agent Work Pattern Evolution Infrastructure**
+<p align="center">
+  <img src="assets/evozeus-banner.svg" alt="EvoZeus banner" width="820">
+</p>
 
-> 审判全球一切 Skill，也审判每一个让 Agent 变强或变弱的工作模式。
+<p align="center">
+  <strong>全球 Agent 工作模式进化基础设施 / Global Agent Work Pattern Evolution Infrastructure</strong>
+</p>
 
-宙斯从真实 Agent Session 中发现反复出现的高价值做法、低效习惯、环境故障和工具约束，把它们炼成可审阅、可复用、可贡献、可进化的 **Evolution Candidate**。
+<p align="center">
+  <img alt="Status: Design Draft" src="https://img.shields.io/badge/status-Design%20Draft-555555?style=for-the-badge">
+  <img alt="Local First" src="https://img.shields.io/badge/runtime-Local%20First-2E7D32?style=for-the-badge">
+  <img alt="No Score" src="https://img.shields.io/badge/report-No%20Score-C2410C?style=for-the-badge">
+  <img alt="Candidate PR" src="https://img.shields.io/badge/output-Candidate%20PR-6E56CF?style=for-the-badge">
+</p>
 
-它不是 Agent 打分器，不是 benchmark，也不只是一次 session 的报告工具。Skill 只是宙斯可能产出的结果之一。宙斯真正关心的是：一个 Agent 在真实工作中暴露出来的哪些模式值得被保留、修正、传播，甚至贡献给全球 Agent 生态。
+<p align="center">
+  <a href="#一句话加入">Quick Start</a> ·
+  <a href="#为什么叫宙斯">Why Zeus</a> ·
+  <a href="#宙斯到底在找什么">Candidates</a> ·
+  <a href="#报告模板与可视化">Reports</a> ·
+  <a href="#roadmap">Roadmap</a> ·
+  <a href="docs/design-doc-v0.1.md">Design Doc</a>
+</p>
 
-> 当前状态：Design Draft / Pre-MVP。这个仓库正在定义产品方向和 v0.1 的最小可用体验。
+**EvoZeus（宙斯）** 从真实 Agent Session 中发现反复出现的高价值做法、低效习惯、环境故障和工具约束，把它们炼成可审阅、可复用、可贡献、可进化的 **Evolution Candidate**。
+
+如果你经常使用 Codex、Claude Code、Cursor、OpenHands 或 Gemini CLI 做严肃任务，宙斯会帮你发现：哪些 Skill 真有价值，哪些只是浪费 token，哪些小习惯应该沉淀，哪些工具和网络问题不该被误判成 Agent 能力问题。
 
 > Origin：宙斯的概念诞生于一次不太成功的黑客松之后，[Anthony](https://github.com/HaodiFan) 和 [Neil](https://github.com/orgs/MetaInFLow/people/Neillan96) 两个人的一次复盘。
+
+当前状态：**Design Draft / Pre-MVP**。这个仓库正在定义产品方向和 v0.1 的最小可用体验。
 
 ---
 
 ## 一句话加入
 
-目标交互是一句话：
+New here? Start by copying one sentence:
 
 ```text
 请加入宙斯 Agent Evolution Layer：https://evozeus.dev/skill.md
 ```
 
-你把这句话复制给 Codex、Claude Code、Cursor、OpenHands、Gemini CLI 或其他类似 Agent。Agent 读取 `skill.md` 后，会知道如何记录本次 session、生成本地报告、发现可复用模式，并在你同意后把候选模式贡献出去。
+把这句话复制给 Codex、Claude Code、Cursor、OpenHands、Gemini CLI 或其他类似 Agent。Agent 读取 `skill.md` 后，会知道如何记录本次 session、生成本地报告、发现可复用模式，并在你同意后把候选模式贡献出去。
 
 v0.1 的目标不是让你学习一套评测系统，而是让 Agent 自己读懂说明书，把宙斯接入它正在做的工作。
 
