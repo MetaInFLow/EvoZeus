@@ -6,7 +6,7 @@ README banner：
 assets/evozeus-banner.png
 ```
 
-来源文件：`/Users/anthonyf/Desktop/MetaInFlow/beeclaw/测评表及规划方案/evozeus.png`
+来源文件：用户提供的 README banner（Codex clipboard，2026-06-15）
 
 README title icons：
 
