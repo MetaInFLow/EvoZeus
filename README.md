@@ -23,7 +23,7 @@
   <a href="docs/README.md">Docs</a>
 </p>
 
-## 把 Agent Session 放上审判台。
+## <img src="assets/icons/evozeus-gold-128.png" alt="" width="24" align="absmiddle"> 把 Agent Session 放上审判台。
 
 **什么该沉淀，什么该修正，什么该淘汰，由证据决定。**
 
@@ -31,7 +31,7 @@ EvoZeus（宙斯）是 Agent Session 的审判层。它不做 Agent 打分，也
 
 > Origin：宙斯的概念诞生于一次不太成功的黑客松之后，[Anthony](https://github.com/HaodiFan) 和 [Neil](https://github.com/orgs/MetaInFLow/people/Neillan96) 两个人的一次复盘。
 
-## Start Here
+## <img src="assets/icons/evozeus-gold-128.png" alt="" width="24" align="absmiddle"> Start Here
 
 把这句话复制给 Codex、Claude Code、Cursor、OpenHands、Gemini CLI 或类似 Agent：
 
@@ -39,7 +39,7 @@ EvoZeus（宙斯）是 Agent Session 的审判层。它不做 Agent 打分，也
 请读取 https://evozeus-metainflow.vercel.app/skill.md，并按 EvoZeus 审判当前 Agent Session。
 ```
 
-## What EvoZeus Manages
+## <img src="assets/icons/evozeus-gold-128.png" alt="" width="24" align="absmiddle"> What EvoZeus Manages
 
 软件开发管理 `code -> issue -> PR -> review -> merge`。
 
@@ -70,7 +70,7 @@ Verdict 不停在观点层。它必须落成 Artifact：
 | `Preserve` | Accepted Case |
 | `Open Case` | Pending Case |
 
-## Current Repository Surface
+## <img src="assets/icons/evozeus-gold-128.png" alt="" width="24" align="absmiddle"> Current Repository Surface
 
 这个仓库当前提供的是协议和共创面，不是 CLI release。
 
@@ -86,7 +86,7 @@ Verdict 不停在观点层。它必须落成 Artifact：
 | 示例 Case | [examples/cases/tool-resolution-rule/case.md](examples/cases/tool-resolution-rule/case.md) |
 | 示例 Report | [examples/reports/session-verdict-report.md](examples/reports/session-verdict-report.md) |
 
-## Runtime Principles
+## <img src="assets/icons/evozeus-gold-128.png" alt="" width="24" align="absmiddle"> Runtime Principles
 
 - **Zero-install by default**：读取 `/skill.md` 不应安装任何包。
 - **Local-first**：raw session 默认只留在本地。
@@ -98,7 +98,7 @@ Verdict 不停在观点层。它必须落成 Artifact：
 详细本地状态与 pack 分层见设计文档：
 [docs/design/active/design_doc-v0.1-agent-session-judgment-layer.md](docs/design/active/design_doc-v0.1-agent-session-judgment-layer.md)
 
-## Contribution Loop
+## <img src="assets/icons/evozeus-gold-128.png" alt="" width="24" align="absmiddle"> Contribution Loop
 
 主路径是 Agent-assisted PR：
 
@@ -122,7 +122,7 @@ proposed_verdict
 privacy_note
 ```
 
-## Documentation
+## <img src="assets/icons/evozeus-gold-128.png" alt="" width="24" align="absmiddle"> Documentation
 
 Engineering Everything 文档规范：
 
@@ -133,7 +133,7 @@ Engineering Everything 文档规范：
 
 入口见 [docs/README.md](docs/README.md)。
 
-## Project Tracks
+## <img src="assets/icons/evozeus-gold-128.png" alt="" width="24" align="absmiddle"> Project Tracks
 
 当前只承诺三个工程轨道：
 
@@ -150,6 +150,6 @@ Engineering Everything 文档规范：
 - 自动创建 PR
 - 大规模 benchmark
 
-## License
+## <img src="assets/icons/evozeus-gold-128.png" alt="" width="24" align="absmiddle"> License
 
 MIT. See [LICENSE](LICENSE).
