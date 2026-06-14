@@ -1,0 +1,30 @@
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+dist/
+build/
+
+# Environments
+.env
+.env.*
+!.env.example
+.venv/
+venv/
+
+# Node / frontend experiments
+node_modules/
+.next/
+out/
+
+# IDE
+.idea/
+.vscode/
+
