@@ -14,7 +14,7 @@ The user asked an Agent to compare an open-source README and improve EvoZeus onb
 | --- | --- |
 | User rejected Skill-only positioning | Skill is not the project boundary |
 | User accepted "审判台" phrasing | Core framing should be judgment, evidence, and verdict |
-| External reference | Strong README includes onboarding, contribution, security, and docs-by-goal |
+| OpenClaw reference | Strong README includes onboarding, contribution, security, and docs-by-goal |
 
 ## Cases
 

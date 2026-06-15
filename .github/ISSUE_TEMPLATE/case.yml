@@ -9,8 +9,6 @@ body:
     attributes:
       value: |
         Submit evidence, not raw private sessions. Redact secrets, customer data, tokens, and private paths.
-
-        Core terms: Evidence = 证据, Case = 案件, Verdict = 裁决, Artifact = 沉淀资产.
   - type: textarea
     id: context
     attributes:
@@ -30,8 +28,7 @@ body:
   - type: dropdown
     id: verdict
     attributes:
-      label: Proposed verdict / 裁决建议
-      description: Use the canonical English value; Chinese names are documented in docs/reference/verdicts.md.
+      label: Proposed verdict
       options:
         - Preserve
         - Promote to Skill

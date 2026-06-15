@@ -47,8 +47,6 @@ Do not submit raw sessions, private code, customer data, secrets, tokens, privat
 
 PRs should be small and reviewable.
 
-Before changing files, choose the matching change mode in [docs/governance/change-scope-policy.md](docs/governance/change-scope-policy.md).
-
 Good PRs usually do one of these:
 
 - Add one Case with evidence.
@@ -56,10 +54,6 @@ Good PRs usually do one of these:
 - Add one report template.
 - Improve privacy or contribution rules.
 - Improve README or onboarding without changing the whole project direction.
-
-Pair Contribution PRs should only change graph fragment assets such as `cases/**`, `factors/**`, `patterns/**`, `examples/cases/**`, or `examples/reports/**`. Do not change infra, protocol, governance, skill routing, ADRs, GitHub templates, or development rules in the same PR.
-
-Changes to protected paths require a linked issue, Design Doc, Implementation Plan, or ADR. Protected paths include `SKILL.md`, `skills/**`, `docs/reference/**`, `docs/governance/**`, `docs/development/**`, `docs/design/**`, `docs/plans/**`, `docs/decisions/**`, `.github/**`, `CONTRIBUTING.md`, `SECURITY.md`, and runtime / infra code.
 
 Before opening a PR:
 

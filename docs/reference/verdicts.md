@@ -1,23 +1,23 @@
 # Verdicts
 
 - Status: active
-- Last updated: 2026-06-15
+- Last updated: 2026-06-14
 
-A Verdict（裁决）is the outcome of judging a Case.
+A Verdict is the outcome of judging a Case.
 
 It should be short, evidence-backed, and operational. It says what should happen next.
 
 ## Verdict Types
 
-| Verdict | 中文名 | Use when | Result |
-| --- | --- | --- | --- |
-| `Preserve` | 保留 | The pattern is useful but does not need a new artifact yet | Keep as a reference Case |
-| `Promote to Skill` | 升级为 Skill | The pattern is reusable enough to become instructions | Create or update a Skill |
-| `Extract Factor` | 抽取因子 | The pattern is a judgment rule | Add or update a Factor |
-| `Keep as Habit` | 保持为习惯 | The pattern is lightweight and should stay small | Add to habits or checklist |
-| `Fix Environment` | 修复环境 | Root cause is path, version, auth, network, permission, or setup | Add environment rule or diagnostic |
-| `Reject Pattern` | 淘汰模式 | The pattern wastes token, reduces quality, or creates risk | Add to rejected patterns |
-| `Open Case` | 开放案件 | Evidence is insufficient or contested | Keep collecting evidence |
+| Verdict | Use when | Result |
+| --- | --- | --- |
+| `Preserve` | The pattern is useful but does not need a new artifact yet | Keep as a reference Case |
+| `Promote to Skill` | The pattern is reusable enough to become instructions | Create or update a Skill |
+| `Extract Factor` | The pattern is a judgment rule | Add or update a Factor |
+| `Keep as Habit` | The pattern is lightweight and should stay small | Add to habits or checklist |
+| `Fix Environment` | Root cause is path, version, auth, network, permission, or setup | Add environment rule or diagnostic |
+| `Reject Pattern` | The pattern wastes token, reduces quality, or creates risk | Add to rejected patterns |
+| `Open Case` | Evidence is insufficient or contested | Keep collecting evidence |
 
 ## Verdict Format
 

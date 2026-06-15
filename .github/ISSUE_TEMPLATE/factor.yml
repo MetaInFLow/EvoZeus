@@ -31,7 +31,7 @@ body:
   - type: textarea
     id: verdicts
     attributes:
-      label: Possible verdicts / 可能裁决
+      label: Possible verdicts
       placeholder: Fix Environment, Keep as Habit, Promote to Skill.
     validations:
       required: true
