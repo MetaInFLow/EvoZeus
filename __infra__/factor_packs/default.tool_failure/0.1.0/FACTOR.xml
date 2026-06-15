@@ -18,4 +18,8 @@
   <when_to_use>当需要判断任务失败或延后是否由工具、权限、环境或运行错误导致时使用。</when_to_use>
   <limitations>瞬时工具失败不一定造成任务失败，需要结合后续重试和最终交付状态判断。</limitations>
   <privacy>只读取标准化 SessionEnvelope 的工具事件内容，证据引用不携带原始敏感信息。</privacy>
+  <visualization component="evidence_list">
+    <title>工具失败证据</title>
+    <description>用 evidence list 展示工具失败类型、相关 event 和修复环境裁决。</description>
+  </visualization>
 </factor>

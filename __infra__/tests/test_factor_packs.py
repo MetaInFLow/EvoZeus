@@ -51,6 +51,17 @@ def test_factor_pack_repository_loads_factor_xml_introductions():
         assert pack.introduction.when_to_use
         assert pack.introduction.limitations
         assert pack.introduction.privacy
+        assert pack.introduction.visualization.component
+        assert pack.introduction.visualization.title
+
+
+def test_factor_pack_repository_loads_visualization_components_from_factor_xml():
+    packs = FactorPackRepository(PACK_ROOT).discover()
+    components = {pack.manifest.id: pack.introduction.visualization.component for pack in packs}
+
+    assert components["default.tool_failure"] == "evidence_list"
+    assert components["default.success_closure_quality"] == "score_card"
+    assert components["default.task_span_extraction"] == "task_span_table"
 
 
 def test_default_factor_packs_declare_in_process_runtime():

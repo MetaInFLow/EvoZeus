@@ -36,6 +36,7 @@
     session-envelope.json
     events.jsonl
     factor-results.md
+    factor-results.html
 ```
 
 主代码只负责框架、协议、runner 和 storage。下载资产由 manifest 描述，由 registry 选择，由 runner 执行。
@@ -53,9 +54,11 @@ factor_packs/
       factor.py
 ```
 
-`factor.json` 声明 id、version、stage、runtime profile、entrypoint、输入输出和回滚方式。`FACTOR.xml` 提供固定介绍，给真人用户和 Agent 读取，包括用途、输入输出、适用场景、限制和隐私边界。`factor.py` 只实现该 factor 的运行逻辑。删除一个 factor 时，删除对应 `<factor_id>/<version>/` 文件夹即可。
+`factor.json` 声明 id、version、stage、runtime profile、entrypoint、输入输出和回滚方式。`FACTOR.xml` 提供固定介绍，给真人用户和 Agent 读取，包括用途、输入输出、适用场景、限制、隐私边界和 visualization component。`factor.py` 只实现该 factor 的运行逻辑。删除一个 factor 时，删除对应 `<factor_id>/<version>/` 文件夹即可。
 
 Repository 扫描 factor 时会同时读取 `factor.json` 和 `FACTOR.xml`，并校验二者的 id、version、stage 和 runtime 一致。
+
+HTML report 会把指定的 `FactorResult` 拼到同一个 `factor-results.html`，每个 result 使用对应 `FACTOR.xml` 里的 visualization component 渲染为一个 section。
 
 ## Factor Runtime
 

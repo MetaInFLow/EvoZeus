@@ -17,4 +17,8 @@
   <when_to_use>当需要判断一次 Agent 工作是否出现用户纠偏、负反馈或返工信号时使用。</when_to_use>
   <limitations>强语气不一定代表任务失败，需要结合后续闭环、工具结果和上下文判断。</limitations>
   <privacy>只读取标准化 SessionEnvelope 的用户回合内容，不写入 raw private content。</privacy>
+  <visualization component="verdict_card">
+    <title>负反馈信号</title>
+    <description>用 verdict card 展示纠偏、负反馈、证据引用和建议裁决。</description>
+  </visualization>
 </factor>

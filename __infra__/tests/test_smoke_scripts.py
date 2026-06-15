@@ -67,4 +67,5 @@ def test_result_report_script_writes_markdown_report_without_json_result_file():
     assert result.returncode == 0, result.stderr
     assert "result report ok" in result.stdout
     assert "factor-results.md" in result.stdout
+    assert "factor-results.html" in result.stdout
     assert "json_result_file=False" in result.stdout

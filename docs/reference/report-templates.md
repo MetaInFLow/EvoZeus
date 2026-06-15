@@ -5,7 +5,34 @@
 
 EvoZeus reports should help a human or Agent review evidence and reach a verdict.
 
-Reports should not output scores.
+Reports should not output unexplained raw scores. A declared visualization component can show structured scores when the score is part of the factor contract.
+
+## Factor Result HTML
+
+Purpose: review selected `FactorResult` objects in one local HTML page.
+
+Input:
+
+- `FactorResult`
+- `FactorPack`
+- `FACTOR.xml` visualization component
+
+Output:
+
+- `.evozeus/sessions/<session_id>/factor-results.html`
+
+Component routing:
+
+- `verdict_card`
+- `open_loop_card`
+- `tag_frequency_card`
+- `rework_card`
+- `score_card`
+- `task_span_table`
+- `evidence_list`
+- `correction_loop_card`
+
+P0 HTML uses static sections with `data-component`. Rich TUI or browser components can use the same field later.
 
 ## Session Verdict Report
 

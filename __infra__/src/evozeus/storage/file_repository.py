@@ -1,7 +1,12 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
+from pathlib import Path
+
 from evozeus.core.session import SessionEnvelope
+from evozeus.factors.packs import FactorPack
 from evozeus.factors.protocol import FactorResult
+from evozeus.reports.html_report import render_factor_results_html
 from evozeus.runtime.paths import RuntimePaths
 
 
@@ -27,6 +32,27 @@ class FileSessionRepository:
         existing = path.read_text(encoding="utf-8") if path.exists() else "## Factor Results\n\n"
         sections = [_render_factor_result(result) for result in results]
         path.write_text(existing + "".join(sections), encoding="utf-8")
+
+    def write_factor_results_html(
+        self,
+        session_id: str,
+        results: list[FactorResult],
+        factor_packs: list[FactorPack],
+        selected_factor_ids: Iterable[str] | None = None,
+    ) -> Path:
+        session_dir = self.paths.session_dir(session_id)
+        session_dir.mkdir(parents=True, exist_ok=True)
+        path = session_dir / "factor-results.html"
+        path.write_text(
+            render_factor_results_html(
+                session_id,
+                results,
+                factor_packs,
+                selected_factor_ids=selected_factor_ids,
+            ),
+            encoding="utf-8",
+        )
+        return path
 
 
 def _render_factor_result(result: FactorResult) -> str:

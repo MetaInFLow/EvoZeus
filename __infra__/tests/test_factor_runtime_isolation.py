@@ -241,6 +241,10 @@ def _factor_xml(factor_id: str, runtime: dict[str, object]) -> str:
   <when_to_use>测试 runtime runner 行为时使用。</when_to_use>
   <limitations>只用于测试，不代表真实分析能力。</limitations>
   <privacy>只读取测试 SessionEnvelope。</privacy>
+  <visualization component="test_card">
+    <title>Runtime Isolation Test</title>
+    <description>展示测试 factor 的运行结果。</description>
+  </visualization>
 </factor>
 """
 

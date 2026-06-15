@@ -159,8 +159,14 @@ P0 后续补齐：
   <when_to_use>当任务复盘需要理解截图、图片附件或视觉工具输出时使用。</when_to_use>
   <limitations>OCR 质量受图片清晰度、语言和模型依赖影响。</limitations>
   <privacy>只读取经过 PII redaction 的 SessionEnvelope 和授权附件。</privacy>
+  <visualization component="evidence_list">
+    <title>OCR 证据</title>
+    <description>用 evidence list 展示图片文字证据和相关 event。</description>
+  </visualization>
 </factor>
 ```
+
+`visualization.component` 是 result renderer 的组件路由。P0 先生成静态 HTML section，后续 TUI 或浏览器 companion 可以根据同一个 component id 替换成 richer component。
 
 ## 安装流程
 
@@ -183,7 +189,7 @@ SessionEnvelope
   -> in_process / subprocess_uv
   -> FactorResult
   -> ResultRepository
-  -> report / verdict card
+  -> Markdown report / HTML report
 ```
 
 `subprocess_uv` 的运行方式：
@@ -254,7 +260,7 @@ P0 测试集需要覆盖：
 
 - factor folder 规范
 - `factor.json`
-- `FACTOR.xml`
+- `FACTOR.xml` + visualization component
 - `FactorPackRepository`
 - 默认 8 个 factor pack 示例
 - 测试集

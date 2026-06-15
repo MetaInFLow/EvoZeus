@@ -18,4 +18,8 @@
   <when_to_use>当需要定位任务链路中是否存在未解决、待确认或被阻塞的尾巴时使用。</when_to_use>
   <limitations>正常的计划拆分也可能包含 TODO 语言，需要结合最终交付状态判断。</limitations>
   <privacy>只读取标准化 SessionEnvelope 的事件内容，不保存原始会话文本。</privacy>
+  <visualization component="open_loop_card">
+    <title>未闭环任务</title>
+    <description>用 open loop card 展示未完成信号、风险和 evidence refs。</description>
+  </visualization>
 </factor>
