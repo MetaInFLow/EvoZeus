@@ -1,7 +1,7 @@
 # Folder Declaration v0
 
 - Status: active
-- Last updated: 2026-06-14
+- Last updated: 2026-06-16
 
 ## Root Files
 
@@ -18,6 +18,7 @@
 | Directory | Responsibility |
 | --- | --- |
 | `.github/` | Issue and PR templates |
+| `__infra__/` | Skill as Software Python business logic and runtime tests |
 | `assets/` | README and public visual assets |
 | `cases/` | Case library surface |
 | `factors/` | Factor library surface |

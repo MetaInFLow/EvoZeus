@@ -9,6 +9,7 @@ ALLOWED_BRANCH_TYPES = ("dev", "bug", "refactor", "docs", "test", "chore")
 ALLOWED_BRANCH_COMPONENTS = (
     "runtime",
     "factor",
+    "infra",
     "verdict-card",
     "doctor",
     "tui",

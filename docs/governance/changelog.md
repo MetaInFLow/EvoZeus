@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-06-16
+
+- Moved Python business logic into `__infra__/` as the Skill as Software infra layer.
+
 ## 2026-06-15
 
 - Added `skills/evozeus-development/SKILL.md` for branch naming, terminology-aligned naming, and pre-submit checks.

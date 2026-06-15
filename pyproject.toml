@@ -27,9 +27,12 @@ dev = [
 [project.scripts]
 evozeus = "evozeus.cli:app"
 
+[tool.hatch.build.targets.wheel]
+packages = ["__infra__/src/evozeus"]
+
 [tool.pytest.ini_options]
-testpaths = ["tests"]
-pythonpath = ["src"]
+testpaths = ["__infra__/tests"]
+pythonpath = ["__infra__/src"]
 filterwarnings = [
   "ignore:Using `httpx` with `starlette.testclient` is deprecated:starlette.exceptions.StarletteDeprecationWarning",
 ]

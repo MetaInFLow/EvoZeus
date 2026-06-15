@@ -35,6 +35,13 @@ def test_check_accepts_valid_branch_name():
     assert "branch: ok" in result.output
 
 
+def test_check_accepts_infra_component_branch_name():
+    result = runner.invoke(app, ["check", "--branch", "codex/refactor/20260616-infra-python-package"])
+
+    assert result.exit_code == 0
+    assert "branch: ok" in result.output
+
+
 def test_check_rejects_invalid_branch_name():
     result = runner.invoke(app, ["check", "--branch", "update_docs"])
 
