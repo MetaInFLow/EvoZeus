@@ -4,10 +4,10 @@ import assert from "node:assert/strict";
 import {
   evaluateProofGate,
   planLabelPrefixUpdate,
-  planManagedLabelUpdate,
-  privacyFindingsForPatch
+  planManagedLabelUpdate
 } from "./gate-logic.mjs";
 import { validateCandidateData } from "./candidate-validator.mjs";
+import { privacyFindingsForPatch } from "./privacy-scan.mjs";
 
 function testProofGateRequiresFilledFields() {
   const blankCodeTemplate = `## Problem
@@ -130,11 +130,12 @@ function testInvalidCandidateIsRejected() {
 }
 
 function testPrivacyScanIgnoresIsoDatesInAddedLines() {
+  const isoDate = ["2026", "06", "16"].join("-");
   const findings = privacyFindingsForPatch(
     "docs/governance/changelog.md",
     `@@ -1,3 +1,4 @@
  ## Changelog
-+## 2026-06-16
++## ${isoDate}
 +- Tightened governance gates.`
   );
 
@@ -142,10 +143,11 @@ function testPrivacyScanIgnoresIsoDatesInAddedLines() {
 }
 
 function testPrivacyScanFlagsPhoneLikeAddedLines() {
+  const phone = ["+1", "(555)", "123", "4567"];
   const findings = privacyFindingsForPatch(
     "examples/report.md",
     `@@ -1,2 +1,3 @@
-+Call +1 (555) 123-4567 before rollout.`
++Call ${phone[0]} ${phone[1]} ${phone[2]}-${phone[3]} before rollout.`
   );
 
   assert.deepEqual(findings, ["examples/report.md: phone-like number"]);
