@@ -3,6 +3,10 @@
 </h1>
 
 <p align="center">
+  <strong>English</strong> · <a href="README.zh-CN.md">简体中文</a>
+</p>
+
+<p align="center">
   <img src="assets/evozeus-banner.png" alt="EvoZeus banner: put agent sessions on the judgment bench" width="100%">
 </p>
 
@@ -15,44 +19,44 @@
   <a href="docs/README.md">Full Docs</a>
 </p>
 
-## <img src="assets/icons/evozeus-gold-128.png" alt="" width="24" align="absmiddle"> 把 Agent Session 放上审判台。
+## <img src="assets/icons/evozeus-gold-128.png" alt="" width="24" align="absmiddle"> Put Agent Sessions on the judgment bench.
 
-**什么该沉淀，什么该修正，什么该淘汰，由证据决定。**
+**Evidence decides what should be preserved, fixed, promoted, or rejected.**
 
-EvoZeus（宙斯）是 Agent Session 的审判层。它不做 Agent 打分，也不把 Skill 当作唯一目标；它管理真实 session 里产生的证据、Case、Verdict 和最终沉淀资产。
+EvoZeus is a judgment layer for Agent Sessions. It does not score agents, and it does not treat Skill creation as the only goal. It manages evidence, Cases, Verdicts, and reusable artifacts from real sessions.
 
-EvoZeus 也定义一种新的软件范式：**Skill Driven Software（SDS）**。在 SDS 中，软件行为由 code、scenario skill、factor、rule、report 和 runtime 共同驱动。
+EvoZeus also defines a software pattern: **Skill Driven Software (SDS)**. In SDS, software behavior is shaped by code, scenario skills, factors, rules, reports, and runtime surfaces together.
 
-> Origin：宙斯的概念诞生于一次不太成功的黑客松之后，[Anthony](https://github.com/HaodiFan) 和 [Neil](https://github.com/orgs/MetaInFLow/people/Neillan96) 两个人的一次复盘。
+> Origin: EvoZeus came from a retrospective between [Anthony](https://github.com/HaodiFan) and [Neil](https://github.com/orgs/MetaInFLow/people/Neillan96) after a hackathon that did not go well.
 
 ## <img src="assets/icons/evozeus-silver-128.png" alt="" width="24" align="absmiddle"> Start Here
 
-把这句话复制给你的 Agent：
+Copy this into your agent:
 
 ```text
-请读取本仓库的 SKILL.md，并按 EvoZeus 审判当前 Agent Session。先只输出 Session Verdict Card，不写本地文件，不提交 GitHub。
+Read this repository's SKILL.md and judge the current Agent Session with EvoZeus. First output only a Session Verdict Card. Do not write local files or submit to GitHub.
 ```
 
 ## <img src="assets/icons/evozeus-gold-128.png" alt="" width="24" align="absmiddle"> What EvoZeus Manages
 
-软件开发管理 `code -> issue -> PR -> review -> merge`。
+Software development manages `code -> issue -> PR -> review -> merge`.
 
-宙斯管理：
+EvoZeus manages:
 
 ```text
 Session -> Evidence -> Case -> Verdict -> Artifact -> Library
 ```
 
-| Term | 中文名 | Meaning |
-| --- | --- | --- |
-| Session | 会话 | 一次真实 Agent 执行 |
-| Evidence | 证据 | 支撑判断的最小证据 |
-| Case | 案件 | 等待审判的发现 |
-| Verdict | 裁决 | 基于 Evidence 对 Case 给出的结果 |
-| Artifact | 沉淀资产 | Verdict 落成后的可执行或可复用资产 |
-| Library | 资产库 | 可复用的公共资产集合 |
+| Term | Meaning |
+| --- | --- |
+| Session | One real agent execution |
+| Evidence | The smallest proof that supports a judgment |
+| Case | A finding waiting for judgment |
+| Verdict | The evidence-backed decision for a Case |
+| Artifact | The executable or reusable asset created after a Verdict |
+| Library | The reusable public asset collection |
 
-Verdict（裁决）需要落成 Artifact：
+Every Verdict should become an Artifact:
 
 | Verdict | Artifact |
 | --- | --- |
@@ -66,44 +70,44 @@ Verdict（裁决）需要落成 Artifact：
 
 ## <img src="assets/icons/evozeus-silver-128.png" alt="" width="24" align="absmiddle"> Use Paths
 
-EvoZeus 现在首先是一个 **agent-readable protocol repo**，不是稳定 CLI 产品。README 只给最短路径；完整规则在 docs 和 skills 里。
+EvoZeus is currently an **agent-readable protocol repository**, not a stable CLI product. This README keeps the shortest paths here; the full rules live in docs and skills.
 
 | Goal | Start here | Output |
 | --- | --- | --- |
-| 审判一次 Agent Session | [SKILL.md](SKILL.md) | Session Verdict Card |
-| 选择具体工作场景 | [skills/index/SKILL.md](skills/index/SKILL.md) | development / contribution / reporting / redaction skill |
-| 开发 EvoZeus 本身 | [skills/evozeus-development/SKILL.md](skills/evozeus-development/SKILL.md) | 小范围 issue/branch/PR |
-| 贡献 Case 或 Candidate | [CONTRIBUTING.md](CONTRIBUTING.md) | redacted Case / Candidate PR |
-| 审查 PR 规范 | [docs/governance/pr-guidelines.md](docs/governance/pr-guidelines.md) | proof-backed PR |
-| 理解核心语义 | [docs/reference/ontology.md](docs/reference/ontology.md) | Candidate / Evidence / Verdict 边界 |
+| Judge one Agent Session | [SKILL.md](SKILL.md) | Session Verdict Card |
+| Choose the right work scenario | [skills/index/SKILL.md](skills/index/SKILL.md) | development / contribution / reporting / redaction skill |
+| Develop EvoZeus itself | [skills/evozeus-development/SKILL.md](skills/evozeus-development/SKILL.md) | small issue/branch/PR |
+| Contribute a Case or Candidate | [CONTRIBUTING.md](CONTRIBUTING.md) | redacted Case / Candidate PR |
+| Review PR rules | [docs/governance/pr-guidelines.md](docs/governance/pr-guidelines.md) | proof-backed PR |
+| Understand the semantic model | [docs/reference/ontology.md](docs/reference/ontology.md) | Candidate / Evidence / Verdict boundaries |
 
 ## <img src="assets/icons/evozeus-gold-128.png" alt="" width="24" align="absmiddle"> Safety Defaults
 
-EvoZeus 的默认路径是低权限、可审查、可撤回的。
+The default EvoZeus path is low-permission, reviewable, and reversible.
 
-- **Zero-install entry**：读取 `SKILL.md` 不应安装任何包。
-- **Local-first evidence**：raw session 默认只留在本地，不进入公共 PR。
-- **Redacted public artifacts**：公开 Case、Candidate、Report 必须先脱敏。
-- **Markdown/JSON first**：基础报告和 schema 不依赖 dashboard、scanner 或云服务。
-- **Opt-in runtime packs**：scanner、factor code、MCP、LLM、可视化包必须按需启用。
-- **User-approved contribution**：只有用户确认后，才检查 `gh` 并创建 issue / PR。
+- **Zero-install entry**: reading `SKILL.md` should not install packages.
+- **Local-first evidence**: raw sessions stay local by default and do not go into public PRs.
+- **Redacted public artifacts**: public Cases, Candidates, and Reports must be redacted first.
+- **Markdown/JSON first**: base reports and schemas do not depend on dashboards, scanners, or cloud services.
+- **Opt-in runtime packs**: scanner, factor code, MCP, LLM, and visualization packs must be explicitly enabled.
+- **User-approved contribution**: only after user approval should an agent check `gh` and create an issue or PR.
 
 ## <img src="assets/icons/evozeus-silver-128.png" alt="" width="24" align="absmiddle"> Contribution Quick Path
 
-主路径是 agent-assisted，但合并权仍归 maintainer：
+The main path is agent-assisted, but merge authority stays with maintainers:
 
 ```text
 Local Evidence Report -> Agent Review -> Case Draft -> User Approval -> PR -> Maintainer Review
 ```
 
-开发或 PR 前先运行：
+Before development or PR review, run:
 
 ```bash
 python3 scripts/check_pr_ready.py
 git diff --check
 ```
 
-最小 Case：
+Minimal Case shape:
 
 ```yaml
 session_id: redacted-session-id
@@ -114,44 +118,44 @@ proposed_verdict: Preserve | Promote to Skill | Extract Factor | Keep as Habit |
 privacy_note: what was removed or generalized
 ```
 
-GitHub automation is dry-run by default: labeler、proof gate、privacy scan、dirty PR check、queue guard 和 Candidate schema check 可以打 label 和更新 marker comment，但不会 approve、merge、promote core Candidate 或自动关闭 PR。
+GitHub automation is dry-run by default: labeler, proof gate, privacy scan, dirty PR check, queue guard, and Candidate schema check may label and update marker comments, but they must not approve, merge, promote core Candidates, or auto-close PRs.
 
 ## <img src="assets/icons/evozeus-gold-128.png" alt="" width="24" align="absmiddle"> Docs by Goal
 
 | Need | Read |
 | --- | --- |
-| 文档总入口 | [docs/README.md](docs/README.md) |
-| Evidence 等级 | [docs/reference/evidence-grading.md](docs/reference/evidence-grading.md) |
+| Docs home | [docs/README.md](docs/README.md) |
+| Evidence levels | [docs/reference/evidence-grading.md](docs/reference/evidence-grading.md) |
 | Review contract | [docs/reference/review-contract.md](docs/reference/review-contract.md) |
-| Verdict 类型 | [docs/reference/verdicts.md](docs/reference/verdicts.md) |
+| Verdict types | [docs/reference/verdicts.md](docs/reference/verdicts.md) |
 | Verdict Card | [docs/reference/verdict-card.md](docs/reference/verdict-card.md) |
-| 报告模板 | [docs/reference/report-templates.md](docs/reference/report-templates.md) |
+| Report templates | [docs/reference/report-templates.md](docs/reference/report-templates.md) |
 | Candidate Schema | [schemas/candidate.schema.json](schemas/candidate.schema.json) |
-| 隐私与脱敏 | [docs/governance/privacy-and-redaction.md](docs/governance/privacy-and-redaction.md) |
-| PR 分流状态机 | [docs/governance/pr-routing-policy.md](docs/governance/pr-routing-policy.md) |
-| Labels 与 protected paths | [docs/governance/labels.md](docs/governance/labels.md), [docs/governance/protected-paths.md](docs/governance/protected-paths.md) |
+| Privacy and redaction | [docs/governance/privacy-and-redaction.md](docs/governance/privacy-and-redaction.md) |
+| PR routing state machine | [docs/governance/pr-routing-policy.md](docs/governance/pr-routing-policy.md) |
+| Labels and protected paths | [docs/governance/labels.md](docs/governance/labels.md), [docs/governance/protected-paths.md](docs/governance/protected-paths.md) |
 
 ## <img src="assets/icons/evozeus-silver-128.png" alt="" width="24" align="absmiddle"> What Exists Today
 
 | Area | Status |
 | --- | --- |
-| Protocol Surface | `SKILL.md`、场景 skills、Verdict、Case 模板、隐私门禁 |
-| Ontology Layer | Candidate taxonomy、evidence grading、negative patterns、review contract |
-| Developer Workflow | branch 规范、PR 模板、dry-run governance gates、pre-submit checks |
-| Public Examples | redacted Case、Evidence Report、valid/invalid Candidate examples |
+| Protocol Surface | `SKILL.md`, scenario skills, Verdicts, Case templates, privacy gates |
+| Ontology Layer | Candidate taxonomy, evidence grading, negative patterns, review contract |
+| Developer Workflow | branch rules, PR templates, dry-run governance gates, pre-submit checks |
+| Public Examples | redacted Case, Evidence Report, valid/invalid Candidate examples |
 
 Planned but not stable yet:
 
-- Local Runtime：`.evozeus/` 本地状态、SQLite registry、Markdown/JSON report
-- Community Library：Cases、Factors、Habits、Environment Rules、Rejected Patterns
+- Local Runtime: `.evozeus/` local state, SQLite registry, Markdown/JSON report
+- Community Library: Cases, Factors, Habits, Environment Rules, Rejected Patterns
 - CLI / TUI / browser companion
 
 Not promised:
 
-- 自动上传 raw session
-- 默认安装 scanner / chart / MCP / cloud client
-- 自动创建 PR
-- 大规模 benchmark
+- automatic raw session upload
+- default scanner / chart / MCP / cloud client installation
+- automatic PR creation
+- large-scale benchmark
 
 ## <img src="assets/icons/evozeus-gold-128.png" alt="" width="24" align="absmiddle"> License
 
