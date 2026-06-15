@@ -22,6 +22,7 @@
 | `cases/` | Case library surface |
 | `factors/` | Factor library surface |
 | `patterns/` | Pattern library surface |
+| `skills/` | Scenario-specific Agent skills, including development guidance |
 | `examples/` | Redacted examples for Cases and reports |
 | `docs/` | Project documentation |
 

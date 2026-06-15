@@ -9,13 +9,6 @@
 </p>
 
 <p align="center">
-  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
-  <a href="docs/design/active/design_doc-v0.1-agent-session-judgment-layer.md"><img alt="Status: Protocol Bootstrap" src="https://img.shields.io/badge/status-protocol%20bootstrap-555555.svg"></a>
-  <a href="docs/governance/privacy-and-redaction.md"><img alt="Privacy: Local First" src="https://img.shields.io/badge/privacy-local%20first-2E7D32.svg"></a>
-  <a href="CONTRIBUTING.md"><img alt="Contributions: Cases Welcome" src="https://img.shields.io/badge/contributions-cases%20welcome-C2410C.svg"></a>
-</p>
-
-<p align="center">
   <a href="#start-here">Start Here</a> ·
   <a href="#what-evozeus-manages">Managed Assets</a> ·
   <a href="#current-repository-surface">Current Surface</a> ·
@@ -29,14 +22,16 @@
 
 EvoZeus（宙斯）是 Agent Session 的审判层。它不做 Agent 打分，也不把 Skill 当作唯一目标；它管理真实 session 里产生的证据、Case、Verdict 和最终沉淀资产。
 
-> Origin：宙斯的概念诞生于一次不太成功的黑客松之后，[Anthony](https://github.com/HaodiFan) 和 [Neil](https://github.com/orgs/MetaInFLow/people/Neillan96) 两个人的一次复盘。
+EvoZeus 也定义一种新的软件范式：**Skill Driven Software（SDS）**。在 SDS 中，软件行为由 code、scenario skill、factor、rule、report 和 runtime 共同驱动。
+
+> Origin：宙斯的概念诞生于一次不太成功的黑客松之后的团队复盘。
 
 ## <img src="assets/icons/evozeus-gold-128.png" alt="" width="24" align="absmiddle"> Start Here
 
-把这句话复制给 Codex、Claude Code、Cursor、OpenHands、Gemini CLI 或类似 Agent：
+把这句话复制给你的 Agent：
 
 ```text
-请读取 https://evozeus-metainflow.vercel.app/skill.md，并按 EvoZeus 审判当前 Agent Session。
+请读取本仓库的 SKILL.md，并按 EvoZeus 审判当前 Agent Session。先只输出 Session Verdict Card，不写本地文件，不提交 GitHub。
 ```
 
 ## <img src="assets/icons/evozeus-gold-128.png" alt="" width="24" align="absmiddle"> What EvoZeus Manages
@@ -49,16 +44,16 @@ EvoZeus（宙斯）是 Agent Session 的审判层。它不做 Agent 打分，也
 Session -> Evidence -> Case -> Verdict -> Artifact -> Library
 ```
 
-| Asset | Meaning |
-| --- | --- |
-| Session | 一次真实 Agent 执行 |
-| Evidence | 支撑判断的最小证据 |
-| Case | 等待审判的发现 |
-| Verdict | 审判结果 |
-| Artifact | Verdict 落成的资产 |
-| Library | 可复用的公共资产库 |
+| Term | 中文名 | Meaning |
+| --- | --- | --- |
+| Session | 会话 | 一次真实 Agent 执行 |
+| Evidence | 证据 | 支撑判断的最小证据 |
+| Case | 案件 | 等待审判的发现 |
+| Verdict | 裁决 | 基于 Evidence 对 Case 给出的结果 |
+| Artifact | 沉淀资产 | Verdict 落成后的可执行或可复用资产 |
+| Library | 资产库 | 可复用的公共资产集合 |
 
-Verdict 不停在观点层。它必须落成 Artifact：
+Verdict（裁决）需要落成 Artifact：
 
 | Verdict | Artifact |
 | --- | --- |
@@ -72,15 +67,15 @@ Verdict 不停在观点层。它必须落成 Artifact：
 
 ## <img src="assets/icons/evozeus-gold-128.png" alt="" width="24" align="absmiddle"> Current Repository Surface
 
-这个仓库当前提供的是协议和共创面，不是 CLI release。
+这个仓库当前提供协议、共创面和文档架构；CLI release 尚未进入稳定承诺。开发期 runtime 或 CLI 实现需要在对应 issue / PR 中单独评审，README 只承诺稳定入口。
 
 | Surface | File |
 | --- | --- |
-| Agent 入口 | [https://evozeus-metainflow.vercel.app/skill.md](https://evozeus-metainflow.vercel.app/skill.md) |
-| Skill 源文件 | [SKILL.md](SKILL.md) |
+| Agent 入口 | [SKILL.md](SKILL.md) |
 | 共创规则 | [CONTRIBUTING.md](CONTRIBUTING.md) |
 | 隐私边界 | [docs/governance/privacy-and-redaction.md](docs/governance/privacy-and-redaction.md) |
 | Verdict 类型 | [docs/reference/verdicts.md](docs/reference/verdicts.md) |
+| Verdict Card | [docs/reference/verdict-card.md](docs/reference/verdict-card.md) |
 | 报告模板 | [docs/reference/report-templates.md](docs/reference/report-templates.md) |
 | GitHub Case 模板 | [.github/ISSUE_TEMPLATE/case.yml](.github/ISSUE_TEMPLATE/case.yml) |
 | 示例 Case | [examples/cases/tool-resolution-rule/case.md](examples/cases/tool-resolution-rule/case.md) |
@@ -95,8 +90,7 @@ Verdict 不停在观点层。它必须落成 Artifact：
 - **Manifest before download**：任何 pack 下载前必须展示依赖、权限、输入输出和降级策略。
 - **User-approved contribution**：只有用户确认后，才检查 `gh` 并创建 issue / PR。
 
-详细本地状态与 pack 分层见设计文档：
-[docs/design/active/design_doc-v0.1-agent-session-judgment-layer.md](docs/design/active/design_doc-v0.1-agent-session-judgment-layer.md)
+更多文档入口见 [docs/README.md](docs/README.md)。
 
 ## <img src="assets/icons/evozeus-gold-128.png" alt="" width="24" align="absmiddle"> Contribution Loop
 
@@ -106,10 +100,10 @@ Verdict 不停在观点层。它必须落成 Artifact：
 Local Evidence Report -> Agent Review -> Case Draft -> User Approval -> gh PR
 ```
 
-手动 issue 是 fallback：
+手动 issue 是 fallback。模板在 `.github/ISSUE_TEMPLATE/`：
 
-- [Submit a Case](https://github.com/MetaInFLow/EvoZeus/issues/new?template=case.yml)
-- [Propose a Factor](https://github.com/MetaInFLow/EvoZeus/issues/new?template=factor.yml)
+- `case.yml`
+- `factor.yml`
 
 最小 Case 应包含：
 
@@ -124,23 +118,17 @@ privacy_note
 
 ## <img src="assets/icons/evozeus-gold-128.png" alt="" width="24" align="absmiddle"> Documentation
 
-Engineering Everything 文档规范：
-
-- Design Doc 放在 `docs/design/{backlog,active,done}/`，用目录表达生命周期。
-- ADR 使用连续编号：`docs/decisions/ADR-0001-*.md`。
-- 治理文档放在 `docs/governance/`。
-- 稳定参考资料放在 `docs/reference/`。
-
-入口见 [docs/README.md](docs/README.md)。
+README 只保留项目用途、启动语、资产范围、运行原则和贡献入口。完整文档见 [docs/README.md](docs/README.md)。
 
 ## <img src="assets/icons/evozeus-gold-128.png" alt="" width="24" align="absmiddle"> Project Tracks
 
-当前只承诺三个工程轨道：
+当前架构规划这些工程轨道：
 
 | Track | Outcome |
 | --- | --- |
 | Protocol Surface | `SKILL.md`、Case 模板、Verdict、隐私门禁 |
 | Local Runtime | `.evozeus/` 本地状态、SQLite registry、Markdown/JSON report |
+| Developer Workflow | issue、branch、PR、review、pre-submit checks |
 | Community Library | Cases、Factors、Habits、Environment Rules、Rejected Patterns |
 
 不在当前轨道内：

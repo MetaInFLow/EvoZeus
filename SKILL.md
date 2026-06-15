@@ -21,6 +21,10 @@ or asks to review a session, submit a Case, generate an Evidence Report, or cont
 
 Do not score sessions. Produce evidence-backed tags, cases, verdicts, artifacts, and suggestions.
 
+## Development Gate
+
+If the user asks to develop, implement, refactor, review, branch, commit, or prepare a PR for this repo, do not run session judgment by default. Read `skills/evozeus-development/SKILL.md` first and follow its branch naming, terminology naming, scope, and pre-submit checks.
+
 ## Flow
 
 ```text
