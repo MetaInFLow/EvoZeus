@@ -17,11 +17,16 @@ def test_factor_packs_are_independent_folders_with_manifest_and_code():
     repository = FactorPackRepository(PACK_ROOT)
     packs = repository.discover()
 
-    assert len(packs) == 3
+    assert len(packs) == 8
     assert {pack.manifest.id for pack in packs} == {
         "default.negative_feedback",
+        "default.open_loop",
+        "default.repeated_user_requests",
         "default.same_target_rework",
+        "default.success_closure_quality",
+        "default.task_span_extraction",
         "default.tool_failure",
+        "default.user_correction_loop",
     }
     for pack in packs:
         assert pack.root.is_dir()

@@ -72,8 +72,13 @@ Factor pack 通过 `factor.json` 的 `runtime.mode` 选择运行方式：
 | Factor | Purpose |
 | --- | --- |
 | `default.negative_feedback` | 识别用户纠偏、负反馈和返工信号 |
+| `default.open_loop` | 识别后续确认、blocked、TODO 等未闭环信号 |
+| `default.repeated_user_requests` | 识别同一目标上的重复用户请求 |
 | `default.same_target_rework` | 识别同一目标上的重复修正 |
+| `default.success_closure_quality` | 评估闭环质量，结合未闭环、工具失败、纠偏和验证语言 |
+| `default.task_span_extraction` | 抽取轻量 task span、任务类型和开闭状态 |
 | `default.tool_failure` | 识别工具调用失败、timeout、traceback 等环境问题 |
+| `default.user_correction_loop` | 识别多轮用户纠偏循环 |
 
 ## Test Dataset
 
