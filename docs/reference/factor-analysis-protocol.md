@@ -114,7 +114,7 @@ agent_session_review.v0
 
 扫描 factor pack 时，runtime 会同时读取 `factor.json` 和 `FACTOR.xml`，并校验 id、version、stage、runtime 一致。
 
-可视化机制属于 report layer。P0 HTML renderer 会把指定的 `FactorResult` 拼进一个 `factor-results.html`，并基于这些结果生成聚合可视化。例如词云读取 `tags.type`、`tags.value`、`verdict_signals` 和 `factor_id`，输出 `terms.text`、`terms.weight` 和 `terms.source_factor_ids`。
+可视化机制属于 report layer。P0 HTML renderer 会把指定的 `FactorResult` 拼进一个 Ant Design dashboard，并基于这些结果生成聚合可视化。例如词云读取 `tags.type`、`tags.value` 和 `verdict_signals`，同时用 `factor_id` 生成 `terms.source_factor_ids`，用于追溯某个词来自哪些 factor。
 
 Python contracts 位于：
 

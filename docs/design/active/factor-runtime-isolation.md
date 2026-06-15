@@ -162,7 +162,7 @@ P0 后续补齐：
 </factor>
 ```
 
-报告层负责结果集合的可视化。P0 先生成词云等静态 HTML section，后续 TUI 或浏览器 companion 可以基于同一组 `ResultVisualization` 数据替换成 richer component。
+报告层负责结果集合的可视化。P0 生成 React + Ant Design 本地 dashboard，包含 summary statistics、词云、factor result matrix 和 result cards。后续 TUI 或浏览器 companion 可以基于同一组 `ResultVisualization` 数据替换成 richer component。
 
 ## 安装流程
 

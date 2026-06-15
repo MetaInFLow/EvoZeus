@@ -4,6 +4,7 @@ from evozeus.core.session import SessionEnvelope
 from evozeus.factors.protocol import FactorResult, FactorStage
 from evozeus.factors.packs import FactorPackRepository
 from evozeus.models import SessionEvent, Verdict
+from evozeus.reports.html_report import render_factor_results_html
 from evozeus.runtime.paths import RuntimePaths
 from evozeus.storage.file_repository import FileSessionRepository
 
@@ -85,6 +86,12 @@ def test_file_repository_writes_html_report_for_selected_factor_results(tmp_path
     html = html_path.read_text(encoding="utf-8")
     assert html_path.name == "factor-results.html"
     assert "<!doctype html>" in html
+    assert "cdn.jsdelivr.net/npm/antd@5/dist/reset.css" in html
+    assert "cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js" in html
+    assert "cdn.jsdelivr.net/npm/antd@5/dist/antd.min.js" in html
+    assert 'id="evozeus-dashboard-root"' in html
+    assert "window.__EVOZEUS_REPORT__" in html
+    assert "const { App, Badge, Card, Col, Progress, Row, Space, Statistic, Table, Tag, Typography } = antd;" in html
     assert 'data-component="word_cloud"' in html
     assert 'data-result-card="factor_result"' in html
     assert "timeout" in html
@@ -92,3 +99,43 @@ def test_file_repository_writes_html_report_for_selected_factor_results(tmp_path
     assert "Fix Environment" in html
     assert "default.open_loop" not in html
     assert 'data-component="evidence_list"' not in html
+
+
+def test_html_report_renders_summary_statuses_and_formatted_scores():
+    packs = FactorPackRepository(PACK_ROOT).discover()
+    results = [
+        FactorResult(
+            factor_id="default.negative_feedback",
+            factor_version="0.1.0",
+            framework_id="agent_session_review.v0",
+            stage=FactorStage.SIGNAL_EXTRACTION,
+            target_type="session",
+            target_id="ezs_001",
+            session_id="ezs_001",
+            scores={"negative_feedback": 0.3333333333333333},
+            verdict_signals=[Verdict.PROMOTE_TO_SKILL.value],
+            confidence=0.72,
+        ),
+        FactorResult(
+            factor_id="default.repeated_user_requests",
+            factor_version="0.1.0",
+            framework_id="agent_session_review.v0",
+            stage=FactorStage.SIGNAL_EXTRACTION,
+            target_type="session",
+            target_id="ezs_001",
+            session_id="ezs_001",
+            status="skipped",
+            confidence=0.0,
+        ),
+    ]
+
+    html = render_factor_results_html("ezs_001", results, packs)
+
+    assert "Ant Design" in html
+    assert 'data-component="result_summary"' in html
+    assert 'data-status="matched"' in html
+    assert 'data-status="skipped"' in html
+    assert "Matched" in html
+    assert "Skipped" in html
+    assert "0.333" in html
+    assert "0.3333333333333333" not in html

@@ -43,7 +43,7 @@ def _build_word_cloud(results: list[FactorResult]) -> ResultVisualization:
     return ResultVisualization(
         component="word_cloud",
         title="高频信号词云",
-        description="从 selected FactorResult 的 tags、verdict signals 和 factor 来源中聚合高频词。",
+        description="从 selected FactorResult 的 tags 和 verdict signals 中聚合高频词，保留 factor 来源用于追溯。",
         input_fields=["tags.type", "tags.value", "verdict_signals", "factor_id"],
         output_fields=["terms.text", "terms.weight", "terms.source_factor_ids"],
         terms=terms,
@@ -60,7 +60,6 @@ def _terms_from_result(result: FactorResult) -> list[str]:
         elif tag_type:
             terms.append(tag_type)
     terms.extend(_clean_term(verdict) for verdict in result.verdict_signals)
-    terms.append(_clean_term(result.factor_id))
     return [term for term in terms if term]
 
 

@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+from collections import Counter
 from collections.abc import Iterable
 from html import escape
+import json
+from typing import Any
 
 from evozeus.factors.packs import FactorPack
 from evozeus.factors.protocol import FactorResult
@@ -22,9 +25,7 @@ def render_factor_results_html(
         if selected_ids is None or result.factor_id in selected_ids
     ]
     visualizations = build_result_visualizations(selected_results)
-    visualization_sections = "\n".join(_render_visualization(visualization) for visualization in visualizations)
-    cards = [_render_result_card(result, pack_by_id.get(result.factor_id)) for result in selected_results]
-    body = "\n".join([visualization_sections, *cards]) if cards else '<section class="empty">No selected factor results.</section>'
+    payload = _report_payload(session_id, selected_results, visualizations, pack_by_id)
     return "\n".join(
         [
             "<!doctype html>",
@@ -33,19 +34,24 @@ def render_factor_results_html(
             '  <meta charset="utf-8">',
             '  <meta name="viewport" content="width=device-width, initial-scale=1">',
             f"  <title>EvoZeus Factor Results - {escape(session_id)}</title>",
+            '  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/antd@5/dist/reset.css">',
             "  <style>",
             _style(),
             "  </style>",
             "</head>",
             "<body>",
-            "  <main>",
-            "    <header>",
-            "      <p>EvoZeus Factor Results</p>",
-            f"      <h1>{escape(session_id)}</h1>",
-            f"      <span>{len(selected_results)} results</span>",
-            "    </header>",
-            body,
-            "  </main>",
+            '  <div id="evozeus-dashboard-root"></div>',
+            _fallback_html(payload),
+            "  <script>",
+            f"    window.__EVOZEUS_REPORT__ = {_safe_json(payload)};",
+            "  </script>",
+            '  <script crossorigin src="https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js"></script>',
+            '  <script crossorigin src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js"></script>',
+            '  <script crossorigin src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>',
+            '  <script crossorigin src="https://cdn.jsdelivr.net/npm/antd@5/dist/antd.min.js"></script>',
+            "  <script>",
+            _dashboard_script(),
+            "  </script>",
             "</body>",
             "</html>",
             "",
@@ -53,97 +59,304 @@ def render_factor_results_html(
     )
 
 
-def _render_result_card(result: FactorResult, pack: FactorPack | None) -> str:
-    title = pack.introduction.name if pack is not None else result.factor_id
-    summary = pack.introduction.summary if pack is not None else ""
+def _report_payload(
+    session_id: str,
+    results: list[FactorResult],
+    visualizations: list[ResultVisualization],
+    pack_by_id: dict[str, FactorPack],
+) -> dict[str, Any]:
+    result_items = [_result_payload(result, pack_by_id.get(result.factor_id)) for result in results]
+    return {
+        "renderer": "Ant Design dashboard",
+        "session": {
+            "id": session_id,
+            "result_count": len(results),
+        },
+        "summary": _summary_payload(results),
+        "visualizations": [_visualization_payload(visualization) for visualization in visualizations],
+        "results": result_items,
+    }
+
+
+def _summary_payload(results: list[FactorResult]) -> dict[str, Any]:
+    status_counts = Counter(result.status for result in results)
+    verdict_counts = Counter(verdict for result in results for verdict in result.verdict_signals)
+    evidence_ref_count = sum(len(result.evidence_refs) for result in results)
+    confidence_values = [result.confidence for result in results if result.status == "matched"]
+    average_confidence = sum(confidence_values) / len(confidence_values) if confidence_values else 0
+    return {
+        "total": len(results),
+        "matched": status_counts.get("matched", 0),
+        "skipped": status_counts.get("skipped", 0),
+        "evidence_refs": evidence_ref_count,
+        "top_verdict": verdict_counts.most_common(1)[0][0] if verdict_counts else "None",
+        "average_confidence": _round_float(average_confidence),
+        "status_counts": dict(status_counts),
+        "verdict_counts": dict(verdict_counts),
+    }
+
+
+def _result_payload(result: FactorResult, pack: FactorPack | None) -> dict[str, Any]:
+    intro = pack.introduction if pack is not None else None
+    return {
+        "key": result.factor_id,
+        "factor_id": result.factor_id,
+        "factor_name": intro.name if intro is not None else result.factor_id,
+        "summary": intro.summary if intro is not None else "",
+        "version": result.factor_version or "unknown",
+        "stage": result.stage.value,
+        "status": result.status,
+        "confidence": _round_float(result.confidence),
+        "verdict_signals": result.verdict_signals,
+        "tags": [
+            {"type": str(tag.get("type") or ""), "value": str(tag.get("value") or "")}
+            for tag in result.tags
+        ],
+        "scores": [
+            {"key": key, "value": _round_float(value)}
+            for key, value in result.scores.items()
+        ],
+        "evidence_refs": [
+            {
+                "id": str(ref.get("event_id") or ref.get("ref_id") or ""),
+                "kind": str(ref.get("kind") or ref.get("source") or "event"),
+            }
+            for ref in result.evidence_refs
+        ],
+    }
+
+
+def _visualization_payload(visualization: ResultVisualization) -> dict[str, Any]:
+    return {
+        "component": visualization.component,
+        "title": visualization.title,
+        "description": visualization.description,
+        "input_fields": visualization.input_fields,
+        "output_fields": visualization.output_fields,
+        "terms": [
+            {
+                "text": term.text,
+                "weight": term.weight,
+                "source_factor_ids": term.source_factor_ids,
+            }
+            for term in visualization.terms
+        ],
+    }
+
+
+def _fallback_html(payload: dict[str, Any]) -> str:
+    results = payload["results"]
+    cards = "\n".join(
+        [
+            (
+                f'      <section data-result-card="factor_result" data-status="{escape(result["status"], quote=True)}">'
+                f'<strong>{escape(result["factor_name"])}</strong>'
+                f'<span>{escape(result["status"].title())}</span>'
+                f'<p>{escape(result["factor_id"])}</p>'
+                f'<p>{" ".join(escape(str(score["value"])) for score in result["scores"])}</p>'
+                "</section>"
+            )
+            for result in results
+        ]
+    )
     return "\n".join(
         [
-            f'    <section class="factor-card" data-result-card="factor_result" data-factor-id="{escape(result.factor_id, quote=True)}">',
-            "      <div class=\"factor-card__head\">",
-            f"        <div><p>factor_result</p><h2>{escape(title)}</h2></div>",
-            f"        <strong>{escape(result.status)}</strong>",
-            "      </div>",
-            f"      <p class=\"summary\">{escape(summary)}</p>",
-            f"      <p class=\"factor-id\">{escape(result.factor_id)} · {escape(result.factor_version or 'unknown')} · {escape(result.stage.value)}</p>",
-            _render_list("Verdict Signals", result.verdict_signals),
-            _render_mapping_list("Tags", [f"{tag.get('type')}={tag.get('value')}" for tag in result.tags]),
-            _render_mapping_list("Scores", [f"{key}={value}" for key, value in result.scores.items()]),
-            _render_mapping_list(
-                "Evidence Refs",
-                [
-                    f"{ref.get('event_id') or ref.get('ref_id')} ({ref.get('kind') or ref.get('source') or 'event'})"
-                    for ref in result.evidence_refs
-                ],
-            ),
-            f"      <p class=\"confidence\">confidence: {result.confidence}</p>",
-            "    </section>",
+            "  <noscript>",
+            '    <main class="dashboard-shell fallback">',
+            '      <section data-component="result_summary">',
+            f'        <strong>Matched</strong><span>{payload["summary"]["matched"]}</span>',
+            f'        <strong>Skipped</strong><span>{payload["summary"]["skipped"]}</span>',
+            "      </section>",
+            '      <section data-component="word_cloud"></section>',
+            cards,
+            "    </main>",
+            "  </noscript>",
         ]
     )
 
 
-def _render_visualization(visualization: ResultVisualization) -> str:
-    if visualization.component == "word_cloud":
-        terms = visualization.terms[:40]
-        chips = "".join(
-            (
-                f'<span data-weight="{term.weight}" '
-                f'data-source-factors="{escape(",".join(term.source_factor_ids), quote=True)}" '
-                f'style="font-size: {_term_size(term.weight)}px">{escape(term.text)}</span>'
+def _safe_json(payload: dict[str, Any]) -> str:
+    return json.dumps(payload, ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/")
+
+
+def _round_float(value: float) -> float:
+    return round(float(value), 3)
+
+
+def _dashboard_script() -> str:
+    return r"""
+    (() => {
+      const h = React.createElement;
+      const { App, Badge, Card, Col, Progress, Row, Space, Statistic, Table, Tag, Typography } = antd;
+      const { Text, Title } = Typography;
+      const data = window.__EVOZEUS_REPORT__;
+
+      function statusColor(status) {
+        if (status === "matched") return "success";
+        if (status === "skipped") return "default";
+        return "warning";
+      }
+
+      function verdictColor(verdict) {
+        if (verdict === "Fix Environment") return "red";
+        if (verdict === "Open Case") return "gold";
+        if (verdict === "Promote to Skill") return "blue";
+        return "default";
+      }
+
+      function Summary() {
+        const summary = data.summary;
+        return h("section", {"data-component": "result_summary", className: "summary-panel"},
+          h(Row, { gutter: [12, 12] },
+            h(Col, { xs: 12, md: 6 }, h(Card, { size: "small" }, h(Statistic, { title: "Results", value: summary.total }))),
+            h(Col, { xs: 12, md: 6 }, h(Card, { size: "small" }, h(Statistic, { title: "Matched", value: summary.matched, valueStyle: { color: "#1677ff" } }))),
+            h(Col, { xs: 12, md: 6 }, h(Card, { size: "small" }, h(Statistic, { title: "Skipped", value: summary.skipped }))),
+            h(Col, { xs: 12, md: 6 }, h(Card, { size: "small" }, h(Statistic, { title: "Avg Confidence", value: summary.average_confidence, precision: 3 })))
+          ),
+          h(Card, { size: "small", className: "verdict-strip" },
+            h(Space, { wrap: true, size: [8, 8] },
+              h(Text, { type: "secondary" }, "Top verdict"),
+              h(Tag, { color: verdictColor(summary.top_verdict) }, summary.top_verdict),
+              h(Text, { type: "secondary" }, "Evidence refs"),
+              h(Tag, null, summary.evidence_refs)
             )
-            for term in terms
-        )
-        return "\n".join(
-            [
-                f'    <section class="visualization" data-component="{escape(visualization.component, quote=True)}">',
-                f"      <h2>{escape(visualization.title)}</h2>",
-                f"      <p>{escape(visualization.description)}</p>",
-                f"      <div class=\"word-cloud\">{chips or '<em>No terms</em>'}</div>",
-                "    </section>",
-            ]
-        )
-    return ""
+          )
+        );
+      }
 
+      function WordCloud() {
+        const cloud = data.visualizations.find((item) => item.component === "word_cloud");
+        const terms = (cloud && cloud.terms || []).slice(0, 32);
+        return h(Card, { title: cloud ? cloud.title : "高频信号词云", "data-component": "word_cloud", className: "dashboard-card" },
+          h("p", { className: "card-note" }, cloud ? cloud.description : ""),
+          h("div", { className: "word-cloud" },
+            terms.length ? terms.map((term) =>
+              h(Tag, {
+                key: term.text,
+                color: term.weight > 1 ? "blue" : "default",
+                style: { fontSize: `${Math.min(26, 12 + term.weight * 3)}px` },
+                title: term.source_factor_ids.join(", ")
+              }, term.text)
+            ) : h(Text, { type: "secondary" }, "No terms")
+          )
+        );
+      }
 
-def _term_size(weight: int) -> int:
-    return min(30, 12 + weight * 3)
+      function ResultTable() {
+        const columns = [
+          {
+            title: "Factor",
+            dataIndex: "factor_name",
+            render: (_, row) => h("div", null,
+              h(Text, { strong: true }, row.factor_name),
+              h("br"),
+              h(Text, { type: "secondary" }, row.factor_id)
+            )
+          },
+          {
+            title: "Status",
+            dataIndex: "status",
+            width: 110,
+            render: (status) => h(Badge, { status: statusColor(status), text: status })
+          },
+          {
+            title: "Verdict",
+            dataIndex: "verdict_signals",
+            render: (items) => h(Space, { wrap: true, size: [4, 4] },
+              (items.length ? items : ["None"]).map((item) => h(Tag, { key: item, color: verdictColor(item) }, item))
+            )
+          },
+          {
+            title: "Confidence",
+            dataIndex: "confidence",
+            width: 140,
+            render: (value) => h(Progress, { percent: Math.round(value * 100), size: "small" })
+          }
+        ];
+        return h(Card, { title: "Factor Result Matrix", className: "dashboard-card" },
+          h(Table, { columns, dataSource: data.results, pagination: false, size: "small" })
+        );
+      }
 
+      function Tags({ items }) {
+        if (!items.length) return h(Text, { type: "secondary" }, "None");
+        return h(Space, { wrap: true, size: [4, 6] },
+          items.map((item) => h(Tag, { key: item }, item))
+        );
+      }
 
-def _render_list(title: str, values: list[str]) -> str:
-    return _render_mapping_list(title, values)
+      function ResultCards() {
+        return h("section", { className: "result-grid" },
+          data.results.map((result) => h(Card, {
+            key: result.factor_id,
+            "data-result-card": "factor_result",
+            "data-status": result.status,
+            className: `result-card status-${result.status}`,
+            title: h("div", null,
+              h(Text, { strong: true }, result.factor_name),
+              h("br"),
+              h(Text, { type: "secondary" }, `${result.factor_id} · ${result.version} · ${result.stage}`)
+            ),
+            extra: h(Badge, { status: statusColor(result.status), text: result.status })
+          },
+            h("p", { className: "card-note" }, result.summary),
+            h("div", { className: "result-section" }, h(Text, { strong: true }, "Verdict"), h(Tags, { items: result.verdict_signals })),
+            h("div", { className: "result-section" }, h(Text, { strong: true }, "Tags"), h(Tags, { items: result.tags.map((tag) => `${tag.type}=${tag.value}`) })),
+            h("div", { className: "result-section" }, h(Text, { strong: true }, "Scores"), h(Tags, { items: result.scores.map((score) => `${score.key}=${score.value}`) })),
+            h("div", { className: "result-section" }, h(Text, { strong: true }, "Evidence"), h(Tags, { items: result.evidence_refs.map((ref) => `${ref.id} (${ref.kind})`) }))
+          ))
+        );
+      }
 
+      function Dashboard() {
+        return h(App, null,
+          h("main", { className: "dashboard-shell" },
+            h("header", { className: "dashboard-header" },
+              h("div", null,
+                h(Text, { type: "secondary" }, "EvoZeus Factor Results · Ant Design"),
+                h(Title, { level: 1 }, data.session.id)
+              ),
+              h(Tag, { color: "blue" }, `${data.session.result_count} results`)
+            ),
+            h(Summary),
+            h(Row, { gutter: [16, 16], className: "dashboard-row" },
+              h(Col, { xs: 24, lg: 10 }, h(WordCloud)),
+              h(Col, { xs: 24, lg: 14 }, h(ResultTable))
+            ),
+            h(ResultCards)
+          )
+        );
+      }
 
-def _render_mapping_list(title: str, values: list[str]) -> str:
-    visible = [value for value in values if value and value != "None=None"]
-    if not visible:
-        return f"      <div class=\"kv\"><h3>{escape(title)}</h3><p>None</p></div>"
-    items = "".join(f"<li>{escape(value)}</li>" for value in visible)
-    return f"      <div class=\"kv\"><h3>{escape(title)}</h3><ul>{items}</ul></div>"
+      ReactDOM.createRoot(document.getElementById("evozeus-dashboard-root")).render(h(Dashboard));
+    })();
+    """.strip()
 
 
 def _style() -> str:
     return """
-    :root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-    body { margin: 0; background: #f6f7f9; color: #171717; }
-    main { max-width: 980px; margin: 0 auto; padding: 32px 20px; }
-    header { border-bottom: 1px solid #d8dde6; margin-bottom: 20px; padding-bottom: 18px; }
-    header p { margin: 0 0 6px; color: #546070; font-size: 13px; }
-    header h1 { margin: 0 0 10px; font-size: 28px; line-height: 1.2; }
-    header span { color: #546070; font-size: 13px; }
-    .factor-card { background: #ffffff; border: 1px solid #d8dde6; border-radius: 8px; margin: 14px 0; padding: 18px; }
-    .visualization { background: #ffffff; border: 1px solid #d8dde6; border-radius: 8px; margin: 14px 0 20px; padding: 18px; }
-    .visualization h2 { margin: 0 0 8px; font-size: 18px; }
-    .visualization p { margin: 0 0 14px; color: #546070; line-height: 1.5; }
-    .word-cloud { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
-    .word-cloud span { background: #eef2f7; border-radius: 7px; color: #111827; padding: 5px 8px; }
-    .factor-card__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
-    .factor-card__head p { margin: 0 0 4px; color: #546070; font-size: 12px; }
-    .factor-card__head h2 { margin: 0; font-size: 18px; line-height: 1.25; }
-    .factor-card__head strong { border: 1px solid #cdd4df; border-radius: 999px; padding: 4px 9px; font-size: 12px; }
-    .summary { color: #303846; line-height: 1.55; }
-    .factor-id, .confidence { color: #546070; font-size: 13px; }
-    .kv { border-top: 1px solid #edf0f4; margin-top: 12px; padding-top: 12px; }
-    .kv h3 { margin: 0 0 8px; font-size: 13px; color: #303846; }
-    .kv ul { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; margin: 0; padding: 0; }
-    .kv li { background: #eef2f7; border-radius: 6px; padding: 5px 8px; font-size: 13px; }
-    .kv p, .empty { color: #6b7280; }
+    :root { color-scheme: light; font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    body { margin: 0; background: #f5f7fb; color: #141414; }
+    .dashboard-shell { max-width: 1180px; margin: 0 auto; padding: 32px 20px 48px; }
+    .dashboard-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; border-bottom: 1px solid #d9d9d9; margin-bottom: 18px; padding-bottom: 16px; }
+    .dashboard-header h1 { margin: 4px 0 0; font-size: 30px; line-height: 1.18; }
+    .summary-panel { display: grid; gap: 12px; margin-bottom: 16px; }
+    .verdict-strip { border-color: #d6e4ff; background: #f8fbff; }
+    .dashboard-row { margin-bottom: 16px; }
+    .dashboard-card { height: 100%; border-radius: 8px; }
+    .card-note { color: #5f6b7a; line-height: 1.55; margin: 0 0 12px; }
+    .word-cloud { display: flex; flex-wrap: wrap; gap: 9px; align-items: center; padding-top: 2px; }
+    .word-cloud .ant-tag { margin-inline-end: 0; line-height: 1.7; }
+    .result-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+    .result-card { border-radius: 8px; }
+    .result-card.status-matched { border-left: 4px solid #1677ff; }
+    .result-card.status-skipped { border-left: 4px solid #d9d9d9; }
+    .result-section { border-top: 1px solid #f0f0f0; padding-top: 10px; margin-top: 10px; display: grid; gap: 7px; }
+    .fallback { display: block; }
+    @media (max-width: 760px) {
+      .dashboard-shell { padding: 22px 14px 36px; }
+      .dashboard-header { align-items: flex-start; flex-direction: column; }
+      .dashboard-header h1 { font-size: 24px; overflow-wrap: anywhere; }
+      .result-grid { grid-template-columns: 1fr; }
+    }
     """.strip()

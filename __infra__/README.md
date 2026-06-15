@@ -58,7 +58,7 @@ factor_packs/
 
 Repository 扫描 factor 时会同时读取 `factor.json` 和 `FACTOR.xml`，并校验二者的 id、version、stage 和 runtime 一致。
 
-HTML report 会把指定的 `FactorResult` 拼到同一个 `factor-results.html`。可视化由 report layer 生成，例如词云会读取 selected results 的 tags、verdict signals 和 factor 来源。
+HTML report 会把指定的 `FactorResult` 拼到同一个 `factor-results.html`。页面使用 React + Ant Design CDN 渲染本地 dashboard，包含 summary statistics、词云、factor result matrix 和 result cards。可视化由 report layer 生成，例如词云会读取 selected results 的 tags、verdict signals，并保留 factor 来源用于追溯。
 
 ## Factor Runtime
 

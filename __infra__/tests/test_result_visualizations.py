@@ -40,3 +40,4 @@ def test_word_cloud_visualization_uses_factor_result_outputs_as_input():
     assert timeout.weight == 2
     assert timeout.source_factor_ids == ["default.open_loop", "default.tool_failure"]
     assert any(term.text == "Fix Environment" for term in word_cloud.terms)
+    assert not any(term.text.startswith("default.") for term in word_cloud.terms)

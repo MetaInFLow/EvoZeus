@@ -11,6 +11,13 @@ Reports should not output unexplained raw scores. A report-level visualization c
 
 Purpose: review selected `FactorResult` objects in one local HTML page.
 
+Rendering:
+
+- React UMD
+- Ant Design UMD
+- Ant Design reset CSS
+- local embedded report payload
+
 Input:
 
 - `FactorResult`
@@ -39,7 +46,7 @@ P0 visualization:
 - `tags.type`
 - `tags.value`
 - `verdict_signals`
-- `factor_id`
+- `factor_id` as provenance, not as displayed term
 
 `word_cloud` output:
 
@@ -48,6 +55,13 @@ P0 visualization:
 - `terms.source_factor_ids`
 
 Factor 输出会影响词云输入和输出。Rich TUI 或 browser components 可以读取同一组 `ResultVisualization` 数据。
+
+Dashboard sections:
+
+- Summary statistics
+- Word cloud
+- Factor result matrix
+- Factor result cards
 
 ## Session Verdict Report
 
