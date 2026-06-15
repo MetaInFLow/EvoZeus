@@ -13,6 +13,8 @@
 | `CODE_OF_CONDUCT.md` | Community behavior and enforcement policy |
 | `SECURITY.md` | Security and disclosure policy |
 | `ZEUS_STATUS.yml` | Governance automation status, queue limits, and required checks |
+| `package.json` | Node dependency and script definitions for GitHub governance gates |
+| `package-lock.json` | Locked Node dependency tree for reproducible governance checks |
 | `LICENSE` | Project license |
 
 ## Directories

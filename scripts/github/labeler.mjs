@@ -5,7 +5,7 @@ import {
   formatList,
   getPullRequest,
   listPullRequestFiles,
-  replaceLabelPrefixes,
+  replaceManagedLabels,
   upsertMarkerComment
 } from "./shared.mjs";
 
@@ -14,8 +14,28 @@ const files = await listPullRequestFiles(pr.number);
 const result = classifyLabels(files);
 const candidateLabels = result.labels.filter((label) => label.startsWith("candidate:"));
 const replaceableLabels = result.labels.filter((label) => !label.startsWith("candidate:"));
+const structuralLabels = [
+  "type:code",
+  "type:candidate",
+  "type:schema",
+  "type:skill-instruction",
+  "type:governance",
+  "type:docs",
+  "type:workflow",
+  "type:dependency",
+  "risk:agent-behavior",
+  "risk:skill-entry",
+  "risk:schema-break",
+  "risk:workflow",
+  "risk:github-token",
+  "risk:dependency",
+  "risk:governance",
+  "size:S",
+  "size:M",
+  "size:L"
+];
 
-await replaceLabelPrefixes(pr.number, ["type:", "risk:", "size:"], replaceableLabels);
+await replaceManagedLabels(pr.number, structuralLabels, replaceableLabels.filter((label) => structuralLabels.includes(label)));
 await addLabels(pr.number, candidateLabels);
 
 await upsertMarkerComment(

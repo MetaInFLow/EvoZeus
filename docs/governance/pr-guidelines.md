@@ -188,6 +188,14 @@ python3 scripts/check_pr_ready.py --pr-body path/to/pr-body.md
 
 For runtime or tooling changes, add the relevant language test command when available. For docs and governance-only changes, `scripts/check_pr_ready.py` and `git diff --check` are the minimum.
 
+For GitHub governance automation changes, also run:
+
+```bash
+npm ci
+npm run test:github-gates
+node scripts/github/candidate-schema-check.mjs
+```
+
 The script checks branch naming, layer scope, PR templates, skill frontmatter, and whitespace.
 
 GitHub automation also runs in dry-run mode for labeler, proof gate, privacy scan, dirty PR check, queue guard, auto-response, and Candidate schema validation. Dry-run means label/comment/status only; no approve, merge, promote, or auto-close.

@@ -1,9 +1,10 @@
 #!/usr/bin/env node
+import { pathToFileURL } from "node:url";
 import {
   formatList,
   getPullRequest,
   listPullRequestFiles,
-  replaceLabelPrefixes,
+  replaceManagedLabels,
   upsertMarkerComment
 } from "./shared.mjs";
 
@@ -20,27 +21,52 @@ const PATTERNS = [
   ["internal url", /https?:\/\/[A-Za-z0-9.-]*(?:internal|corp|intranet|local)[A-Za-z0-9.-]*/i]
 ];
 
-const pr = getPullRequest();
-const files = await listPullRequestFiles(pr.number);
-const findings = [];
+function addedPatchText(patch) {
+  return (patch || "")
+    .split("\n")
+    .filter((line) => line.startsWith("+") && !line.startsWith("+++"))
+    .join("\n");
+}
 
-for (const file of files) {
-  const patch = file.patch || "";
+function hasPrivacyMatch(name, pattern, text) {
+  const flags = pattern.flags.includes("g") ? pattern.flags : `${pattern.flags}g`;
+  const regex = new RegExp(pattern.source, flags);
+  for (const match of text.matchAll(regex)) {
+    if (name === "phone-like number" && /^\d{4}-\d{2}-\d{2}$/.test(match[0])) {
+      continue;
+    }
+    return true;
+  }
+  return false;
+}
+
+export function privacyFindingsForPatch(filename, patch) {
+  const added = addedPatchText(patch);
+  const findings = [];
   for (const [name, pattern] of PATTERNS) {
-    if (pattern.test(patch)) {
-      findings.push(`${file.filename}: ${name}`);
+    if (hasPrivacyMatch(name, pattern, added)) {
+      findings.push(`${filename}: ${name}`);
     }
   }
+  return findings;
 }
 
-if (findings.length > 0) {
-  await replaceLabelPrefixes(pr.number, ["risk:privacy", "candidate:needs-redaction"], ["risk:privacy", "candidate:needs-redaction"]);
-}
+async function main() {
+  const pr = getPullRequest();
+  const files = await listPullRequestFiles(pr.number);
+  const findings = [];
 
-await upsertMarkerComment(
-  pr.number,
-  "<!-- evozeus-privacy-scan-report -->",
-  `## EvoZeus Privacy Scan
+  for (const file of files) {
+    findings.push(...privacyFindingsForPatch(file.filename, file.patch || ""));
+  }
+
+  const managedLabels = ["risk:privacy", "candidate:needs-redaction"];
+  await replaceManagedLabels(pr.number, managedLabels, findings.length > 0 ? managedLabels : []);
+
+  await upsertMarkerComment(
+    pr.number,
+    "<!-- evozeus-privacy-scan-report -->",
+    `## EvoZeus Privacy Scan
 
 **Mode:** ${process.env.EVOZEUS_ENFORCE_PRIVACY === "1" ? "enforce" : "dry-run"}
 
@@ -49,10 +75,15 @@ ${formatList(findings)}
 
 **Next action**
 ${findings.length ? "- Redact or explain these findings before maintainer review." : "- No simple privacy pattern matched in the PR diff."}`
-);
+  );
 
-if (process.env.EVOZEUS_ENFORCE_PRIVACY === "1" && findings.length > 0) {
-  process.exitCode = 1;
+  if (process.env.EVOZEUS_ENFORCE_PRIVACY === "1" && findings.length > 0) {
+    process.exitCode = 1;
+  }
+
+  console.log(`Privacy findings: ${findings.length}`);
 }
 
-console.log(`Privacy findings: ${findings.length}`);
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  await main();
+}

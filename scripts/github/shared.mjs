@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { planLabelPrefixUpdate, planManagedLabelUpdate } from "./gate-logic.mjs";
 import { LABEL_DEFS } from "./label-defs.mjs";
 
 const API = "https://api.github.com";
@@ -107,17 +108,29 @@ export async function addLabels(issueNumber, labels) {
 }
 
 export async function replaceLabelPrefixes(issueNumber, prefixes, labels) {
-  const wanted = new Set(labels);
   const current = await listIssueLabels(issueNumber);
   const { owner, repo } = getRepo();
-  for (const label of current) {
-    if (prefixes.some((prefix) => label.name.startsWith(prefix)) && !wanted.has(label.name)) {
-      await github(`/repos/${owner}/${repo}/issues/${issueNumber}/labels/${encodeURIComponent(label.name)}`, {
-        method: "DELETE"
-      });
-    }
+  const currentNames = current.map((label) => label.name);
+  const update = planLabelPrefixUpdate({ current: currentNames, prefixes, desired: labels });
+  for (const label of update.remove) {
+    await github(`/repos/${owner}/${repo}/issues/${issueNumber}/labels/${encodeURIComponent(label)}`, {
+      method: "DELETE"
+    });
   }
-  await addLabels(issueNumber, labels);
+  await addLabels(issueNumber, update.add);
+}
+
+export async function replaceManagedLabels(issueNumber, managed, labels) {
+  const current = await listIssueLabels(issueNumber);
+  const { owner, repo } = getRepo();
+  const currentNames = current.map((label) => label.name);
+  const update = planManagedLabelUpdate({ current: currentNames, managed, desired: labels });
+  for (const label of update.remove) {
+    await github(`/repos/${owner}/${repo}/issues/${issueNumber}/labels/${encodeURIComponent(label)}`, {
+      method: "DELETE"
+    });
+  }
+  await addLabels(issueNumber, update.add);
 }
 
 export async function upsertMarkerComment(issueNumber, marker, body) {
@@ -154,7 +167,7 @@ export function surfaceForPath(path) {
   if (path.startsWith("schemas/")) return "schema";
   if (path.startsWith("candidates/") || path.startsWith("examples/valid-candidates/")) return "candidate";
   if (path.startsWith("docs/") || path === "README.md" || path.startsWith("examples/")) return "docs";
-  if (path.includes("package-lock") || path.includes("pnpm-lock") || path.includes("yarn.lock")) return "dependency";
+  if (path === "package.json" || path.includes("package-lock") || path.includes("pnpm-lock") || path.includes("yarn.lock")) return "dependency";
   return "code";
 }
 
@@ -210,7 +223,7 @@ export function hasHeading(body, heading) {
 
 export function lineFieldFilled(body, field) {
   const escaped = field.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  return new RegExp(`${escaped}:\\s*\\S`, "i").test(body || "");
+  return new RegExp(`(?:^|\\n)[^\\S\\n]*(?:[-*][^\\S\\n]*)?${escaped}:[^\\S\\n]*\\S`, "i").test(body || "");
 }
 
 export function formatList(items) {
