@@ -41,6 +41,7 @@ def test_scan_factors_script_reports_factor_pack_count():
     assert result.returncode == 0, result.stderr
     assert "scan factors ok" in result.stdout
     assert "count=8" in result.stdout
+    assert "intro_count=8" in result.stdout
     assert "default.tool_failure" in result.stdout
 
 

@@ -218,8 +218,31 @@ def _write_factor_pack(tmp_path: Path, factor_id: str, runtime: dict[str, object
         "runtime": runtime,
     }
     (pack_dir / "factor.json").write_text(json.dumps(manifest), encoding="utf-8")
+    (pack_dir / "FACTOR.xml").write_text(_factor_xml(factor_id, runtime), encoding="utf-8")
     (pack_dir / "factor.py").write_text(code, encoding="utf-8")
     return FactorPackRepository(root).discover()[0]
+
+
+def _factor_xml(factor_id: str, runtime: dict[str, object]) -> str:
+    runtime_mode = runtime.get("mode", "in_process")
+    return f"""<?xml version="1.0" encoding="UTF-8"?>
+<factor id="{factor_id}" version="0.1.0">
+  <name>{factor_id.replace(".", "-")}</name>
+  <summary>runtime isolation test factor</summary>
+  <category>test</category>
+  <stage>signal_extraction</stage>
+  <runtime>{runtime_mode}</runtime>
+  <inputs>
+    <input>session.events</input>
+  </inputs>
+  <outputs>
+    <output>factor_result</output>
+  </outputs>
+  <when_to_use>测试 runtime runner 行为时使用。</when_to_use>
+  <limitations>只用于测试，不代表真实分析能力。</limitations>
+  <privacy>只读取测试 SessionEnvelope。</privacy>
+</factor>
+"""
 
 
 def _factor_code(run_body: str) -> str:

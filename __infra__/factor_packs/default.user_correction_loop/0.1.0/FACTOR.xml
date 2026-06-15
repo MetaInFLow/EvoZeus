@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<factor id="default.user_correction_loop" version="0.1.0">
+  <name>user-correction-loop</name>
+  <summary>识别一次 session 内连续或多轮用户纠偏形成的 correction loop。</summary>
+  <category>session-signal</category>
+  <stage>signal_extraction</stage>
+  <runtime>in_process</runtime>
+  <inputs>
+    <input>session.events</input>
+    <input>user_turn.content</input>
+  </inputs>
+  <outputs>
+    <output>tag</output>
+    <output>score</output>
+    <output>evidence_ref</output>
+    <output>verdict_signal</output>
+  </outputs>
+  <when_to_use>当需要发现 Agent 在同一任务中被用户反复纠偏、反复校正方向时使用。</when_to_use>
+  <limitations>教学式对话和探索式讨论也可能出现多轮纠偏，需要结合任务类型和最终结果判断。</limitations>
+  <privacy>只读取标准化 SessionEnvelope 的用户回合内容，不输出 raw private content。</privacy>
+</factor>

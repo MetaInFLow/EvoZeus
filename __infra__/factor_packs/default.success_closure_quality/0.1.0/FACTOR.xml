@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<factor id="default.success_closure_quality" version="0.1.0">
+  <name>success-closure-quality</name>
+  <summary>结合未闭环、工具失败、纠偏和验证语言，评估一次任务的闭环质量。</summary>
+  <category>success-analysis</category>
+  <stage>verdict_building</stage>
+  <runtime>in_process</runtime>
+  <inputs>
+    <input>session.events</input>
+    <input>assistant_turn.content</input>
+    <input>tool_event.result</input>
+  </inputs>
+  <outputs>
+    <output>tag</output>
+    <output>score</output>
+    <output>evidence_ref</output>
+    <output>verdict_signal</output>
+  </outputs>
+  <when_to_use>当需要把多个 session 信号汇总成任务成功、延后或需要复盘的判断时使用。</when_to_use>
+  <limitations>纯文本闭环评分无法替代真实运行验证，外部状态变化需要由其他 factor 补充。</limitations>
+  <privacy>只读取标准化 SessionEnvelope 的事件摘要和引用，不保存 raw private content。</privacy>
+</factor>

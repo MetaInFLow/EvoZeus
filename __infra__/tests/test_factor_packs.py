@@ -31,7 +31,26 @@ def test_factor_packs_are_independent_folders_with_manifest_and_code():
     for pack in packs:
         assert pack.root.is_dir()
         assert (pack.root / "factor.json").is_file()
+        assert (pack.root / "FACTOR.xml").is_file()
         assert (pack.root / "factor.py").is_file()
+
+
+def test_factor_pack_repository_loads_factor_xml_introductions():
+    packs = FactorPackRepository(PACK_ROOT).discover()
+
+    for pack in packs:
+        assert pack.introduction.id == pack.manifest.id
+        assert pack.introduction.version == pack.manifest.version
+        assert pack.introduction.name
+        assert pack.introduction.summary
+        assert pack.introduction.category
+        assert pack.introduction.stage == pack.manifest.stage
+        assert pack.introduction.runtime == pack.manifest.runtime.mode
+        assert pack.introduction.inputs
+        assert pack.introduction.outputs
+        assert pack.introduction.when_to_use
+        assert pack.introduction.limitations
+        assert pack.introduction.privacy
 
 
 def test_default_factor_packs_declare_in_process_runtime():

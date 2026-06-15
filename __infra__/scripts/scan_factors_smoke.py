@@ -16,9 +16,10 @@ def main() -> None:
 
     packs = FactorPackRepository(Path(args.pack_root)).discover()
     factor_ids = [pack.manifest.id for pack in packs]
+    intro_count = sum(1 for pack in packs if pack.introduction.summary)
     assert len(packs) >= 3
     assert "default.tool_failure" in factor_ids
-    print(f"scan factors ok: count={len(packs)} ids={','.join(factor_ids)}")
+    print(f"scan factors ok: count={len(packs)} intro_count={intro_count} ids={','.join(factor_ids)}")
 
 
 if __name__ == "__main__":

@@ -51,7 +51,16 @@ agent_session_review.v0
 
 ## Factor Pack Format
 
-每个 factor pack 至少包含一个 manifest：
+每个 factor pack 至少包含：
+
+```text
+<factor_id>/<version>/
+  factor.json
+  FACTOR.xml
+  factor.py
+```
+
+`factor.json` 是执行 manifest：
 
 ```json
 {
@@ -77,6 +86,33 @@ agent_session_review.v0
   }
 }
 ```
+
+`FACTOR.xml` 是固定介绍，供真人用户和 Agent 判断这个 factor 的用途、输入输出、适用时机、限制和隐私边界：
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<factor id="community.github_network_debug" version="0.1.0">
+  <name>github-network-debug</name>
+  <summary>识别 GitHub 网络失败、DNS、timeout 或连接异常。</summary>
+  <category>session-signal</category>
+  <stage>signal_extraction</stage>
+  <runtime>in_process</runtime>
+  <inputs>
+    <input>session.events</input>
+    <input>tool_event.result</input>
+  </inputs>
+  <outputs>
+    <output>tag</output>
+    <output>evidence_ref</output>
+    <output>verdict_signal</output>
+  </outputs>
+  <when_to_use>当需要判断任务是否因 GitHub 访问异常延后时使用。</when_to_use>
+  <limitations>网络异常和权限异常可能混淆，需要结合工具 stderr 和后续重试判断。</limitations>
+  <privacy>只读取标准化 SessionEnvelope，不输出 raw private content。</privacy>
+</factor>
+```
+
+扫描 factor pack 时，runtime 会同时读取 `factor.json` 和 `FACTOR.xml`，并校验 id、version、stage、runtime 一致。
 
 Python contracts 位于：
 

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<factor id="default.open_loop" version="0.1.0">
+  <name>open-loop</name>
+  <summary>识别后续确认、blocked、TODO、未完成交付等未闭环信号。</summary>
+  <category>session-signal</category>
+  <stage>signal_extraction</stage>
+  <runtime>in_process</runtime>
+  <inputs>
+    <input>session.events</input>
+    <input>user_turn.content</input>
+  </inputs>
+  <outputs>
+    <output>tag</output>
+    <output>score</output>
+    <output>evidence_ref</output>
+    <output>verdict_signal</output>
+  </outputs>
+  <when_to_use>当需要定位任务链路中是否存在未解决、待确认或被阻塞的尾巴时使用。</when_to_use>
+  <limitations>正常的计划拆分也可能包含 TODO 语言，需要结合最终交付状态判断。</limitations>
+  <privacy>只读取标准化 SessionEnvelope 的事件内容，不保存原始会话文本。</privacy>
+</factor>

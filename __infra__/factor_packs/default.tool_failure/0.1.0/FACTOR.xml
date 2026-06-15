@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<factor id="default.tool_failure" version="0.1.0">
+  <name>tool-failure</name>
+  <summary>识别工具调用失败、timeout、traceback、permission 或环境异常信号。</summary>
+  <category>session-signal</category>
+  <stage>signal_extraction</stage>
+  <runtime>in_process</runtime>
+  <inputs>
+    <input>session.events</input>
+    <input>tool_event.content</input>
+    <input>tool_event.result</input>
+  </inputs>
+  <outputs>
+    <output>tag</output>
+    <output>evidence_ref</output>
+    <output>verdict_signal</output>
+  </outputs>
+  <when_to_use>当需要判断任务失败或延后是否由工具、权限、环境或运行错误导致时使用。</when_to_use>
+  <limitations>瞬时工具失败不一定造成任务失败，需要结合后续重试和最终交付状态判断。</limitations>
+  <privacy>只读取标准化 SessionEnvelope 的工具事件内容，证据引用不携带原始敏感信息。</privacy>
+</factor>

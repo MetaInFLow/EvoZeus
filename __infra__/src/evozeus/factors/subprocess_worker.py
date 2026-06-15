@@ -7,8 +7,7 @@ from pathlib import Path
 
 from evozeus.core.session import SessionEnvelope
 from evozeus.factors.base import FactorContext
-from evozeus.factors.manifest import load_manifest
-from evozeus.factors.packs import FactorPack, load_factor_from_pack
+from evozeus.factors.packs import load_factor_from_pack, load_factor_pack
 
 
 def main() -> None:
@@ -17,7 +16,7 @@ def main() -> None:
 
     pack_root = Path(sys.argv[1])
     payload = json.loads(sys.stdin.read())
-    pack = FactorPack(root=pack_root, manifest=load_manifest(pack_root / "factor.json"))
+    pack = load_factor_pack(pack_root)
     context = FactorContext(
         session=SessionEnvelope.model_validate(payload["session"]),
         config=payload.get("config") or {},

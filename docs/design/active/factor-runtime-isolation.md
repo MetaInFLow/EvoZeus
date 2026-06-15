@@ -79,6 +79,7 @@ P0 后续补齐：
 ```text
 .evozeus/runtime/factors/installed/<factor_id>/<version>/
   factor.json
+  FACTOR.xml
   factor.py
   pyproject.toml
   uv.lock
@@ -90,6 +91,7 @@ P0 后续补齐：
 ```text
 .evozeus/runtime/factors/installed/default.tool_failure/0.1.0/
   factor.json
+  FACTOR.xml
   factor.py
 ```
 
@@ -98,6 +100,7 @@ P0 后续补齐：
 ```text
 .evozeus/runtime/factors/installed/vision.ocr/0.1.0/
   factor.json
+  FACTOR.xml
   factor.py
   pyproject.toml
   uv.lock
@@ -134,16 +137,42 @@ P0 后续补齐：
 }
 ```
 
+`FACTOR.xml` 提供固定介绍，供真人用户、Agent 和本地 TUI 读取。它不承载执行配置，必须和 `factor.json` 的 id、version、stage、runtime 保持一致。
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<factor id="vision.ocr" version="0.1.0">
+  <name>vision-ocr</name>
+  <summary>从截图或图片附件中抽取 OCR 文本信号。</summary>
+  <category>vision-signal</category>
+  <stage>signal_extraction</stage>
+  <runtime>subprocess_uv</runtime>
+  <inputs>
+    <input>session.events</input>
+    <input>attachment.image</input>
+  </inputs>
+  <outputs>
+    <output>tag</output>
+    <output>score</output>
+    <output>evidence_ref</output>
+  </outputs>
+  <when_to_use>当任务复盘需要理解截图、图片附件或视觉工具输出时使用。</when_to_use>
+  <limitations>OCR 质量受图片清晰度、语言和模型依赖影响。</limitations>
+  <privacy>只读取经过 PII redaction 的 SessionEnvelope 和授权附件。</privacy>
+</factor>
+```
+
 ## 安装流程
 
 1. 用户或 Agent 下载 factor folder。
-2. Runtime 读取 `factor.json`。
+2. Runtime 读取 `factor.json` 和 `FACTOR.xml`。
 3. 校验 `schema_version`、`id`、`version`、`runtime.mode`。
-4. 检查是否兼容当前 EvoZeus SDK。
-5. 如果是 `in_process`，注册 factor。
-6. 如果是 `subprocess_uv`，检查 `.venv`。
-7. `.venv` 不存在时，用 `uv` 创建环境并安装 lock 依赖。
-8. 安装结果写入本地 runtime index。
+4. 校验 `FACTOR.xml` 和 `factor.json` 的 id、version、stage、runtime 一致。
+5. 检查是否兼容当前 EvoZeus SDK。
+6. 如果是 `in_process`，注册 factor。
+7. 如果是 `subprocess_uv`，检查 `.venv`。
+8. `.venv` 不存在时，用 `uv` 创建环境并安装 lock 依赖。
+9. 安装结果写入本地 runtime index。
 
 ## 运行流程
 
@@ -225,8 +254,9 @@ P0 测试集需要覆盖：
 
 - factor folder 规范
 - `factor.json`
+- `FACTOR.xml`
 - `FactorPackRepository`
-- 默认 3 个 factor 示例
+- 默认 8 个 factor pack 示例
 - 测试集
 
 ### Phase 2: Subprocess Runtime
@@ -274,7 +304,7 @@ Agent 可以提示：
 
 - 已实现：`FactorRuntimeConfig`、`runtime.mode` manifest 字段、`RuntimeResolver`、`SubprocessUvRuntime`、`subprocess_worker`、timeout、非法输出校验、依赖声明文件校验。
 - 已实现：`FactorRunner` 可同时运行 `Factor` 实例和 `FactorPack`。
-- 已实现：默认 3 个 factor pack 显式声明 `runtime.mode=in_process`。
+- 已实现：默认 8 个 factor pack 显式声明 `runtime.mode=in_process`。
 - 待实现：完整 `uv` install cache、runtime index、container / remote runtime。
 
 核心决策：主程序负责协议和调度，因子库作为独立能力包演进；轻量因子直接运行，复杂因子隔离运行。
