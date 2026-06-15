@@ -19,8 +19,4 @@
   <when_to_use>当需要把多个 session 信号汇总成任务成功、延后或需要复盘的判断时使用。</when_to_use>
   <limitations>纯文本闭环评分无法替代真实运行验证，外部状态变化需要由其他 factor 补充。</limitations>
   <privacy>只读取标准化 SessionEnvelope 的事件摘要和引用，不保存 raw private content。</privacy>
-  <visualization component="score_card">
-    <title>闭环质量</title>
-    <description>用 score card 展示闭环质量分、影响因素和建议 verdict。</description>
-  </visualization>
 </factor>

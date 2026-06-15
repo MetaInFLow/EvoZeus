@@ -109,16 +109,12 @@ agent_session_review.v0
   <when_to_use>当需要判断任务是否因 GitHub 访问异常延后时使用。</when_to_use>
   <limitations>网络异常和权限异常可能混淆，需要结合工具 stderr 和后续重试判断。</limitations>
   <privacy>只读取标准化 SessionEnvelope，不输出 raw private content。</privacy>
-  <visualization component="evidence_list">
-    <title>GitHub 网络失败证据</title>
-    <description>用 evidence list 展示网络失败类型、相关 event 和建议裁决。</description>
-  </visualization>
 </factor>
 ```
 
 扫描 factor pack 时，runtime 会同时读取 `factor.json` 和 `FACTOR.xml`，并校验 id、version、stage、runtime 一致。
 
-`visualization.component` 是 result renderer 的路由字段。P0 HTML renderer 会把指定的 `FactorResult` 拼进一个 `factor-results.html`，每个 result section 带有 `data-component="<component>"`，方便后续 TUI、浏览器 companion 或前端 renderer 替换为更细的组件。
+可视化机制属于 report layer。P0 HTML renderer 会把指定的 `FactorResult` 拼进一个 `factor-results.html`，并基于这些结果生成聚合可视化。例如词云读取 `tags.type`、`tags.value`、`verdict_signals` 和 `factor_id`，输出 `terms.text`、`terms.weight` 和 `terms.source_factor_ids`。
 
 Python contracts 位于：
 

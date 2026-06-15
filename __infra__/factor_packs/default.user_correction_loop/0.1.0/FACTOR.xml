@@ -18,8 +18,4 @@
   <when_to_use>当需要发现 Agent 在同一任务中被用户反复纠偏、反复校正方向时使用。</when_to_use>
   <limitations>教学式对话和探索式讨论也可能出现多轮纠偏，需要结合任务类型和最终结果判断。</limitations>
   <privacy>只读取标准化 SessionEnvelope 的用户回合内容，不输出 raw private content。</privacy>
-  <visualization component="correction_loop_card">
-    <title>纠偏循环</title>
-    <description>用 correction loop card 展示多轮纠偏强度、证据引用和优化方向。</description>
-  </visualization>
 </factor>

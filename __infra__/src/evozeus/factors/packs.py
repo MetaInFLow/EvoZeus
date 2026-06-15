@@ -23,14 +23,6 @@ class FactorIntroduction:
     when_to_use: str
     limitations: str
     privacy: str
-    visualization: FactorVisualization
-
-
-@dataclass(frozen=True)
-class FactorVisualization:
-    component: str
-    title: str
-    description: str
 
 
 @dataclass(frozen=True)
@@ -92,7 +84,6 @@ def load_introduction(path: Path) -> FactorIntroduction:
         when_to_use=_required_text(root, "when_to_use", path),
         limitations=_required_text(root, "limitations", path),
         privacy=_required_text(root, "privacy", path),
-        visualization=_required_visualization(root, path),
     )
     if not introduction.id or not introduction.version:
         raise ValueError(f"FACTOR.xml must declare id and version attributes: {path}")
@@ -156,17 +147,3 @@ def _required_list(root: ET.Element, parent_name: str, item_name: str, path: Pat
     if not values:
         raise ValueError(f"FACTOR.xml missing required <{parent_name}><{item_name}> items: {path}")
     return values
-
-
-def _required_visualization(root: ET.Element, path: Path) -> FactorVisualization:
-    node = root.find("visualization")
-    if node is None:
-        raise ValueError(f"FACTOR.xml missing required <visualization>: {path}")
-    component = (node.attrib.get("component") or "").strip()
-    if not component:
-        raise ValueError(f"FACTOR.xml <visualization> must declare component: {path}")
-    return FactorVisualization(
-        component=component,
-        title=_required_text(node, "title", path),
-        description=_required_text(node, "description", path),
-    )

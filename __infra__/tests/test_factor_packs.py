@@ -51,17 +51,15 @@ def test_factor_pack_repository_loads_factor_xml_introductions():
         assert pack.introduction.when_to_use
         assert pack.introduction.limitations
         assert pack.introduction.privacy
-        assert pack.introduction.visualization.component
-        assert pack.introduction.visualization.title
+        assert not hasattr(pack.introduction, "visualization")
 
 
-def test_factor_pack_repository_loads_visualization_components_from_factor_xml():
+def test_factor_xml_does_not_define_visualization_components():
     packs = FactorPackRepository(PACK_ROOT).discover()
-    components = {pack.manifest.id: pack.introduction.visualization.component for pack in packs}
 
-    assert components["default.tool_failure"] == "evidence_list"
-    assert components["default.success_closure_quality"] == "score_card"
-    assert components["default.task_span_extraction"] == "task_span_table"
+    for pack in packs:
+        xml = (pack.root / "FACTOR.xml").read_text(encoding="utf-8")
+        assert "<visualization" not in xml
 
 
 def test_default_factor_packs_declare_in_process_runtime():

@@ -17,8 +17,4 @@
   <when_to_use>当需要从 session 中找到同一目标被多次调整、推翻或重写的 evidence 时使用。</when_to_use>
   <limitations>协作式迭代也会出现同一目标多次修改，需要结合负反馈和最终闭环质量判断。</limitations>
   <privacy>只读取标准化 SessionEnvelope 的用户回合内容，不输出原始私密文本。</privacy>
-  <visualization component="rework_card">
-    <title>同目标返工</title>
-    <description>用 rework card 展示同一目标的返工证据、标签和裁决信号。</description>
-  </visualization>
 </factor>

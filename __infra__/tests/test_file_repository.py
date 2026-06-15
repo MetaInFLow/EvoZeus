@@ -57,7 +57,7 @@ def test_file_repository_writes_html_report_for_selected_factor_results(tmp_path
             target_type="session",
             target_id="ezs_001",
             session_id="ezs_001",
-            tags=[{"type": "tool", "value": "exec_command"}],
+            tags=[{"type": "phrase", "value": "timeout"}, {"type": "tool", "value": "exec_command"}],
             evidence_refs=[{"event_id": "t1", "kind": "tool"}],
             verdict_signals=[Verdict.FIX_ENVIRONMENT.value],
             confidence=0.8,
@@ -85,7 +85,10 @@ def test_file_repository_writes_html_report_for_selected_factor_results(tmp_path
     html = html_path.read_text(encoding="utf-8")
     assert html_path.name == "factor-results.html"
     assert "<!doctype html>" in html
-    assert 'data-component="evidence_list"' in html
+    assert 'data-component="word_cloud"' in html
+    assert 'data-result-card="factor_result"' in html
+    assert "timeout" in html
     assert "default.tool_failure" in html
     assert "Fix Environment" in html
     assert "default.open_loop" not in html
+    assert 'data-component="evidence_list"' not in html

@@ -54,11 +54,11 @@ factor_packs/
       factor.py
 ```
 
-`factor.json` 声明 id、version、stage、runtime profile、entrypoint、输入输出和回滚方式。`FACTOR.xml` 提供固定介绍，给真人用户和 Agent 读取，包括用途、输入输出、适用场景、限制、隐私边界和 visualization component。`factor.py` 只实现该 factor 的运行逻辑。删除一个 factor 时，删除对应 `<factor_id>/<version>/` 文件夹即可。
+`factor.json` 声明 id、version、stage、runtime profile、entrypoint、输入输出和回滚方式。`FACTOR.xml` 提供固定介绍，给真人用户和 Agent 读取，包括用途、输入输出、适用场景、限制和隐私边界。`factor.py` 只实现该 factor 的运行逻辑。删除一个 factor 时，删除对应 `<factor_id>/<version>/` 文件夹即可。
 
 Repository 扫描 factor 时会同时读取 `factor.json` 和 `FACTOR.xml`，并校验二者的 id、version、stage 和 runtime 一致。
 
-HTML report 会把指定的 `FactorResult` 拼到同一个 `factor-results.html`，每个 result 使用对应 `FACTOR.xml` 里的 visualization component 渲染为一个 section。
+HTML report 会把指定的 `FactorResult` 拼到同一个 `factor-results.html`。可视化由 report layer 生成，例如词云会读取 selected results 的 tags、verdict signals 和 factor 来源。
 
 ## Factor Runtime
 

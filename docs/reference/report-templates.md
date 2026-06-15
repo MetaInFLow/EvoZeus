@@ -5,7 +5,7 @@
 
 EvoZeus reports should help a human or Agent review evidence and reach a verdict.
 
-Reports should not output unexplained raw scores. A declared visualization component can show structured scores when the score is part of the factor contract.
+Reports should not output unexplained raw scores. A report-level visualization can show structured scores when the score is part of the factor contract.
 
 ## Factor Result HTML
 
@@ -15,24 +15,30 @@ Input:
 
 - `FactorResult`
 - `FactorPack`
-- `FACTOR.xml` visualization component
+- report-level visualization builder
 
 Output:
 
 - `.evozeus/sessions/<session_id>/factor-results.html`
 
-Component routing:
+P0 visualization:
 
-- `verdict_card`
-- `open_loop_card`
-- `tag_frequency_card`
-- `rework_card`
-- `score_card`
-- `task_span_table`
-- `evidence_list`
-- `correction_loop_card`
+- `word_cloud`
 
-P0 HTML uses static sections with `data-component`. Rich TUI or browser components can use the same field later.
+`word_cloud` input:
+
+- `tags.type`
+- `tags.value`
+- `verdict_signals`
+- `factor_id`
+
+`word_cloud` output:
+
+- `terms.text`
+- `terms.weight`
+- `terms.source_factor_ids`
+
+Factor 输出会影响词云输入和输出。Rich TUI 或 browser components 可以读取同一组 `ResultVisualization` 数据。
 
 ## Session Verdict Report
 
