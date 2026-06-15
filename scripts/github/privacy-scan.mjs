@@ -3,7 +3,7 @@ import {
   formatList,
   getPullRequest,
   listPullRequestFiles,
-  replaceLabelPrefixes,
+  replaceManagedLabels,
   upsertMarkerComment
 } from "./shared.mjs";
 
@@ -33,9 +33,8 @@ for (const file of files) {
   }
 }
 
-if (findings.length > 0) {
-  await replaceLabelPrefixes(pr.number, ["risk:privacy", "candidate:needs-redaction"], ["risk:privacy", "candidate:needs-redaction"]);
-}
+const managedLabels = ["risk:privacy", "candidate:needs-redaction"];
+await replaceManagedLabels(pr.number, managedLabels, findings.length > 0 ? managedLabels : []);
 
 await upsertMarkerComment(
   pr.number,

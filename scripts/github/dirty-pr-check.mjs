@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 import {
-  addLabels,
   classifyLabels,
   fileNames,
   formatList,
   getPullRequest,
   listPullRequestFiles,
+  replaceManagedLabels,
   upsertMarkerComment
 } from "./shared.mjs";
 
@@ -52,9 +52,8 @@ if (body.match(/\brefactor\b/i) && !body.match(/bug|issue|maintainer request|beh
   reasons.push("appears refactor-only without linked behavior or maintainer request");
 }
 
-if (labels.length > 0) {
-  await addLabels(pr.number, [...new Set(labels)]);
-}
+const managedLabels = ["triage:dirty-pr", "triage:owner-only", "triage:rfc-needed", "triage:refactor-only"];
+await replaceManagedLabels(pr.number, managedLabels, [...new Set(labels)]);
 
 await upsertMarkerComment(
   pr.number,

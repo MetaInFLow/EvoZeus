@@ -1,0 +1,11 @@
+{
+  "name": "evozeus-governance",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:github-gates": "node scripts/github/gate-tests.mjs"
+  },
+  "devDependencies": {
+    "ajv": "^8.17.1"
+  }
+}

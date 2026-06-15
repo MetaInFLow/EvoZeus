@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 import {
-  addLabels,
   formatList,
   getPullRequest,
   getRepo,
   github,
+  replaceManagedLabels,
   upsertMarkerComment
 } from "./shared.mjs";
 
@@ -53,9 +53,7 @@ if (isHighRisk) {
   }
 }
 
-if (violations.length > 0) {
-  await addLabels(pr.number, ["triage:too-many-prs"]);
-}
+await replaceManagedLabels(pr.number, ["triage:too-many-prs"], violations.length > 0 ? ["triage:too-many-prs"] : []);
 
 await upsertMarkerComment(
   pr.number,
