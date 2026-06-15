@@ -17,6 +17,12 @@ Use this skill when the user says:
 
 or asks to review a session, submit a Case, generate an Evidence Report, or contribute a session-derived pattern.
 
+## Scenario Skill Routing
+
+This root skill is the stable zero-install entry. If the user asks for repository development, community contribution, runtime work, redaction, report writing, Factor authoring, debugging, or skill proposal work, read `skills/index/SKILL.md` and then the matching scenario skill before acting.
+
+Development requests such as changing docs, scripts, templates, PR rules, branch rules, `SKILL.md`, or `skills/` must read `skills/evozeus-development/SKILL.md` first.
+
 ## Core Rule
 
 Do not score sessions. Produce evidence-backed tags, cases, verdicts, artifacts, and suggestions.

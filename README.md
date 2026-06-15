@@ -72,8 +72,12 @@ Verdict（裁决）需要落成 Artifact：
 | Surface | File |
 | --- | --- |
 | Agent 入口 | [SKILL.md](SKILL.md) |
+| 场景 Skill 路由 | [skills/index/SKILL.md](skills/index/SKILL.md) |
+| 开发场景 Skill | [skills/evozeus-development/SKILL.md](skills/evozeus-development/SKILL.md) |
 | 共创规则 | [CONTRIBUTING.md](CONTRIBUTING.md) |
 | 隐私边界 | [docs/governance/privacy-and-redaction.md](docs/governance/privacy-and-redaction.md) |
+| PR 规范 | [docs/governance/pr-guidelines.md](docs/governance/pr-guidelines.md) |
+| PR Ready 检查 | [scripts/check_pr_ready.py](scripts/check_pr_ready.py) |
 | Ontology Layer | [docs/reference/ontology.md](docs/reference/ontology.md) |
 | Evidence Grading | [docs/reference/evidence-grading.md](docs/reference/evidence-grading.md) |
 | Review Contract | [docs/reference/review-contract.md](docs/reference/review-contract.md) |
@@ -107,6 +111,13 @@ Local Evidence Report -> Agent Review -> Case Draft -> User Approval -> gh PR
 
 - `case.yml`
 - `factor.yml`
+
+开发或 PR 前先读取 [skills/evozeus-development/SKILL.md](skills/evozeus-development/SKILL.md)，并运行：
+
+```bash
+python3 scripts/check_pr_ready.py
+git diff --check
+```
 
 最小 Case 应包含：
 

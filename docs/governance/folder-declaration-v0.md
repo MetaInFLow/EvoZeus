@@ -24,6 +24,7 @@
 | `patterns/` | Pattern library surface |
 | `examples/` | Redacted examples for Cases and reports |
 | `docs/` | Project documentation |
+| `skills/` | Agent-readable scenario skills for development, contribution, runtime, reporting, redaction, debugging, Factor authoring, and skill proposals |
 | `scripts/` | Local repository checks and maintainer utility scripts |
 
 ## Planned Runtime Directories

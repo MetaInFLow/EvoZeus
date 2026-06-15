@@ -57,6 +57,8 @@ One PR should have one primary purpose, one primary layer, and one review target
 | Execution Layer | Add a minimal script, schema, CLI behavior, or deterministic extraction step | Rewriting governance while changing runtime |
 | Governance Layer | Update PR template, issue template, branch rule, checklist, or contribution process | Sneaking product direction changes into template work |
 
+`skills/` is part of the Governance Layer because scenario skills change future agent behavior.
+
 ## Required PR Shape
 
 Every PR should explain:
@@ -150,6 +152,7 @@ Bots may request evidence, flag privacy risk, detect blank templates, or warn ab
 High-risk paths need owner review once the maintainer handles or GitHub team names are confirmed:
 
 - `SKILL.md`
+- `skills/`
 - `.github/workflows/`
 - `.github/CODEOWNERS`
 - `SECURITY.md`
@@ -176,6 +179,8 @@ python3 scripts/check_pr_ready.py --pr-body path/to/pr-body.md
 ```
 
 For runtime or tooling changes, add the relevant language test command when available. For docs and governance-only changes, `scripts/check_pr_ready.py` and `git diff --check` are the minimum.
+
+The script checks branch naming, layer scope, PR templates, skill frontmatter, and whitespace.
 
 ## Reviewer Focus
 
