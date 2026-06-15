@@ -1,9 +1,11 @@
 # Report Templates
 
 - Status: draft
-- Last updated: 2026-06-14
+- Last updated: 2026-06-15
 
 EvoZeus reports should help a human or Agent review evidence and reach a verdict.
+
+Report type explanations and reading paths live in [../reports/README.zh-CN.md](../reports/README.zh-CN.md).
 
 Reports should not output scores.
 
