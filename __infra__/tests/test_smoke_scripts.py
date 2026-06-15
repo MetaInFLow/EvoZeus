@@ -69,3 +69,30 @@ def test_result_report_script_writes_markdown_report_without_json_result_file():
     assert "factor-results.md" in result.stdout
     assert "factor-results.html" in result.stdout
     assert "json_result_file=False" in result.stdout
+
+
+def test_run_session_report_script_writes_html_for_selected_factors(tmp_path: Path):
+    result = run_script(
+        "run_session_report.py",
+        "--source",
+        str(TESTDATA / "codex_sessions"),
+        "--pack-root",
+        str(PACK_ROOT),
+        "--workspace",
+        str(tmp_path),
+        "--factor",
+        "default.tool_failure",
+        "--factor",
+        "default.open_loop",
+    )
+
+    report_path = tmp_path / ".evozeus" / "sessions" / "session-alpha" / "factor-results.html"
+    assert result.returncode == 0, result.stderr
+    assert "session report ok" in result.stdout
+    assert "session_id=session-alpha" in result.stdout
+    assert "results=2" in result.stdout
+    assert "factor-results.html" in result.stdout
+    html = report_path.read_text(encoding="utf-8")
+    assert 'data-component="word_cloud"' in html
+    assert "default.tool_failure" in html
+    assert "default.open_loop" in html

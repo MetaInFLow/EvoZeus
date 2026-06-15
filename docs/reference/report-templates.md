@@ -21,6 +21,15 @@ Output:
 
 - `.evozeus/sessions/<session_id>/factor-results.html`
 
+Script entry:
+
+```bash
+PYTHONPATH=__infra__/src python __infra__/scripts/run_session_report.py \
+  --source __infra__/testdata/codex_sessions \
+  --factor default.tool_failure \
+  --factor default.open_loop
+```
+
 P0 visualization:
 
 - `word_cloud`

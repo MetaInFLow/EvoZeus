@@ -17,7 +17,7 @@
 | `src/evozeus/storage/` | session、event、factor result 的持久化 adapter |
 | `factor_packs/` | 默认 factor pack 示例，每个 factor 一个独立目录，便于下载、替换和删除 |
 | `testdata/` | 固定测试集，覆盖 Codex flat JSONL 和 archived wrapper JSONL 两类输入 |
-| `scripts/` | session 扫描、factor 扫描、指定 factor 运行和结果报告 smoke 脚本 |
+| `scripts/` | session 扫描、factor 扫描、指定 factor 运行和 session report 生成脚本 |
 | `tests/` | Python tests for runtime behavior |
 
 ## Runtime Asset Layout
@@ -126,4 +126,22 @@ PYTHONPATH=__infra__/src python __infra__/scripts/scan_sessions_smoke.py --sourc
 PYTHONPATH=__infra__/src python __infra__/scripts/scan_factors_smoke.py --pack-root __infra__/factor_packs
 PYTHONPATH=__infra__/src python __infra__/scripts/run_factor_smoke.py default.tool_failure --pack-root __infra__/factor_packs --source __infra__/testdata/codex_sessions
 PYTHONPATH=__infra__/src python __infra__/scripts/result_report_smoke.py
+```
+
+Generate a report for one scanned session with selected factors:
+
+```bash
+PYTHONPATH=__infra__/src python __infra__/scripts/run_session_report.py \
+  --source __infra__/testdata/codex_sessions \
+  --pack-root __infra__/factor_packs \
+  --workspace . \
+  --factor default.tool_failure \
+  --factor default.open_loop
+```
+
+This writes:
+
+```text
+.evozeus/sessions/<session_id>/factor-results.md
+.evozeus/sessions/<session_id>/factor-results.html
 ```
