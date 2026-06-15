@@ -1,0 +1,3 @@
+{"id":"u1","role":"user","content":"这个 factor 结果不对，没改到默认输出"}
+{"id":"a1","role":"assistant","content":"我会运行指定 factor。"}
+{"id":"t1","role":"tool","tool_name":"python","tool_result":{"stdout":"factor matched"}}

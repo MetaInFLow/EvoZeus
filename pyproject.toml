@@ -34,5 +34,5 @@ packages = ["__infra__/src/evozeus"]
 testpaths = ["__infra__/tests"]
 pythonpath = ["__infra__/src"]
 filterwarnings = [
-  "ignore:Using `httpx` with `starlette.testclient` is deprecated:starlette.exceptions.StarletteDeprecationWarning",
+  "ignore:Using `httpx` with `starlette.testclient` is deprecated",
 ]

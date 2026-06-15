@@ -15,6 +15,9 @@
 | `src/evozeus/factors/` | Factor manifest、抽象基类、registry、runner 和 result contract |
 | `src/evozeus/runtime/` | `.evozeus/runtime` 下载资产和本地状态路径 |
 | `src/evozeus/storage/` | session、event、factor result 的持久化 adapter |
+| `factor_packs/` | 默认 factor pack 示例，每个 factor 一个独立目录，便于下载、替换和删除 |
+| `testdata/` | 固定测试集，覆盖 Codex flat JSONL 和 archived wrapper JSONL 两类输入 |
+| `scripts/` | session 扫描、factor 扫描、指定 factor 运行和结果报告 smoke 脚本 |
 | `tests/` | Python tests for runtime behavior |
 
 ## Runtime Asset Layout
@@ -36,6 +39,37 @@
 ```
 
 主代码只负责框架、协议、runner 和 storage。下载资产由 manifest 描述，由 registry 选择，由 runner 执行。
+
+## Factor Pack Layout
+
+Factor pack 以文件夹为最小安装单元：
+
+```text
+factor_packs/
+  <factor_id>/
+    <version>/
+      factor.json
+      factor.py
+```
+
+`factor.json` 声明 id、version、stage、runtime profile、entrypoint、输入输出和回滚方式。`factor.py` 只实现该 factor 的运行逻辑。删除一个 factor 时，删除对应 `<factor_id>/<version>/` 文件夹即可。
+
+当前默认示例：
+
+| Factor | Purpose |
+| --- | --- |
+| `default.negative_feedback` | 识别用户纠偏、负反馈和返工信号 |
+| `default.same_target_rework` | 识别同一目标上的重复修正 |
+| `default.tool_failure` | 识别工具调用失败、timeout、traceback 等环境问题 |
+
+## Test Dataset
+
+`testdata/codex_sessions/` 固定保留小型 session 样例：
+
+- flat JSONL：直接包含 `role/content/tool_result`。
+- archived wrapper JSONL：包含 `type/payload`，覆盖 `session_meta`、`response_item`、`event_msg`、`function_call` 和 `function_call_output`。
+
+这些样例用于验证 scanner 能输出统一的 `SessionEnvelope`，factor pack 能基于统一事件格式运行。
 
 ## Design Patterns
 
@@ -59,4 +93,13 @@ From repository root:
 ```bash
 python -m pytest
 evozeus status
+```
+
+Smoke checks:
+
+```bash
+PYTHONPATH=__infra__/src python __infra__/scripts/scan_sessions_smoke.py --source __infra__/testdata/codex_sessions --min-sessions 4
+PYTHONPATH=__infra__/src python __infra__/scripts/scan_factors_smoke.py --pack-root __infra__/factor_packs
+PYTHONPATH=__infra__/src python __infra__/scripts/run_factor_smoke.py default.tool_failure --pack-root __infra__/factor_packs --source __infra__/testdata/codex_sessions
+PYTHONPATH=__infra__/src python __infra__/scripts/result_report_smoke.py
 ```

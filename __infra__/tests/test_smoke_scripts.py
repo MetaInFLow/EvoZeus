@@ -8,6 +8,8 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS = PROJECT_ROOT / "__infra__" / "scripts"
+TESTDATA = PROJECT_ROOT / "__infra__" / "testdata"
+PACK_ROOT = PROJECT_ROOT / "__infra__" / "factor_packs"
 
 
 def run_script(name: str, *args: str) -> subprocess.CompletedProcess[str]:
@@ -24,17 +26,17 @@ def run_script(name: str, *args: str) -> subprocess.CompletedProcess[str]:
 
 
 def test_scan_sessions_script_finds_session_with_enough_information():
-    result = run_script("scan_sessions_smoke.py")
+    result = run_script("scan_sessions_smoke.py", "--source", str(TESTDATA / "codex_sessions"), "--min-sessions", "4")
 
     assert result.returncode == 0, result.stderr
     assert "scan sessions ok" in result.stdout
-    assert "sessions=1" in result.stdout
-    assert "events=3" in result.stdout
+    assert "sessions=4" in result.stdout
+    assert "total_events=14" in result.stdout
     assert "has_tool_result=True" in result.stdout
 
 
-def test_scan_factors_script_reports_builtin_factor_count():
-    result = run_script("scan_factors_smoke.py")
+def test_scan_factors_script_reports_factor_pack_count():
+    result = run_script("scan_factors_smoke.py", "--pack-root", str(PACK_ROOT))
 
     assert result.returncode == 0, result.stderr
     assert "scan factors ok" in result.stdout
@@ -43,7 +45,14 @@ def test_scan_factors_script_reports_builtin_factor_count():
 
 
 def test_run_factor_script_runs_specified_factor():
-    result = run_script("run_factor_smoke.py", "default.tool_failure")
+    result = run_script(
+        "run_factor_smoke.py",
+        "default.tool_failure",
+        "--pack-root",
+        str(PACK_ROOT),
+        "--source",
+        str(TESTDATA / "codex_sessions"),
+    )
 
     assert result.returncode == 0, result.stderr
     assert "run factor ok" in result.stdout

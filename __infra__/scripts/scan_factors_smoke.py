@@ -1,14 +1,24 @@
 from __future__ import annotations
 
-from evozeus.factors.builtins import builtin_factors
+import argparse
+from pathlib import Path
+
+from evozeus.factors.packs import FactorPackRepository
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
 def main() -> None:
-    factors = builtin_factors()
-    factor_ids = [factor.manifest.id for factor in factors]
-    assert len(factors) >= 3
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--pack-root", default=str(PROJECT_ROOT / "__infra__" / "factor_packs"))
+    args = parser.parse_args()
+
+    packs = FactorPackRepository(Path(args.pack_root)).discover()
+    factor_ids = [pack.manifest.id for pack in packs]
+    assert len(packs) >= 3
     assert "default.tool_failure" in factor_ids
-    print(f"scan factors ok: count={len(factors)} ids={','.join(factor_ids)}")
+    print(f"scan factors ok: count={len(packs)} ids={','.join(factor_ids)}")
 
 
 if __name__ == "__main__":
