@@ -12,6 +12,8 @@ This repository follows the Engineering Everything document layout.
 | Product and protocol design | [design/active/design_doc-v0.1-agent-session-judgment-layer.md](design/active/design_doc-v0.1-agent-session-judgment-layer.md) |
 | Architecture decision history | [decisions/](decisions/) |
 | Privacy and redaction rules | [governance/privacy-and-redaction.md](governance/privacy-and-redaction.md) |
+| PR rules | [governance/pr-guidelines.md](governance/pr-guidelines.md) |
+| Release and promotion policy | [governance/release-and-promotion-policy.md](governance/release-and-promotion-policy.md) |
 | Folder ownership | [governance/folder-declaration-v0.md](governance/folder-declaration-v0.md) |
 | Terminology | [governance/terminology-glossary.md](governance/terminology-glossary.md) |
 | Ontology layer | [reference/ontology.md](reference/ontology.md) |

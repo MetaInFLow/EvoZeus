@@ -1,5 +1,11 @@
-blank_issues_enabled: true
+blank_issues_enabled: false
 contact_links:
   - name: EvoZeus contribution guide
     url: https://github.com/MetaInFLow/EvoZeus/blob/main/CONTRIBUTING.md
     about: Read this before submitting a Case or Factor.
+  - name: EvoZeus PR guidelines
+    url: https://github.com/MetaInFLow/EvoZeus/blob/main/docs/governance/pr-guidelines.md
+    about: Read this before opening a PR.
+  - name: Security policy
+    url: https://github.com/MetaInFLow/EvoZeus/blob/main/SECURITY.md
+    about: Report sensitive issues without exposing private evidence.

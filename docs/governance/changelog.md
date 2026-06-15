@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-06-16
+
+- Added OpenClaw-inspired PR guidelines adapted to EvoZeus evidence, ontology, and layer gates.
+- Expanded the default PR template and added Candidate, code, schema, and skill/instruction PR templates.
+- Strengthened bug and feature issue templates with evidence, impact, and routing fields.
+- Added `scripts/check_pr_ready.py` for branch, template, scope, and whitespace checks before review.
+- Added lightweight release and Candidate promotion policy.
+
 ## 2026-06-14
 
 - Established EvoZeus as an Agent Session Judgment Layer.
