@@ -1,7 +1,12 @@
 #!/usr/bin/env node
 import assert from "node:assert/strict";
 
-import { evaluateProofGate, planLabelPrefixUpdate, planManagedLabelUpdate } from "./gate-logic.mjs";
+import {
+  evaluateProofGate,
+  planLabelPrefixUpdate,
+  planManagedLabelUpdate,
+  privacyFindingsForPatch
+} from "./gate-logic.mjs";
 import { validateCandidateData } from "./candidate-validator.mjs";
 
 function testProofGateRequiresFilledFields() {
@@ -124,10 +129,34 @@ function testInvalidCandidateIsRejected() {
   assert(errors.some((error) => error.includes("when_to_use")));
 }
 
+function testPrivacyScanIgnoresIsoDatesInAddedLines() {
+  const findings = privacyFindingsForPatch(
+    "docs/governance/changelog.md",
+    `@@ -1,3 +1,4 @@
+ ## Changelog
++## 2026-06-16
++- Tightened governance gates.`
+  );
+
+  assert.deepEqual(findings, []);
+}
+
+function testPrivacyScanFlagsPhoneLikeAddedLines() {
+  const findings = privacyFindingsForPatch(
+    "examples/report.md",
+    `@@ -1,2 +1,3 @@
++Call +1 (555) 123-4567 before rollout.`
+  );
+
+  assert.deepEqual(findings, ["examples/report.md: phone-like number"]);
+}
+
 testProofGateRequiresFilledFields();
 testProofGateAcceptsFilledBehaviorProof();
 testLabelPrefixUpdateRemovesStaleLabels();
 testManagedLabelUpdateIgnoresUnmanagedDesiredLabels();
 testInvalidCandidateIsRejected();
+testPrivacyScanIgnoresIsoDatesInAddedLines();
+testPrivacyScanFlagsPhoneLikeAddedLines();
 
 console.log("GitHub gate tests passed");

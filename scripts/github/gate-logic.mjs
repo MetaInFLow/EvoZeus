@@ -35,6 +35,38 @@ const SECTION_RULES = [
   }
 ];
 
+const PRIVACY_PATTERNS = [
+  ["private key", /-----BEGIN (RSA |OPENSSH |EC |DSA |)?PRIVATE KEY-----/i],
+  ["github token", /\bgh[pousr]_[A-Za-z0-9_]{20,}\b/],
+  ["openai key", /\bsk-[A-Za-z0-9_-]{20,}\b/],
+  ["aws access key", /\bAKIA[0-9A-Z]{16}\b/],
+  ["bearer token", /\bBearer\s+[A-Za-z0-9._~+/-]+=*/i],
+  ["dotenv content", /^\+\s*[A-Z0-9_]{3,}=.+$/m],
+  ["email", /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i],
+  ["phone-like number", /\b(?:\+?\d[\d\s().-]{8,}\d)\b/],
+  ["private mac path", /\/Users\/[A-Za-z0-9._-]+\/[^\s)"']*/],
+  ["internal url", /https?:\/\/[A-Za-z0-9.-]*(?:internal|corp|intranet|local)[A-Za-z0-9.-]*/i]
+];
+
+function addedPatchText(patch) {
+  return (patch || "")
+    .split("\n")
+    .filter((line) => line.startsWith("+") && !line.startsWith("+++"))
+    .join("\n");
+}
+
+function hasPrivacyMatch(name, pattern, text) {
+  const flags = pattern.flags.includes("g") ? pattern.flags : `${pattern.flags}g`;
+  const regex = new RegExp(pattern.source, flags);
+  for (const match of text.matchAll(regex)) {
+    if (name === "phone-like number" && /^\d{4}-\d{2}-\d{2}$/.test(match[0])) {
+      continue;
+    }
+    return true;
+  }
+  return false;
+}
+
 export function hasHeading(body, heading) {
   const escaped = heading.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   return new RegExp(`^##\\s+${escaped}\\s*$`, "im").test(body || "");
@@ -99,4 +131,15 @@ export function planManagedLabelUpdate({ current, managed, desired }) {
   const remove = current.filter((label) => managedSet.has(label) && !wanted.has(label));
   const add = desired.filter((label) => managedSet.has(label) && !current.includes(label));
   return { add, remove };
+}
+
+export function privacyFindingsForPatch(filename, patch) {
+  const added = addedPatchText(patch);
+  const findings = [];
+  for (const [name, pattern] of PRIVACY_PATTERNS) {
+    if (hasPrivacyMatch(name, pattern, added)) {
+      findings.push(`${filename}: ${name}`);
+    }
+  }
+  return findings;
 }

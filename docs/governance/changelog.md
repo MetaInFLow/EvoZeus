@@ -2,7 +2,6 @@
 
 ## 2026-06-16
 
-- Tightened governance gates so proof fields must be filled, stale labels are cleaned up, and Candidate validation uses JSON Schema with invalid-example checks.
 - Added dry-run governance automation: labels, CODEOWNERS, PR routing docs, proof/privacy/dirty/queue gates, Candidate schema validation, lifecycle directories, and maintainer playbook.
 - Restored the EvoZeus scenario skill suite under `skills/` and aligned it with branch, PR, evidence, privacy, and governance gates.
 - Added OpenClaw-inspired PR guidelines adapted to EvoZeus evidence, ontology, and layer gates.
