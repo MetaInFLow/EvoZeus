@@ -1,14 +1,40 @@
 name: Bug Report
-description: Report a problem with EvoZeus docs, templates, or future tooling.
+description: Report one reproducible problem with EvoZeus docs, templates, governance, or future tooling.
 title: "[Bug]: "
 labels:
   - bug
+  - needs-evidence
 body:
-  - type: textarea
-    id: problem
+  - type: markdown
     attributes:
-      label: Problem
+      value: |
+        Report one issue at a time. Keep answers concise, reproducible, and grounded in observed evidence. If you do not know an answer, write `NOT_ENOUGH_INFO`.
+  - type: dropdown
+    id: bug_type
+    attributes:
+      label: Bug type
+      options:
+        - docs
+        - template
+        - governance
+        - privacy / redaction
+        - candidate review
+        - future runtime / tooling
+        - other
+    validations:
+      required: true
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
       description: What is wrong?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Use concrete steps. Write `NOT_ENOUGH_INFO` if not reproducible yet.
     validations:
       required: true
   - type: textarea
@@ -18,9 +44,41 @@ body:
     validations:
       required: true
   - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
     id: evidence
     attributes:
       label: Evidence
-      description: Link or paste redacted evidence.
+      description: Include redacted logs, command output, screenshots, links, or copied live output. Do not include raw private sessions.
     validations:
-      required: false
+      required: true
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Impact / severity
+      options:
+        - blocks contribution
+        - breaks review or evidence flow
+        - privacy / security risk
+        - confusing but not blocking
+        - minor docs issue
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Browser, OS, agent, branch, or local command context. Write `NOT_ENOUGH_INFO` if unknown.
+    validations:
+      required: true
+  - type: textarea
+    id: privacy
+    attributes:
+      label: Privacy note
+      description: What did you redact or generalize?
+    validations:
+      required: true

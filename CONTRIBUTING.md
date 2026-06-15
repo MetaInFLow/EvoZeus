@@ -57,6 +57,10 @@ Detailed review rules live in:
 
 PRs should be small and reviewable.
 
+Each PR should have one primary purpose, one primary layer, and one review target. Use [PR Guidelines](docs/governance/pr-guidelines.md) for the full contract.
+
+External contributors should keep at most 3 open Candidate PRs and at most 1 open code PR at the same time. If a coordinated change needs more, discuss the plan with maintainers before opening more PRs.
+
 Good PRs usually do one of these:
 
 - Add one Case with evidence.
@@ -65,10 +69,32 @@ Good PRs usually do one of these:
 - Improve privacy or contribution rules.
 - Improve README or onboarding without changing the whole project direction.
 
+Avoid:
+
+- New feature or architecture PRs without an issue, Case, or maintainer request.
+- Refactor-only PRs without a linked issue, active fix, or maintainer request.
+- Test-only PRs that do not validate a new behavior, new Case, or bug fix in the same PR.
+- Mixed PRs that combine runtime code, governance, docs, and community Case contribution.
+- Changelog edits unless the PR is explicitly about release notes or governance history.
+
+External or behavior-changing PRs must include EvoZeus Evidence Proof in the PR body. Unit tests, mocks, lint, type checks, and CI are useful but supplemental; reviewers need evidence from the changed behavior, session, command, rendered document, or local environment.
+
+AI-assisted PRs are welcome when disclosed. Say which agent or tool materially changed the work, what it did, and which checks were run locally.
+
 Before opening a PR:
 
 ```bash
+python3 scripts/check_pr_ready.py
 git diff --check
 ```
 
+Use the closest PR template:
+
+- `candidate_submission.md` for Case / Candidate / Artifact contribution.
+- `code_change.md` for runtime, CLI, tooling, or behavior changes.
+- `schema_change.md` for ontology, schema, protocol, or compatibility changes.
+- `skill_instruction_change.md` for `SKILL.md` or agent instruction changes.
+
 If your PR adds markdown examples, check that links are relative and do not point to local private paths.
+
+Authors own review follow-through. Address reviewer or bot comments, reply with rationale, or mark the concern not applicable with a short explanation.

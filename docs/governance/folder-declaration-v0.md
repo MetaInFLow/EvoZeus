@@ -1,7 +1,7 @@
 # Folder Declaration v0
 
 - Status: active
-- Last updated: 2026-06-14
+- Last updated: 2026-06-16
 
 ## Root Files
 
@@ -24,6 +24,7 @@
 | `patterns/` | Pattern library surface |
 | `examples/` | Redacted examples for Cases and reports |
 | `docs/` | Project documentation |
+| `scripts/` | Local repository checks and maintainer utility scripts |
 
 ## Planned Runtime Directories
 

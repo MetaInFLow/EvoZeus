@@ -1,0 +1,65 @@
+name: Feature Request
+description: Propose a new EvoZeus capability, Candidate path, or governance improvement.
+title: "[Feature]: "
+labels:
+  - feature
+  - needs-triage
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Feature requests should be concrete, evidence-backed, and scoped. Most long-tail ideas should start as community Candidates instead of core changes.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What do you want to change?
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem to solve
+      description: What user, agent, contributor, or maintainer problem does this address?
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: What should EvoZeus do?
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Include community Candidate, plugin, docs-only, or no-change alternatives.
+    validations:
+      required: true
+  - type: dropdown
+    id: target
+    attributes:
+      label: Best target
+      options:
+        - core repo
+        - community candidate
+        - docs / governance
+        - plugin / external integration
+        - not sure
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence / examples
+      description: Link real sessions, cases, user reports, command output, screenshots, or examples.
+    validations:
+      required: true
+  - type: textarea
+    id: impact
+    attributes:
+      label: Impact
+      description: Who benefits and how would success be measured?
+    validations:
+      required: true
