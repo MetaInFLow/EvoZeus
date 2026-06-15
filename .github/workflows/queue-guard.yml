@@ -1,0 +1,23 @@
+name: EvoZeus Queue Guard
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, edited]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  queue-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout base repository
+        uses: actions/checkout@v4
+      - name: Check PR queue limits
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EVOZEUS_DRY_RUN: "1"
+          EVOZEUS_ENFORCE_QUEUE: "0"
+        run: node scripts/github/queue-guard.mjs

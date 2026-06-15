@@ -33,6 +33,10 @@ These require explicit maintainer review before merge or promotion:
 - `skills/`
 - `.github/workflows/`
 - `.github/CODEOWNERS`
+- `scripts/github/`
+- `schemas/`
+- `candidates/core/`
+- `candidates/reviewed/`
 - `SECURITY.md`
 - `docs/governance/privacy-and-redaction.md`
 - `docs/reference/ontology.md`

@@ -1,0 +1,21 @@
+name: EvoZeus Candidate Schema Check
+
+on:
+  pull_request:
+    paths:
+      - "candidates/**"
+      - "examples/valid-candidates/**"
+      - "schemas/**"
+      - "scripts/github/candidate-schema-check.mjs"
+
+permissions:
+  contents: read
+
+jobs:
+  candidate-schema-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR merge ref
+        uses: actions/checkout@v4
+      - name: Validate candidate JSON and schemas
+        run: node scripts/github/candidate-schema-check.mjs

@@ -2,6 +2,7 @@
 
 ## 2026-06-16
 
+- Added dry-run governance automation: labels, CODEOWNERS, PR routing docs, proof/privacy/dirty/queue gates, Candidate schema validation, lifecycle directories, and maintainer playbook.
 - Restored the EvoZeus scenario skill suite under `skills/` and aligned it with branch, PR, evidence, privacy, and governance gates.
 - Added OpenClaw-inspired PR guidelines adapted to EvoZeus evidence, ontology, and layer gates.
 - Expanded the default PR template and added Candidate, code, schema, and skill/instruction PR templates.

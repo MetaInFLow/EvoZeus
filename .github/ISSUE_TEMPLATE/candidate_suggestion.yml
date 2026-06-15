@@ -1,0 +1,55 @@
+name: Candidate suggestion
+description: Suggest a session-derived EvoZeus Candidate with evidence.
+title: "[Candidate]: "
+labels: ["type:candidate", "candidate:community", "proof:needed"]
+body:
+  - type: textarea
+    id: source_session
+    attributes:
+      label: Source session
+      description: Describe the redacted session context. Do not paste raw private logs.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: Include minimized, redacted evidence and observed behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: pattern
+    attributes:
+      label: Extracted pattern
+    validations:
+      required: true
+  - type: textarea
+    id: operational_rule
+    attributes:
+      label: Operational rule
+      description: Exact behavior another agent should perform.
+    validations:
+      required: true
+  - type: textarea
+    id: when_not_to_use
+    attributes:
+      label: When NOT to use
+    validations:
+      required: true
+  - type: textarea
+    id: counterexamples
+    attributes:
+      label: Counterexamples
+    validations:
+      required: true
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy checklist
+      options:
+        - label: No raw session logs
+          required: true
+        - label: No secrets, tokens, private paths, customer data, or internal URLs
+          required: true
+        - label: Evidence is minimized and redacted
+          required: true

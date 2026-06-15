@@ -1,0 +1,23 @@
+name: EvoZeus Proof Gate
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, edited]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  proof-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout base repository
+        uses: actions/checkout@v4
+      - name: Check proof fields
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EVOZEUS_DRY_RUN: "1"
+          EVOZEUS_ENFORCE_PROOF: "0"
+        run: node scripts/github/proof-gate.mjs

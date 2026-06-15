@@ -1,4 +1,4 @@
-## Candidate Summary
+## Candidate summary
 
 What Candidate does this PR submit or change?
 
@@ -6,57 +6,49 @@ What future Agent session should benefit from it?
 
 What is intentionally out of scope?
 
-## Evidence Packet
+## Source session
 
-- Evidence IDs or links:
-- Highest evidence grade:
-- Source type:
-- Redaction note:
-- What was observed:
+- Agent:
+- Task type:
+- Environment:
+- Session artifact:
+
+## Observed problem or gain
+
+## Evidence
+
+- Evidence excerpt:
+- Tool output:
+- Before behavior:
+- After behavior:
 - What was not tested:
 
-## Candidate Scope
+## Extracted pattern
 
-Primary kind:
+## Operational rule
 
-- [ ] skill
-- [ ] factor
-- [ ] pattern
-- [ ] habit
-- [ ] environment_rule
-- [ ] report_template
-- [ ] negative_pattern
+Exact behavior the agent should perform:
 
-Target artifact path:
+## When to use
 
-Reuse scenario:
+## When NOT to use
 
-Not covered:
+## Counterexamples
 
-## Verdict / Promotion
+## Privacy checklist
 
-Proposed verdict:
+- [ ] no raw session logs
+- [ ] no secrets
+- [ ] no private paths
+- [ ] no customer data
+- [ ] no internal URLs
+- [ ] evidence minimized
 
-- [ ] Preserve
-- [ ] Promote to Skill
-- [ ] Extract Factor
-- [ ] Keep as Habit
-- [ ] Fix Environment
-- [ ] Reject Pattern
-- [ ] Open Case
+## Lifecycle target
 
-Promotion target:
-
-- [ ] community candidate
-- [ ] reviewed candidate
-- [ ] core candidate
-- [ ] negative pattern
-
-## Privacy
-
-- [ ] No raw session logs
-- [ ] No secrets, tokens, private paths, or customer data
-- [ ] Evidence is minimized and redacted
+- [ ] community
+- [ ] reviewed
+- [ ] core
 
 ## Review State
 

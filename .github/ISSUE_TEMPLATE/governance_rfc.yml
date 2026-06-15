@@ -1,0 +1,35 @@
+name: Governance RFC
+description: Propose a governance, workflow, branch, label, or maintainer process change.
+title: "[RFC]: "
+labels: ["type:governance", "triage:rfc-needed"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem with current rule
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed rule
+    validations:
+      required: true
+  - type: textarea
+    id: affected
+    attributes:
+      label: Who is affected
+    validations:
+      required: true
+  - type: textarea
+    id: abuse_case
+    attributes:
+      label: Abuse case prevented
+    validations:
+      required: true
+  - type: textarea
+    id: rollout
+    attributes:
+      label: Rollout and rollback
+    validations:
+      required: true

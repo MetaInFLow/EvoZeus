@@ -83,6 +83,8 @@ Use the closest template:
 | `code_change.md` | Runtime, CLI, tooling, or behavior change |
 | `schema_change.md` | Ontology, schema, protocol, or compatibility change |
 | `skill_instruction_change.md` | `SKILL.md`, skill, prompt, or agent instruction change |
+| `governance_change.md` | Governance, workflow, branch, label, or maintainer process change |
+| `docs_example_change.md` | Public docs or examples that include evidence |
 
 ## Evidence Proof
 
@@ -155,6 +157,12 @@ High-risk paths need owner review once the maintainer handles or GitHub team nam
 - `skills/`
 - `.github/workflows/`
 - `.github/CODEOWNERS`
+- `.github/PULL_REQUEST_TEMPLATE/`
+- `.github/ISSUE_TEMPLATE/`
+- `scripts/github/`
+- `schemas/`
+- `candidates/core/`
+- `candidates/reviewed/`
 - `SECURITY.md`
 - `docs/governance/privacy-and-redaction.md`
 - `docs/reference/ontology.md`
@@ -181,6 +189,8 @@ python3 scripts/check_pr_ready.py --pr-body path/to/pr-body.md
 For runtime or tooling changes, add the relevant language test command when available. For docs and governance-only changes, `scripts/check_pr_ready.py` and `git diff --check` are the minimum.
 
 The script checks branch naming, layer scope, PR templates, skill frontmatter, and whitespace.
+
+GitHub automation also runs in dry-run mode for labeler, proof gate, privacy scan, dirty PR check, queue guard, auto-response, and Candidate schema validation. Dry-run means label/comment/status only; no approve, merge, promote, or auto-close.
 
 ## Reviewer Focus
 

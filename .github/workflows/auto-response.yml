@@ -1,0 +1,22 @@
+name: EvoZeus Auto Response
+
+on:
+  pull_request_target:
+    types: [labeled, opened, synchronize, reopened, edited]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  auto-response:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout base repository
+        uses: actions/checkout@v4
+      - name: Update marker-backed response
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EVOZEUS_DRY_RUN: "1"
+        run: node scripts/github/auto-response.mjs

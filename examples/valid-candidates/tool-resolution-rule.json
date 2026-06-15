@@ -1,0 +1,25 @@
+{
+  "id": "candidate-tool-resolution-rule",
+  "title": "Prefer project-declared tools before generic fallbacks",
+  "type": "pattern",
+  "status": "community",
+  "source_session": "redacted-session-tool-resolution",
+  "observed_behavior": "Agent avoided a generic fallback after project instructions named a specific tool path.",
+  "evidence": {
+    "level": 2,
+    "summary": "Local reproduction using a redacted repository instruction and command trace.",
+    "artifacts": ["examples/cases/tool-resolution-rule/case.md"]
+  },
+  "pattern": "When repository instructions name a specific tool, use that tool before a generic fallback.",
+  "operational_rule": "Check project instructions and declared tooling before choosing an equivalent generic command.",
+  "when_to_use": ["Repository instructions name a required tool", "Multiple tools can perform the same operation"],
+  "when_not_to_use": ["Named tool is unavailable", "Named tool would expose private data or require missing credentials"],
+  "counterexamples": ["A generic local parser is acceptable when the declared cloud tool is unavailable and the task is local-only."],
+  "privacy_review": {
+    "raw_logs_included": false,
+    "secrets_removed": true,
+    "private_paths_removed": true,
+    "customer_data_removed": true,
+    "note": "Session-specific paths and user details removed."
+  }
+}
