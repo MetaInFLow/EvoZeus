@@ -15,6 +15,7 @@ This repository follows the Engineering Everything document layout.
 | Folder ownership | [governance/folder-declaration-v0.md](governance/folder-declaration-v0.md) |
 | Terminology | [governance/terminology-glossary.md](governance/terminology-glossary.md) |
 | Verdict reference | [reference/verdicts.md](reference/verdicts.md) |
+| Session Verdict Card | [reference/verdict-card.md](reference/verdict-card.md) |
 | Report templates | [reference/report-templates.md](reference/report-templates.md) |
 
 ## Lifecycle Rules
