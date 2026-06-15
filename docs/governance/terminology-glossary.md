@@ -1,13 +1,14 @@
 # Terminology Glossary
 
 - Status: active
-- Last updated: 2026-06-14
+- Last updated: 2026-06-15
 
 | Term | 中文名 | Meaning | Source of Truth |
 | --- | --- | --- | --- |
 | Session | 会话 | 一次真实 Agent 执行 | Design Doc |
 | Evidence | 证据 | 支撑判断的最小证据 | Design Doc |
 | Case | 案件 | 等待审判的 session-derived finding | CONTRIBUTING |
+| Candidate | 候选资产 | 尚未被接受进入 Library 的 Artifact proposal | Reference: Ontology |
 | Verdict | 裁决 | 基于 Evidence 对 Case 给出的结果 | Reference: Verdicts |
 | Artifact | 沉淀资产 | Verdict 落成的资产 | Design Doc |
 | Library | 资产库 | 被接受的可复用公共资产库 | Design Doc |

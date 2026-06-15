@@ -38,10 +38,20 @@ Do not submit raw sessions, private code, customer data, secrets, tokens, privat
 
 | Gate | Question |
 | --- | --- |
+| Ontology Gate | Is this a Case, Candidate, or Artifact, and does it have one primary kind? |
 | Evidence Gate | Is the claim backed by concrete session evidence? |
 | Privacy Gate | Can this be public without leaking sensitive data? |
 | Value Gate | Can another agent or user benefit from it? |
 | Operational Gate | Is the recommended action executable? |
+| Negative Gate | Does it match a documented rejection reason? |
+
+Detailed review rules live in:
+
+- [Ontology Layer](docs/reference/ontology.md)
+- [Evidence Grading](docs/reference/evidence-grading.md)
+- [Negative Patterns](docs/reference/negative-patterns.md)
+- [Review Contract](docs/reference/review-contract.md)
+- [Minimal Loop](docs/reference/minimal-loop.md)
 
 ## Pull Requests
 
