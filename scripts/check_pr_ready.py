@@ -49,29 +49,48 @@ REQUIRED_PROOF_FIELDS = [
 
 SPECIALIZED_TEMPLATES = {
     "candidate_submission.md": [
-        "## Candidate Summary",
-        "## Evidence Packet",
-        "## Candidate Scope",
-        "## Verdict / Promotion",
-        "## Privacy",
+        "## Candidate summary",
+        "## Source session",
+        "## Evidence",
+        "## Operational rule",
+        "## When NOT to use",
+        "## Counterexamples",
+        "## Privacy checklist",
     ],
     "code_change.md": [
-        "## Code Change Summary",
-        "## Real Behavior Evidence",
-        "## Tests and Validation",
-        "## Risk",
+        "## PR type",
+        "## Problem",
+        "## Scope",
+        "## Real behavior proof",
+        "## Tests",
+        "## Rollback plan",
     ],
     "schema_change.md": [
-        "## Schema Change Summary",
-        "## Compatibility",
-        "## Migration / Versioning",
-        "## Validation",
+        "## Schema changed",
+        "## Breaking or non-breaking",
+        "## Migration needed?",
+        "## Validator updated?",
+        "## Examples updated?",
     ],
     "skill_instruction_change.md": [
-        "## Skill / Instruction Change Summary",
-        "## Agent Behavior Evidence",
-        "## Safety Boundary",
-        "## Rollback",
+        "## Instruction surface changed",
+        "## Agent behavior before / after",
+        "## Safety boundary",
+        "## Prompt injection risk",
+        "## Rollback plan",
+    ],
+    "governance_change.md": [
+        "## Governance surface changed",
+        "## Linked RFC",
+        "## Problem with current rule",
+        "## Proposed rule",
+        "## Rollback plan",
+    ],
+    "docs_example_change.md": [
+        "## Docs / Example Change Summary",
+        "## Evidence source",
+        "## Privacy checklist",
+        "## Link and render checks",
     ],
 }
 
@@ -79,6 +98,10 @@ LAYER_PATHS = {
     "semantic": (
         "docs/reference/",
         "docs/governance/terminology-glossary.md",
+        "schemas/",
+        "candidates/",
+        "examples/valid-candidates/",
+        "examples/invalid-candidates/",
     ),
     "execution": (
         "src/",
@@ -89,12 +112,42 @@ LAYER_PATHS = {
     "governance": (
         ".github/",
         "CONTRIBUTING.md",
+        "CODE_OF_CONDUCT.md",
         "SKILL.md",
         "skills/",
         "docs/governance/",
+        "docs/rfcs/",
+        "ZEUS_STATUS.yml",
         "scripts/check_pr_ready.py",
+        "scripts/github/",
     ),
 }
+
+REQUIRED_GOVERNANCE_FILES = [
+    ".github/CODEOWNERS",
+    ".github/labeler.yml",
+    ".github/workflows/labeler.yml",
+    ".github/workflows/proof-gate.yml",
+    ".github/workflows/privacy-scan.yml",
+    ".github/workflows/dirty-pr-check.yml",
+    ".github/workflows/queue-guard.yml",
+    ".github/workflows/candidate-schema-check.yml",
+    "docs/governance/pr-routing-policy.md",
+    "docs/governance/candidate-ontology.md",
+    "docs/governance/evidence-policy.md",
+    "docs/governance/labels.md",
+    "docs/governance/protected-paths.md",
+    "docs/governance/maintainer-playbook.md",
+    "docs/governance/auto-triage-policy.md",
+    "docs/governance/github-settings.md",
+    "schemas/candidate.schema.json",
+    "scripts/github/labeler.mjs",
+    "scripts/github/proof-gate.mjs",
+    "scripts/github/privacy-scan.mjs",
+    "scripts/github/dirty-pr-check.mjs",
+    "scripts/github/queue-guard.mjs",
+    "scripts/github/candidate-schema-check.mjs",
+]
 
 
 def run_git(*args: str, check: bool = True) -> str:
@@ -150,7 +203,7 @@ def changed_files(base: str) -> list[str]:
 def classify_layers(files: list[str]) -> set[str]:
     layers: set[str] = set()
     for path in files:
-        if path == "scripts/check_pr_ready.py":
+        if path == "scripts/check_pr_ready.py" or path.startswith("scripts/github/"):
             layers.add("governance")
             continue
         for layer, prefixes in LAYER_PATHS.items():
@@ -193,6 +246,25 @@ def check_template(path: Path, errors: list[str]) -> None:
                     f"template: {template_path.relative_to(ROOT)} missing heading {heading!r}",
                     errors,
                 )
+
+
+def check_governance_files(errors: list[str]) -> None:
+    for rel_path in REQUIRED_GOVERNANCE_FILES:
+        if not (ROOT / rel_path).exists():
+            error(f"governance: missing required file {rel_path}", errors)
+
+    workflows = ROOT / ".github" / "workflows"
+    if workflows.exists():
+        for workflow in sorted(workflows.glob("*.yml")):
+            text = workflow.read_text(encoding="utf-8")
+            if "permissions:" not in text:
+                error(f"workflow: {workflow.relative_to(ROOT)} must declare permissions", errors)
+            if "pull_request_target:" in text and "pull-requests: write" in text:
+                if "actions/checkout@v4" in text and "github.event.pull_request.head" in text:
+                    error(
+                        f"workflow: {workflow.relative_to(ROOT)} must not checkout PR head under pull_request_target",
+                        errors,
+                    )
 
 
 def check_skill_frontmatter(errors: list[str]) -> None:
@@ -267,6 +339,7 @@ def main() -> int:
     check_diff_whitespace(errors)
     check_scope(args.base, args.allow_cross_layer, errors)
     check_template(PR_TEMPLATE, errors)
+    check_governance_files(errors)
     check_skill_frontmatter(errors)
     if args.pr_body:
         check_pr_body(args.pr_body, errors)

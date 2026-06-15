@@ -59,7 +59,18 @@ PRs should be small and reviewable.
 
 Each PR should have one primary purpose, one primary layer, and one review target. Use [PR Guidelines](docs/governance/pr-guidelines.md) for the full contract. If an agent is helping with repository work, read [skills/evozeus-development/SKILL.md](skills/evozeus-development/SKILL.md) before editing.
 
+PR routing follows [PR Routing Policy](docs/governance/pr-routing-policy.md). Labels, CODEOWNERS, dry-run proof gates, privacy scan, dirty PR check, queue guard, and Candidate schema validation are part of the review surface, not decorative metadata.
+
 External contributors should keep at most 3 open Candidate PRs and at most 1 open code PR at the same time. If a coordinated change needs more, discuss the plan with maintainers before opening more PRs.
+
+Current queue limits:
+
+| Scope | Limit |
+| --- | --- |
+| External contributor | 3 open PRs |
+| Same bot / Codex branch family | 5 open PRs |
+| Governance PRs | 2 open PRs |
+| High-risk PRs by the same author | 1 open PR |
 
 Good PRs usually do one of these:
 
@@ -76,6 +87,19 @@ Avoid:
 - Test-only PRs that do not validate a new behavior, new Case, or bug fix in the same PR.
 - Mixed PRs that combine runtime code, governance, docs, and community Case contribution.
 - Changelog edits unless the PR is explicitly about release notes or governance history.
+
+Maintainers may close without full review:
+
+- blank templates
+- no linked context for governance changes
+- no real behavior proof for behavior-changing PRs
+- mock-only or CI-only proof
+- raw session logs uploaded
+- privacy-sensitive evidence without redaction
+- broad mixed PRs
+- workflow, token, release, dependency, `SKILL.md`, or `skills/` changes without owner context
+- opinion-only Candidates, Candidates without counterexamples, or Candidates without `when_not_to_use`
+- AI-assisted PRs where the author cannot explain the change
 
 External or behavior-changing PRs must include EvoZeus Evidence Proof in the PR body. Unit tests, mocks, lint, type checks, and CI are useful but supplemental; reviewers need evidence from the changed behavior, session, command, rendered document, or local environment.
 
@@ -94,6 +118,8 @@ Use the closest PR template:
 - `code_change.md` for runtime, CLI, tooling, or behavior changes.
 - `schema_change.md` for ontology, schema, protocol, or compatibility changes.
 - `skill_instruction_change.md` for `SKILL.md`, `skills/`, or agent instruction changes.
+- `governance_change.md` for governance, labels, workflow, branch, or maintainer process changes.
+- `docs_example_change.md` for public docs or example changes that include evidence.
 
 If your PR adds markdown examples, check that links are relative and do not point to local private paths.
 

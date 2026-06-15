@@ -1,22 +1,41 @@
-## Code Change Summary
+## PR type
 
-What behavior changes?
+- [ ] CLI / runtime
+- [ ] session logging
+- [ ] report generation
+- [ ] candidate extraction
+- [ ] privacy / redaction
+- [ ] scanner
+- [ ] GitHub automation
+- [ ] dependency
+- [ ] refactor
+- [ ] bug fix
 
-Why does this belong in core instead of a community Candidate or plugin?
+## Problem
+
+## Scope
+
+What changes?
 
 What is intentionally out of scope?
 
-## Real Behavior Evidence
+## Behavior change
 
-- Behavior or issue addressed:
-- Real environment or session tested:
-- Exact steps or command run after this patch:
-- Evidence after change:
-- Observed result after change:
+Before:
+
+After:
+
+## Real behavior proof
+
+- Command run:
+- Environment:
+- Input:
+- Output before:
+- Output after:
+- Artifact generated:
 - What was not tested:
-- Proof limitations or constraints:
 
-## Tests and Validation
+## Tests
 
 Commands run:
 
@@ -24,20 +43,30 @@ Regression coverage added or updated:
 
 Known gaps:
 
-## Risk
+## Privacy impact
 
-Did user-visible behavior change? (`Yes/No`)
+Does this PR read, write, store, upload, or transform user/session data?
 
-Did privacy, security, network, auth, or tool permission behavior change? (`Yes/No`)
+## Security / permission impact
 
-Did storage, schema, or migration behavior change? (`Yes/No`)
+Does this affect:
 
-Highest-risk area:
+- network access
+- file write
+- shell execution
+- GitHub token
+- workflow
+- dependency install
+- agent instruction behavior
 
-Mitigation:
+## Schema compatibility
 
-## AI-Assisted Work
+## Dependency review
 
-Was an AI coding agent materially involved? (`Yes/No`)
+## Rollback plan
 
-If yes, what did it change and what did a human/local environment verify?
+## AI-assisted disclosure
+
+Was an AI coding agent materially involved?
+
+## Reviewer focus

@@ -1,0 +1,36 @@
+# EvoZeus CODEOWNERS
+#
+# GitHub CODEOWNERS uses last-match-wins. Keep broad rules first and protected
+# rules later so security/governance ownership is not accidentally weakened.
+# This file only requests review. Branch protection / rulesets must enable
+# "Require review from Code Owners" for enforcement.
+
+* @MetaInFLow/0812team
+
+# Ownership rules protect themselves.
+/.github/CODEOWNERS @MetaInFLow/0812team
+
+# Governance surfaces.
+/CONTRIBUTING.md @MetaInFLow/0812team
+/CODE_OF_CONDUCT.md @MetaInFLow/0812team
+/SECURITY.md @MetaInFLow/0812team
+/ZEUS_STATUS.yml @MetaInFLow/0812team
+/docs/governance/ @MetaInFLow/0812team
+/docs/rfcs/ @MetaInFLow/0812team
+
+# Agent instruction entrypoints.
+/SKILL.md @MetaInFLow/0812team
+/skills/ @MetaInFLow/0812team
+
+# GitHub automation and templates.
+/.github/workflows/ @MetaInFLow/0812team
+/.github/PULL_REQUEST_TEMPLATE/ @MetaInFLow/0812team
+/.github/ISSUE_TEMPLATE/ @MetaInFLow/0812team
+/.github/labeler.yml @MetaInFLow/0812team
+/scripts/github/ @MetaInFLow/0812team
+
+# Schemas and Candidate lifecycle.
+/schemas/ @MetaInFLow/0812team
+/candidates/reviewed/ @MetaInFLow/0812team
+/candidates/core/ @MetaInFLow/0812team
+/candidates/deprecated/ @MetaInFLow/0812team

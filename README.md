@@ -77,7 +77,12 @@ Verdict（裁决）需要落成 Artifact：
 | 共创规则 | [CONTRIBUTING.md](CONTRIBUTING.md) |
 | 隐私边界 | [docs/governance/privacy-and-redaction.md](docs/governance/privacy-and-redaction.md) |
 | PR 规范 | [docs/governance/pr-guidelines.md](docs/governance/pr-guidelines.md) |
+| PR 分流状态机 | [docs/governance/pr-routing-policy.md](docs/governance/pr-routing-policy.md) |
+| Labels | [docs/governance/labels.md](docs/governance/labels.md) |
+| Protected Paths | [docs/governance/protected-paths.md](docs/governance/protected-paths.md) |
 | PR Ready 检查 | [scripts/check_pr_ready.py](scripts/check_pr_ready.py) |
+| GitHub 自动化脚本 | [scripts/github/](scripts/github/) |
+| Candidate Schema | [schemas/candidate.schema.json](schemas/candidate.schema.json) |
 | Ontology Layer | [docs/reference/ontology.md](docs/reference/ontology.md) |
 | Evidence Grading | [docs/reference/evidence-grading.md](docs/reference/evidence-grading.md) |
 | Review Contract | [docs/reference/review-contract.md](docs/reference/review-contract.md) |
@@ -118,6 +123,8 @@ Local Evidence Report -> Agent Review -> Case Draft -> User Approval -> gh PR
 python3 scripts/check_pr_ready.py
 git diff --check
 ```
+
+GitHub 侧的 labeler、proof gate、privacy scan、dirty PR check、queue guard 和 Candidate schema check 默认以 dry-run 方式运行：它们可以打 label 和更新 marker comment，但不会 approve、merge、promote core Candidate 或自动关闭 PR。
 
 最小 Case 应包含：
 

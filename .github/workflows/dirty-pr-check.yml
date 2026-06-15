@@ -1,0 +1,22 @@
+name: EvoZeus Dirty PR Check
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, edited]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  dirty-pr-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout base repository
+        uses: actions/checkout@v4
+      - name: Check PR scope shape
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EVOZEUS_DRY_RUN: "1"
+        run: node scripts/github/dirty-pr-check.mjs

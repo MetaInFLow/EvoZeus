@@ -15,6 +15,16 @@ This repository follows the Engineering Everything document layout.
 | Architecture decision history | [decisions/](decisions/) |
 | Privacy and redaction rules | [governance/privacy-and-redaction.md](governance/privacy-and-redaction.md) |
 | PR rules | [governance/pr-guidelines.md](governance/pr-guidelines.md) |
+| PR routing state machine | [governance/pr-routing-policy.md](governance/pr-routing-policy.md) |
+| Candidate ontology policy | [governance/candidate-ontology.md](governance/candidate-ontology.md) |
+| Evidence policy | [governance/evidence-policy.md](governance/evidence-policy.md) |
+| Labels | [governance/labels.md](governance/labels.md) |
+| Protected paths | [governance/protected-paths.md](governance/protected-paths.md) |
+| Maintainer playbook | [governance/maintainer-playbook.md](governance/maintainer-playbook.md) |
+| Auto triage policy | [governance/auto-triage-policy.md](governance/auto-triage-policy.md) |
+| Workflow security | [governance/workflow-security.md](governance/workflow-security.md) |
+| GitHub settings checklist | [governance/github-settings.md](governance/github-settings.md) |
+| Candidate lifecycle | [governance/candidate-lifecycle.md](governance/candidate-lifecycle.md) |
 | Release and promotion policy | [governance/release-and-promotion-policy.md](governance/release-and-promotion-policy.md) |
 | Folder ownership | [governance/folder-declaration-v0.md](governance/folder-declaration-v0.md) |
 | Terminology | [governance/terminology-glossary.md](governance/terminology-glossary.md) |
@@ -35,3 +45,5 @@ This repository follows the Engineering Everything document layout.
 - Stable reference docs live in `docs/reference/`.
 - Runtime output must not be committed; local runtime state belongs under `.evozeus/`.
 - Scenario skills live under `../skills/`; changes to them are governance-risk instruction changes.
+- Governance RFCs live under `rfcs/`.
+- Candidate lifecycle files live under `../candidates/` and must pass schema validation.

@@ -1,26 +1,20 @@
-## Schema Change Summary
+## Schema changed
 
 What schema, ontology, or protocol changes?
 
-Why does this change need to happen now?
+## Breaking or non-breaking
 
-What consumers or historical data may be affected?
+## Old example still valid?
 
-## Compatibility
+## Migration needed?
 
-- Previous version or field behavior:
-- New version or field behavior:
-- Backward compatibility:
-- Deprecated fields:
-- What old data still needs to work:
+## Version bump
 
-## Migration / Versioning
+## Validator updated?
 
-Version bump or status change:
+## Examples updated?
 
-Migration path:
-
-Rollback path:
+## Rollback plan
 
 ## Validation
 

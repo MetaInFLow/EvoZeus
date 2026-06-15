@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://evozeus.dev/schemas/report.schema.json",
+  "title": "EvoZeus Evidence Report",
+  "type": "object",
+  "required": ["report_id", "session_id", "evidence", "proposed_verdict", "privacy_note"],
+  "properties": {
+    "report_id": { "type": "string" },
+    "session_id": { "type": "string" },
+    "evidence": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+    "proposed_verdict": { "type": "string" },
+    "privacy_note": { "type": "string" }
+  }
+}

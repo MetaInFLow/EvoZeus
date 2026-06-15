@@ -62,7 +62,11 @@ These require explicit evidence and maintainer-level attention:
 - `SKILL.md`
 - `skills/`
 - `.github/` templates or workflows
+- `scripts/github/`
 - `SECURITY.md`
+- `schemas/`
+- `candidates/core/`
+- `candidates/reviewed/`
 - `docs/governance/privacy-and-redaction.md`
 - `docs/reference/ontology.md`
 - `docs/reference/evidence-grading.md`

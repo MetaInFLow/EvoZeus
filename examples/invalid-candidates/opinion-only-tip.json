@@ -1,0 +1,23 @@
+{
+  "id": "candidate-opinion-only-tip",
+  "title": "Always be more careful",
+  "type": "pattern",
+  "status": "rejected",
+  "source_session": "",
+  "observed_behavior": "",
+  "evidence": {
+    "level": 0,
+    "summary": "No observed behavior."
+  },
+  "pattern": "Be careful.",
+  "operational_rule": "",
+  "when_to_use": [],
+  "when_not_to_use": [],
+  "counterexamples": [],
+  "privacy_review": {
+    "raw_logs_included": false,
+    "secrets_removed": true,
+    "private_paths_removed": true,
+    "customer_data_removed": true
+  }
+}

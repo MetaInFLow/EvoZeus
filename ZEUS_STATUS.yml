@@ -1,0 +1,21 @@
+governance_version: 0.2.0
+status: active
+updated_at: 2026-06-16
+automation:
+  mode: dry-run
+  auto_approve: false
+  auto_merge: false
+  auto_close: false
+limits:
+  external_contributor_open_prs: 3
+  bot_branch_family_open_prs: 5
+  governance_open_prs: 2
+  high_risk_open_prs: 1
+required_owner_team: "@MetaInFLow/0812team"
+required_checks:
+  - EvoZeus Labeler
+  - EvoZeus Proof Gate
+  - EvoZeus Privacy Scan
+  - EvoZeus Dirty PR Check
+  - EvoZeus Queue Guard
+  - EvoZeus Candidate Schema Check

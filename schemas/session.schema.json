@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://evozeus.dev/schemas/session.schema.json",
+  "title": "EvoZeus Session",
+  "type": "object",
+  "required": ["session_id", "agent_runtime", "task_type", "started_at", "privacy"],
+  "properties": {
+    "session_id": { "type": "string" },
+    "agent_runtime": { "type": "string" },
+    "task_type": { "type": "string" },
+    "started_at": { "type": "string" },
+    "privacy": {
+      "type": "object",
+      "required": ["raw_session_local_only"],
+      "properties": {
+        "raw_session_local_only": { "type": "boolean", "const": true }
+      }
+    }
+  }
+}
