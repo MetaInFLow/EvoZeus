@@ -1,7 +1,5 @@
-<h1>
-  <img src="assets/icons/evozeus-gold-128.png" alt="EvoZeus gold icon" width="38" align="absmiddle">
-  EvoZeus（宙斯）
-  <img src="assets/icons/evozeus-silver-128.png" alt="EvoZeus silver icon" width="38" align="absmiddle">
+<h1 align="center">
+  <img src="assets/icons/evozeus-gold-128.png" alt="EvoZeus gold icon" width="38" align="absmiddle">&nbsp;&nbsp;EvoZeus（宙斯）&nbsp;&nbsp;<img src="assets/icons/evozeus-silver-128.png" alt="EvoZeus silver icon" width="38" align="absmiddle">
 </h1>
 
 <p align="center">
@@ -24,9 +22,9 @@ EvoZeus（宙斯）是 Agent Session 的审判层。它不做 Agent 打分，也
 
 EvoZeus 也定义一种新的软件范式：**Skill Driven Software（SDS）**。在 SDS 中，软件行为由 code、scenario skill、factor、rule、report 和 runtime 共同驱动。
 
-> Origin：宙斯的概念诞生于一次不太成功的黑客松之后的团队复盘。
+> Origin：宙斯的概念诞生于一次不太成功的黑客松之后，[Anthony](https://github.com/HaodiFan) 和 [Neil](https://github.com/orgs/MetaInFLow/people/Neillan96) 两个人的一次复盘。
 
-## <img src="assets/icons/evozeus-gold-128.png" alt="" width="24" align="absmiddle"> Start Here
+## <img src="assets/icons/evozeus-silver-128.png" alt="" width="24" align="absmiddle"> Start Here
 
 把这句话复制给你的 Agent：
 
@@ -65,7 +63,7 @@ Verdict（裁决）需要落成 Artifact：
 | `Preserve` | Accepted Case |
 | `Open Case` | Pending Case |
 
-## <img src="assets/icons/evozeus-gold-128.png" alt="" width="24" align="absmiddle"> Current Repository Surface
+## <img src="assets/icons/evozeus-silver-128.png" alt="" width="24" align="absmiddle"> Current Repository Surface
 
 这个仓库当前提供协议、共创面和文档架构；CLI release 尚未进入稳定承诺。开发期 runtime 或 CLI 实现需要在对应 issue / PR 中单独评审，README 只承诺稳定入口。
 
@@ -104,7 +102,7 @@ Verdict（裁决）需要落成 Artifact：
 
 更多文档入口见 [docs/README.md](docs/README.md)。
 
-## <img src="assets/icons/evozeus-gold-128.png" alt="" width="24" align="absmiddle"> Contribution Loop
+## <img src="assets/icons/evozeus-silver-128.png" alt="" width="24" align="absmiddle"> Contribution Loop
 
 主路径是 Agent-assisted PR：
 
@@ -141,7 +139,7 @@ privacy_note
 
 README 只保留项目用途、启动语、资产范围、运行原则和贡献入口。完整文档见 [docs/README.md](docs/README.md)。
 
-## <img src="assets/icons/evozeus-gold-128.png" alt="" width="24" align="absmiddle"> Project Tracks
+## <img src="assets/icons/evozeus-silver-128.png" alt="" width="24" align="absmiddle"> Project Tracks
 
 当前架构规划这些工程轨道：
 
