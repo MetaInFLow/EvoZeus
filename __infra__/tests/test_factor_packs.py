@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 from evozeus.factors.base import FactorContext
@@ -26,6 +27,13 @@ def test_factor_packs_are_independent_folders_with_manifest_and_code():
         assert pack.root.is_dir()
         assert (pack.root / "factor.json").is_file()
         assert (pack.root / "factor.py").is_file()
+
+
+def test_default_factor_packs_declare_in_process_runtime():
+    for manifest_path in sorted(PACK_ROOT.glob("*/*/factor.json")):
+        data = json.loads(manifest_path.read_text(encoding="utf-8"))
+        assert data["runtime"]["mode"] == "in_process"
+        assert data["runtime"]["timeout_ms"] > 0
 
 
 def test_factor_pack_repository_loads_and_runs_specified_factor():

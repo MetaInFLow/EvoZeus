@@ -54,6 +54,19 @@ factor_packs/
 
 `factor.json` 声明 id、version、stage、runtime profile、entrypoint、输入输出和回滚方式。`factor.py` 只实现该 factor 的运行逻辑。删除一个 factor 时，删除对应 `<factor_id>/<version>/` 文件夹即可。
 
+## Factor Runtime
+
+Factor pack 通过 `factor.json` 的 `runtime.mode` 选择运行方式：
+
+| Mode | Use Case | Behavior |
+| --- | --- | --- |
+| `in_process` | 默认轻量规则因子 | 主进程 import 并执行 |
+| `subprocess_uv` | 需要隔离的 Python 因子 | 通过 subprocess 执行，stdin 接收 `SessionEnvelope`，stdout 返回 `FactorResult` |
+| `container` | 重依赖、高风险因子 | 预留 |
+| `remote` | 云端或社区托管因子 | 预留 |
+
+当前代码已支持 `in_process` 和 `subprocess_uv` 的执行路由、timeout、结果 schema 校验和依赖声明校验。完整设计见 `docs/design/active/factor-runtime-isolation.md`。
+
 当前默认示例：
 
 | Factor | Purpose |

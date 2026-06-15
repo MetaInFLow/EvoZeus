@@ -10,6 +10,7 @@ This repository follows the Engineering Everything document layout.
 | Need | Document |
 | --- | --- |
 | Product and protocol design | [design/active/design_doc-v0.1-agent-session-judgment-layer.md](design/active/design_doc-v0.1-agent-session-judgment-layer.md) |
+| Factor runtime isolation | [design/active/factor-runtime-isolation.md](design/active/factor-runtime-isolation.md) |
 | Architecture decision history | [decisions/](decisions/) |
 | Privacy and redaction rules | [governance/privacy-and-redaction.md](governance/privacy-and-redaction.md) |
 | Folder ownership | [governance/folder-declaration-v0.md](governance/folder-declaration-v0.md) |

@@ -28,6 +28,9 @@ class FactorPackRepository:
         return packs
 
     def load(self, factor_id: str, version: str | None = None) -> Factor:
+        return load_factor_from_pack(self.get(factor_id, version))
+
+    def get(self, factor_id: str, version: str | None = None) -> FactorPack:
         matches = [
             pack
             for pack in self.discover()
@@ -35,10 +38,10 @@ class FactorPackRepository:
         ]
         if not matches:
             raise KeyError(f"unknown factor pack: {factor_id}")
-        return _load_factor(matches[-1])
+        return matches[-1]
 
 
-def _load_factor(pack: FactorPack) -> Factor:
+def load_factor_from_pack(pack: FactorPack) -> Factor:
     module_name, class_name = _parse_entrypoint(pack.manifest.entrypoint)
     module_path = pack.root / f"{module_name}.py"
     spec = importlib.util.spec_from_file_location(
