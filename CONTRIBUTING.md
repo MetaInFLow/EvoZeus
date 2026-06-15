@@ -57,7 +57,7 @@ Detailed review rules live in:
 
 PRs should be small and reviewable.
 
-Each PR should have one primary purpose, one primary layer, and one review target. Use [PR Guidelines](docs/governance/pr-guidelines.md) for the full contract.
+Each PR should have one primary purpose, one primary layer, and one review target. Use [PR Guidelines](docs/governance/pr-guidelines.md) for the full contract. If an agent is helping with repository work, read [skills/evozeus-development/SKILL.md](skills/evozeus-development/SKILL.md) before editing.
 
 External contributors should keep at most 3 open Candidate PRs and at most 1 open code PR at the same time. If a coordinated change needs more, discuss the plan with maintainers before opening more PRs.
 
@@ -93,7 +93,7 @@ Use the closest PR template:
 - `candidate_submission.md` for Case / Candidate / Artifact contribution.
 - `code_change.md` for runtime, CLI, tooling, or behavior changes.
 - `schema_change.md` for ontology, schema, protocol, or compatibility changes.
-- `skill_instruction_change.md` for `SKILL.md` or agent instruction changes.
+- `skill_instruction_change.md` for `SKILL.md`, `skills/`, or agent instruction changes.
 
 If your PR adds markdown examples, check that links are relative and do not point to local private paths.
 

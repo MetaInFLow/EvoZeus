@@ -9,6 +9,8 @@ This repository follows the Engineering Everything document layout.
 
 | Need | Document |
 | --- | --- |
+| Scenario skill routing | [../skills/index/SKILL.md](../skills/index/SKILL.md) |
+| Repository development rules | [../skills/evozeus-development/SKILL.md](../skills/evozeus-development/SKILL.md) |
 | Product and protocol design | [design/active/design_doc-v0.1-agent-session-judgment-layer.md](design/active/design_doc-v0.1-agent-session-judgment-layer.md) |
 | Architecture decision history | [decisions/](decisions/) |
 | Privacy and redaction rules | [governance/privacy-and-redaction.md](governance/privacy-and-redaction.md) |
@@ -32,3 +34,4 @@ This repository follows the Engineering Everything document layout.
 - Governance docs live in `docs/governance/`.
 - Stable reference docs live in `docs/reference/`.
 - Runtime output must not be committed; local runtime state belongs under `.evozeus/`.
+- Scenario skills live under `../skills/`; changes to them are governance-risk instruction changes.

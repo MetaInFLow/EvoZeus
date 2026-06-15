@@ -21,6 +21,7 @@ BRANCH_PATTERN = re.compile(
     r"(runtime|factor|verdict-card|doctor|tui|companion|workspace|docs|governance|skill|infra|template)"
     r"-[a-z0-9]+(?:-[a-z0-9]+){0,6}$"
 )
+SKILL_NAME_PATTERN = re.compile(r"^[a-z0-9-]+$")
 
 REQUIRED_TEMPLATE_HEADINGS = [
     "## Summary",
@@ -89,6 +90,7 @@ LAYER_PATHS = {
         ".github/",
         "CONTRIBUTING.md",
         "SKILL.md",
+        "skills/",
         "docs/governance/",
         "scripts/check_pr_ready.py",
     ),
@@ -193,6 +195,49 @@ def check_template(path: Path, errors: list[str]) -> None:
                 )
 
 
+def check_skill_frontmatter(errors: list[str]) -> None:
+    paths = [ROOT / "SKILL.md"]
+    skills_dir = ROOT / "skills"
+    if skills_dir.exists():
+        paths.extend(sorted(skills_dir.glob("*/SKILL.md")))
+
+    for path in paths:
+        text = path.read_text(encoding="utf-8")
+        rel_path = path.relative_to(ROOT)
+        lines = text.splitlines()
+        if not lines or lines[0] != "---":
+            error(f"skill: {rel_path} missing YAML frontmatter", errors)
+            continue
+
+        try:
+            end = lines[1:].index("---") + 1
+        except ValueError:
+            error(f"skill: {rel_path} has unterminated YAML frontmatter", errors)
+            continue
+
+        frontmatter = "\n".join(lines[: end + 1])
+        if len(frontmatter) > 1024:
+            error(f"skill: {rel_path} frontmatter exceeds 1024 characters", errors)
+
+        fields: dict[str, str] = {}
+        for line in lines[1:end]:
+            key, separator, value = line.partition(":")
+            if separator:
+                fields[key.strip()] = value.strip().strip("\"'")
+
+        name = fields.get("name")
+        description = fields.get("description")
+        if not name:
+            error(f"skill: {rel_path} missing name", errors)
+        elif not SKILL_NAME_PATTERN.match(name):
+            error(f"skill: {rel_path} name must use lowercase letters, numbers, and hyphens", errors)
+
+        if not description:
+            error(f"skill: {rel_path} missing description", errors)
+        elif not description.startswith("Use when"):
+            error(f"skill: {rel_path} description must start with 'Use when'", errors)
+
+
 def check_pr_body(path: Path, errors: list[str]) -> None:
     if not path.exists():
         error(f"pr-body: missing file {path}", errors)
@@ -222,6 +267,7 @@ def main() -> int:
     check_diff_whitespace(errors)
     check_scope(args.base, args.allow_cross_layer, errors)
     check_template(PR_TEMPLATE, errors)
+    check_skill_frontmatter(errors)
     if args.pr_body:
         check_pr_body(args.pr_body, errors)
 

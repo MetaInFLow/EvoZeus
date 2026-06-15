@@ -30,6 +30,7 @@ Promotion requires:
 These require explicit maintainer review before merge or promotion:
 
 - `SKILL.md`
+- `skills/`
 - `.github/workflows/`
 - `.github/CODEOWNERS`
 - `SECURITY.md`
