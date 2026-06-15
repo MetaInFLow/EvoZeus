@@ -9,12 +9,15 @@ from evozeus.factors.protocol import FactorSpec
 
 
 class FactorManifest(FactorSpec):
+    schema_version: str = "factor.v0"
     version: str
     status: str
     description: str
+    entrypoint: str = ""
     permissions: list[str] = Field(default_factory=list)
     risks: list[str] = Field(default_factory=list)
     rollback: str
+    run: dict[str, str | int] = Field(default_factory=dict)
 
 
 def load_manifest(path: Path) -> FactorManifest:

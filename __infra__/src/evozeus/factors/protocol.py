@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from enum import StrEnum
+from uuid import uuid4
 
 from pydantic import BaseModel, Field
 
@@ -41,11 +42,16 @@ class FactorSpec(BaseModel):
 
 
 class FactorResult(BaseModel):
+    schema_version: str = "factor_result.v0"
+    run_id: str = Field(default_factory=lambda: f"frun_{uuid4().hex}")
     factor_id: str
+    factor_version: str = ""
     framework_id: str
     stage: FactorStage
     target_type: str
     target_id: str
+    session_id: str = ""
+    status: str = "matched"
     tags: list[dict[str, str]] = Field(default_factory=list)
     scores: dict[str, float] = Field(default_factory=dict)
     evidence_refs: list[dict[str, str]] = Field(default_factory=list)

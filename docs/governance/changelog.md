@@ -3,6 +3,7 @@
 ## 2026-06-16
 
 - Moved Python business logic into `__infra__/` as the Skill as Software infra layer.
+- Added runtime plugin framework contracts for scanner adapters, factor abstract classes, serial factor runner, runtime asset paths, and file persistence.
 
 ## 2026-06-15
 

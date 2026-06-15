@@ -23,5 +23,6 @@ def test_default_factors_extract_rework_negative_and_tool_failure_tags():
     assert {"type": "negative_feedback", "value": "correction"} in tags
     assert {"type": "rework", "value": "same_target_rework"} in tags
     assert {"type": "tool_failure", "value": "exec_command"} in tags
+    assert {result.session_id for result in results} == {"s1"}
     assert "Promote to Skill" in verdict_signals
     assert "Fix Environment" in verdict_signals
