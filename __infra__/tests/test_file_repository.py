@@ -1,4 +1,3 @@
-import json
 from pathlib import Path
 
 from evozeus.core.session import SessionEnvelope
@@ -33,8 +32,8 @@ def test_file_repository_persists_session_and_factor_results(tmp_path: Path):
     repository.append_factor_results("ezs_001", [result])
 
     session_dir = paths.session_dir("ezs_001")
-    assert json.loads((session_dir / "session-envelope.json").read_text(encoding="utf-8"))["session_id"] == "ezs_001"
-    assert json.loads((session_dir / "events.jsonl").read_text(encoding="utf-8").splitlines()[0])["event_id"] == "u1"
-    assert json.loads((session_dir / "factor-results.jsonl").read_text(encoding="utf-8").splitlines()[0])[
-        "factor_id"
-    ] == "default.test"
+    report = (session_dir / "factor-results.md").read_text(encoding="utf-8")
+    assert "## Factor Results" in report
+    assert "default.test" in report
+    assert "Preserve" in report
+    assert not (session_dir / "factor-results.jsonl").exists()

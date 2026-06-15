@@ -23,6 +23,31 @@ class FileSessionRepository:
     def append_factor_results(self, session_id: str, results: list[FactorResult]) -> None:
         session_dir = self.paths.session_dir(session_id)
         session_dir.mkdir(parents=True, exist_ok=True)
-        with (session_dir / "factor-results.jsonl").open("a", encoding="utf-8") as handle:
-            for result in results:
-                handle.write(result.model_dump_json() + "\n")
+        path = session_dir / "factor-results.md"
+        existing = path.read_text(encoding="utf-8") if path.exists() else "## Factor Results\n\n"
+        sections = [_render_factor_result(result) for result in results]
+        path.write_text(existing + "".join(sections), encoding="utf-8")
+
+
+def _render_factor_result(result: FactorResult) -> str:
+    tags = ", ".join(f"{tag.get('type')}={tag.get('value')}" for tag in result.tags) or "None"
+    evidence_refs = ", ".join(
+        f"{ref.get('ref_id') or ref.get('event_id')}({ref.get('kind') or ref.get('source')})"
+        for ref in result.evidence_refs
+    ) or "None"
+    verdict_signals = ", ".join(result.verdict_signals) or "None"
+    return "\n".join(
+        [
+            f"## {result.factor_id}",
+            "",
+            f"- factor_version: {result.factor_version or 'unknown'}",
+            f"- run_id: {result.run_id}",
+            f"- stage: {result.stage}",
+            f"- status: {result.status}",
+            f"- confidence: {result.confidence}",
+            f"- verdict_signals: {verdict_signals}",
+            f"- tags: {tags}",
+            f"- evidence_refs: {evidence_refs}",
+            "",
+        ]
+    )

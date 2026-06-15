@@ -32,7 +32,7 @@
   sessions/<session_id>/
     session-envelope.json
     events.jsonl
-    factor-results.jsonl
+    factor-results.md
 ```
 
 主代码只负责框架、协议、runner 和 storage。下载资产由 manifest 描述，由 registry 选择，由 runner 执行。

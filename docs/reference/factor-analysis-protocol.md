@@ -85,3 +85,11 @@ Python contracts 位于：
 - `__infra__/src/evozeus/factors/base.py`
 - `__infra__/src/evozeus/factors/registry.py`
 - `__infra__/src/evozeus/factors/runner.py`
+
+P0 落盘结果使用 Markdown report：
+
+```text
+.evozeus/sessions/<session_id>/factor-results.md
+```
+
+`FactorResult` 仍是内存中的结构化 contract，用户默认看到 Markdown。
