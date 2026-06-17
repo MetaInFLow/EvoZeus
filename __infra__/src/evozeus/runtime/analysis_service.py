@@ -85,6 +85,7 @@ def analyze_session(
     html_path = paths.session_dir(session.session_id) / "factor-results.html"
     if write_artifacts:
         session_statuses = store.list_session_statuses(factor_ids=selected_factor_ids)
+        session_events = store.list_session_events()
         repository.write_session(session)
         repository.append_factor_results(session.session_id, summary.results)
         html_path = repository.write_factor_results_html(
@@ -93,6 +94,7 @@ def analyze_session(
             packs,
             selected_factor_ids=factor_ids,
             session_statuses=session_statuses,
+            session_events=session_events,
         )
     return AnalyzeSummary(
         session_id=session.session_id,

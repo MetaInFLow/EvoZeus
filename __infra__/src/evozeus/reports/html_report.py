@@ -17,6 +17,7 @@ def render_factor_results_html(
     factor_packs: list[FactorPack],
     selected_factor_ids: Iterable[str] | None = None,
     session_statuses: Iterable[Any] | None = None,
+    session_events: Iterable[Any] | None = None,
 ) -> str:
     selected_ids = set(selected_factor_ids) if selected_factor_ids is not None else None
     pack_by_id = {pack.manifest.id: pack for pack in factor_packs}
@@ -26,7 +27,7 @@ def render_factor_results_html(
         if selected_ids is None or result.factor_id in selected_ids
     ]
     visualizations = build_result_visualizations(selected_results)
-    payload = _report_payload(session_id, selected_results, visualizations, pack_by_id, session_statuses)
+    payload = _report_payload(session_id, selected_results, visualizations, pack_by_id, session_statuses, session_events)
     return "\n".join(
         [
             "<!doctype html>",
@@ -67,6 +68,7 @@ def _report_payload(
     visualizations: list[ResultVisualization],
     pack_by_id: dict[str, FactorPack],
     session_statuses: Iterable[Any] | None,
+    session_events: Iterable[Any] | None,
 ) -> dict[str, Any]:
     result_items = [_result_payload(result, pack_by_id.get(result.factor_id)) for result in results]
     summary = _summary_payload(results)
@@ -77,6 +79,7 @@ def _report_payload(
             "result_count": len(results),
         },
         "sessions": _session_payloads(session_id, summary, session_statuses),
+        "session_events": _session_event_payloads(session_events),
         "summary": summary,
         "visualizations": [_visualization_payload(visualization) for visualization in visualizations],
         "results": result_items,
@@ -137,6 +140,38 @@ def _session_payloads(
                 "last_assistant_preview": str(getattr(status, "last_assistant_preview", "")),
                 "last_assistant_source_ref": str(getattr(status, "last_assistant_source_ref", "")),
                 "last_assistant_source_line": int(getattr(status, "last_assistant_source_line", 0)),
+            }
+        )
+    return rows
+
+
+def _session_event_payloads(session_events: Iterable[Any] | None) -> list[dict[str, Any]]:
+    if session_events is None:
+        return []
+    rows = []
+    for event in session_events:
+        rows.append(
+            {
+                "key": f"{getattr(event, 'session_id', '')}:{getattr(event, 'event_id', '')}",
+                "session_id": str(getattr(event, "session_id", "")),
+                "event_id": str(getattr(event, "event_id", "")),
+                "event_index": int(getattr(event, "event_index", 0)),
+                "role": str(getattr(event, "role", "")),
+                "content": str(getattr(event, "content", "")),
+                "tool_name": str(getattr(event, "tool_name", "")),
+                "tool_result_preview": str(getattr(event, "tool_result_preview", "")),
+                "source_ref": str(getattr(event, "source_ref", "")),
+                "source_line": int(getattr(event, "source_line", 0)),
+                "tags": [
+                    {
+                        "factor_id": str(getattr(tag, "factor_id", "")),
+                        "type": str(getattr(tag, "tag_type", "")),
+                        "value": str(getattr(tag, "tag_value", "")),
+                        "reason": str(getattr(tag, "reason", "")),
+                        "result_run_id": str(getattr(tag, "result_run_id", "")),
+                    }
+                    for tag in getattr(event, "tags", [])
+                ],
             }
         )
     return rows
@@ -270,7 +305,7 @@ def _dashboard_script() -> str:
     return r"""
     (() => {
       const h = React.createElement;
-      const { App, Badge, Card, Col, Drawer, Progress, Row, Space, Statistic, Table, Tabs, Tag, Typography } = antd;
+      const { App, Badge, Button, Card, Col, Drawer, Empty, Progress, Row, Space, Statistic, Table, Tabs, Tag, Tooltip, Typography } = antd;
       const { Text, Title } = Typography;
       const data = window.__EVOZEUS_REPORT__;
 
@@ -407,47 +442,95 @@ def _dashboard_script() -> str:
         );
       }
 
-      function SessionDetail({ row, onOpen }) {
-        return h("div", { className: "session-detail" },
-          h(Row, { gutter: [16, 12] },
-            h(Col, { xs: 24, md: 12 },
-              h("div", { className: "session-detail-block" },
-                h(Text, { strong: true }, "First user message"),
-                h("p", null, row.first_user_preview || "No user preview"),
-                h(SourceLine, {
-                  label: "Source locator",
-                  sourceRef: row.first_user_source_ref || row.source_ref,
-                  sourceLine: row.first_user_source_line
-                })
-              )
-            ),
-            h(Col, { xs: 24, md: 12 },
-              h("div", { className: "session-detail-block" },
-                h(Text, { strong: true }, "Last assistant message"),
-                h("p", null, row.last_assistant_preview || "No assistant preview"),
-                h(SourceLine, {
-                  label: "Source locator",
-                  sourceRef: row.last_assistant_source_ref || row.source_ref,
-                  sourceLine: row.last_assistant_source_line
-                })
-              )
+      function eventsForSession(sessionId) {
+        return (data.session_events || []).filter((event) => event.session_id === sessionId);
+      }
+
+      function EventTagStrip({ tags }) {
+        return h("div", { className: "event-tag-strip", "data-component": "event_tag_strip" },
+          tags.length ? tags.map((tag) =>
+            h(Tooltip, { key: `${tag.factor_id}:${tag.type}:${tag.value}`, title: tag.reason || "" },
+              h(Tag, { color: "blue" }, `${tag.type}:${tag.value}`)
             )
-          ),
-          row.is_current ? h(ResultTable, { onOpen }) : h("div", { className: "session-empty-results" },
-            h(Text, { type: "secondary" }, row.pending_factor_count
-              ? `${row.pending_factor_count} pending factor runs. Analyze this session to see factor result details.`
-              : "No factor result details are bundled in this report.")
-          )
+          ) : h(Text, { type: "secondary" }, "")
         );
       }
 
-      function SessionsTab({ onOpen }) {
+      function ChatEvent({ event, onOpen }) {
+        const isAssistant = event.role === "assistant";
+        const isUser = event.role === "user";
+        const roleColor = isUser ? "blue" : isAssistant ? "green" : "default";
+        const body = event.content || event.tool_result_preview || "";
+        return h("button", {
+          type: "button",
+          className: `chat-event role-${event.role}`,
+          onClick: () => onOpen(event)
+        },
+          h("div", { className: "chat-event-main" },
+            h("div", { className: "chat-event-meta" },
+              h(Tag, { color: roleColor }, event.role || "event"),
+              event.tool_name ? h(Text, { type: "secondary" }, event.tool_name) : null,
+              h(Text, { type: "secondary" }, `#${event.event_index}`)
+            ),
+            h("div", { className: "chat-event-content" }, body || "Empty event")
+          ),
+          h(EventTagStrip, { tags: event.tags || [] })
+        );
+      }
+
+      function EventDetail({ event }) {
+        if (!event) return null;
+        const tags = event.tags || [];
+        return h("section", { className: "event-detail" },
+          h("div", { className: "result-section" }, h(Text, { strong: true }, "Event"), h(Tags, { items: [event.event_id, event.role, event.tool_name].filter(Boolean) })),
+          h("div", { className: "result-section" }, h(Text, { strong: true }, "Content"), h("p", null, event.content || event.tool_result_preview || "")),
+          event.tool_result_preview ? h("div", { className: "result-section" }, h(Text, { strong: true }, "Tool Result"), h("p", null, event.tool_result_preview)) : null,
+          h("div", { className: "result-section" }, h(Text, { strong: true }, "Tags"), h(Tags, { items: tags.map((tag) => `${tag.factor_id} · ${tag.type}:${tag.value}`) })),
+          h(SourceLine, { label: "Source locator", sourceRef: event.source_ref, sourceLine: event.source_line })
+        );
+      }
+
+      function SessionConversation({ session, onBack }) {
+        const [drawerEvent, setDrawerEvent] = React.useState(null);
+        const events = eventsForSession(session.session_id);
+        return h("section", { className: "session-conversation", "data-component": "session_conversation" },
+          h("div", { className: "conversation-header" },
+            h(Button, { onClick: onBack }, "Sessions"),
+            h("div", null,
+              h(Title, { level: 3 }, session.session_id),
+              h(Space, { size: 6, wrap: true },
+                h(Tag, null, session.provider),
+                h(Tag, null, `${session.event_count || events.length} events`),
+                h(Tag, { color: session.pending_factor_count ? "gold" : "green" }, `${session.pending_factor_count} pending`)
+              )
+            )
+          ),
+          events.length
+            ? h("div", { className: "chat-timeline" }, events.map((event) => h(ChatEvent, { key: event.key, event, onOpen: setDrawerEvent })))
+            : h(Empty, { description: "No events" }),
+          h(Drawer, {
+            title: drawerEvent ? `${drawerEvent.role} · ${drawerEvent.event_id}` : "Event",
+            width: 560,
+            open: Boolean(drawerEvent),
+            onClose: () => setDrawerEvent(null)
+          }, h(EventDetail, { event: drawerEvent }))
+        );
+      }
+
+      function SessionsTab() {
+        const [selectedSessionId, setSelectedSessionId] = React.useState(null);
+        const selectedSession = selectedSessionId
+          ? data.sessions.find((session) => session.session_id === selectedSessionId)
+          : null;
+        if (selectedSession) {
+          return h(SessionConversation, { session: selectedSession, onBack: () => setSelectedSessionId(null) });
+        }
         const columns = [
           {
             title: "Session",
             dataIndex: "session_id",
             render: (value, row) => h("div", { className: "session-cell" },
-              h(Text, { strong: true }, value),
+              h(Button, { type: "link", className: "session-link", onClick: () => setSelectedSessionId(row.session_id) }, value),
               h(Space, { size: 6, className: "session-meta" },
                 h(Tag, null, row.provider),
                 row.event_count ? h(Text, { type: "secondary" }, `${row.event_count} events`) : null
@@ -482,11 +565,7 @@ def _dashboard_script() -> str:
             columns,
             dataSource: data.sessions,
             pagination: false,
-            size: "small",
-            expandable: {
-              expandedRowRender: (row) => h(SessionDetail, { row, onOpen }),
-              rowExpandable: () => true
-            }
+            size: "small"
           })
         );
       }
@@ -546,7 +625,7 @@ def _dashboard_script() -> str:
             ),
             h(Tabs, {
               items: [
-                { key: "sessions", label: "Sessions", children: h(SessionsTab, { onOpen: setDrawerResult }) },
+                { key: "sessions", label: "Sessions", children: h(SessionsTab) },
                 { key: "dashboards", label: "Dashboards", children: h(DashboardsTab, { onOpen: setDrawerResult }) },
                 { key: "factor_packs", label: "Factor Packs", children: h(FactorPacksTab) }
               ]
@@ -591,19 +670,34 @@ def _style() -> str:
     .pack-detail { color: #5f6b7a; line-height: 1.55; max-width: 820px; }
     .result-section { border-top: 1px solid #f0f0f0; padding-top: 10px; margin-top: 10px; display: grid; gap: 7px; }
     .session-cell { display: grid; gap: 5px; max-width: 560px; }
+    .session-link { height: auto; padding: 0; font-weight: 600; justify-self: start; }
     .session-meta { margin-top: 1px; }
     .session-preview { line-height: 1.45; overflow-wrap: anywhere; }
     .session-preview.assistant { color: #5f6b7a; }
-    .session-detail { display: grid; gap: 14px; padding: 4px 0 8px; }
-    .session-detail-block { min-height: 112px; border: 1px solid #edf0f5; background: #fafcff; border-radius: 8px; padding: 12px; }
-    .session-detail-block p { margin: 8px 0 10px; line-height: 1.55; overflow-wrap: anywhere; }
     .source-line { overflow-wrap: anywhere; }
-    .session-empty-results { border-top: 1px solid #f0f0f0; padding-top: 12px; }
+    .session-conversation { display: grid; gap: 14px; }
+    .conversation-header { display: flex; gap: 14px; align-items: flex-start; border-bottom: 1px solid #edf0f5; padding-bottom: 14px; }
+    .conversation-header h3 { margin: 0 0 8px; }
+    .chat-timeline { display: grid; gap: 10px; }
+    .chat-event { width: 100%; display: grid; grid-template-columns: minmax(0, 1fr) minmax(180px, 260px); gap: 16px; align-items: start; text-align: left; background: #fff; border: 1px solid #edf0f5; border-radius: 8px; padding: 12px 14px; cursor: pointer; font: inherit; color: inherit; }
+    .chat-event:hover { border-color: #91caff; background: #fbfdff; }
+    .chat-event.role-user { border-left: 3px solid #1677ff; }
+    .chat-event.role-assistant { border-left: 3px solid #52c41a; }
+    .chat-event.role-tool { border-left: 3px solid #8c8c8c; }
+    .chat-event-main { min-width: 0; display: grid; gap: 8px; }
+    .chat-event-meta { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+    .chat-event-content { line-height: 1.58; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .event-tag-strip { display: flex; justify-content: flex-end; align-items: flex-start; flex-wrap: wrap; gap: 6px; min-height: 24px; }
+    .event-tag-strip .ant-tag { margin-inline-end: 0; }
+    .event-detail { display: grid; gap: 8px; }
     .fallback { display: block; }
     @media (max-width: 760px) {
       .dashboard-shell { padding: 22px 14px 36px; }
       .dashboard-header { align-items: flex-start; flex-direction: column; }
       .dashboard-header h1 { font-size: 24px; overflow-wrap: anywhere; }
       .result-grid { grid-template-columns: 1fr; }
+      .conversation-header { flex-direction: column; }
+      .chat-event { grid-template-columns: 1fr; }
+      .event-tag-strip { justify-content: flex-start; }
     }
     """.strip()

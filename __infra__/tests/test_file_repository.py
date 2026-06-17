@@ -91,7 +91,7 @@ def test_file_repository_writes_html_report_for_selected_factor_results(tmp_path
     assert "cdn.jsdelivr.net/npm/antd@5/dist/antd.min.js" in html
     assert 'id="evozeus-dashboard-root"' in html
     assert "window.__EVOZEUS_REPORT__" in html
-    assert "const { App, Badge, Card, Col, Drawer, Progress, Row, Space, Statistic, Table, Tabs, Tag, Typography } = antd;" in html
+    assert "const { App, Badge, Button, Card, Col, Drawer, Empty, Progress, Row, Space, Statistic, Table, Tabs, Tag, Tooltip, Typography } = antd;" in html
     assert 'data-workspace-tab="sessions"' in html
     assert 'data-workspace-tab="dashboards"' in html
     assert 'data-workspace-tab="factor_packs"' in html
@@ -99,7 +99,8 @@ def test_file_repository_writes_html_report_for_selected_factor_results(tmp_path
     assert "Dashboards" in html
     assert "Factor Packs" in html
     assert 'data-component="workspace_coverage"' in html
-    assert "expandable" in html
+    assert "session_conversation" in html
+    assert "event_tag_strip" in html
     assert "setDrawerResult" in html
     assert 'data-component="word_cloud"' in html
     assert 'data-result-card="factor_result"' in html

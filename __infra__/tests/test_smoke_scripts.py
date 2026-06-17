@@ -101,6 +101,11 @@ def test_run_session_report_script_writes_html_for_selected_factors(tmp_path: Pa
     assert "这个 factor 结果不对，没改到默认输出" in html
     assert "我会运行指定 factor。" in html
     assert "first_user_source_line" in html
+    assert '"session_events"' in html
+    assert 'data-component": "session_conversation"' in html
+    assert "event_tag_strip" in html
+    assert "fatal: network timeout" in html
+    assert "tool_failure" in html
     assert "pending_factor_count" in html
     assert "default.tool_failure" in html
     assert "default.open_loop" in html

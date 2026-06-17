@@ -174,6 +174,80 @@ def test_sqlite_result_store_records_loaded_session_preview_and_source_locator(t
     assert status.last_assistant_source_line == 2
 
 
+def test_sqlite_result_store_lists_full_session_events_with_factor_tags(tmp_path: Path):
+    paths = RuntimePaths.for_workspace(tmp_path).ensure()
+    store = SQLiteResultStore(paths)
+    session = SessionEnvelope(
+        session_id="session-alpha",
+        provider="codex",
+        source_ref="session-alpha.jsonl",
+        events=[
+            SessionEvent(
+                event_id="u1",
+                role="user",
+                content="请修复 runtime scanner",
+                metadata={
+                    "content_preview_redacted": "请修复 runtime scanner",
+                    "event_locator_json": {
+                        "payload": {
+                            "source_path": "session-alpha.jsonl",
+                            "line_start": 1,
+                        }
+                    },
+                },
+            ),
+            SessionEvent(
+                event_id="t1",
+                role="tool",
+                content="fatal: network timeout",
+                tool_name="exec_command",
+                tool_result={"stderr": "fatal: network timeout"},
+                metadata={
+                    "content_preview_redacted": "fatal: network timeout",
+                    "tool_result_preview_redacted": '{"stderr": "fatal: network timeout"}',
+                    "event_locator_json": {
+                        "payload": {
+                            "source_path": "session-alpha.jsonl",
+                            "line_start": 2,
+                        }
+                    },
+                },
+            ),
+        ],
+    )
+    result = FactorResult(
+        factor_id="default.tool_failure",
+        factor_version="0.1.0",
+        framework_id="agent_session_review.v0",
+        stage=FactorStage.SIGNAL_EXTRACTION,
+        target_type="session",
+        target_id=session.session_id,
+        session_id=session.session_id,
+        status="matched",
+        tags=[{"type": "tool_failure", "value": "exec_command"}],
+        scores={"tool_failure": 1.0},
+        evidence_refs=[{"ref_id": "t1", "kind": "tool_event"}],
+        verdict_signals=[Verdict.FIX_ENVIRONMENT.value],
+        confidence=0.82,
+    )
+
+    store.record_factor_run(session, [result], factor_ids=["default.tool_failure"])
+
+    events = store.list_session_events(session_id="session-alpha")
+    assert [event.event_id for event in events] == ["u1", "t1"]
+    assert events[0].content == "请修复 runtime scanner"
+    assert events[0].source_ref == "session-alpha.jsonl"
+    assert events[0].source_line == 1
+    assert events[0].tags == []
+    assert events[1].role == "tool"
+    assert events[1].tool_name == "exec_command"
+    assert events[1].tool_result_preview == '{"stderr": "fatal: network timeout"}'
+    assert events[1].source_line == 2
+    assert [(tag.factor_id, tag.tag_type, tag.tag_value, tag.reason) for tag in events[1].tags] == [
+        ("default.tool_failure", "tool_failure", "exec_command", "")
+    ]
+
+
 def test_sqlite_result_store_marks_discovered_sessions_pending_until_factor_run(tmp_path: Path):
     paths = RuntimePaths.for_workspace(tmp_path).ensure()
     store = SQLiteResultStore(paths)

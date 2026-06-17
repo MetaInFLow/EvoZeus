@@ -54,6 +54,31 @@ class EventFactorTag:
 
 
 @dataclass(frozen=True)
+class SessionEventTag:
+    factor_id: str
+    tag_type: str
+    tag_value: str
+    reason: str
+    result_run_id: str
+    analysis_run_id: str
+    last_run_at: str
+
+
+@dataclass(frozen=True)
+class SessionEventRecord:
+    session_id: str
+    event_id: str
+    event_index: int
+    role: str
+    content: str
+    tool_name: str
+    tool_result_preview: str
+    source_ref: str
+    source_line: int
+    tags: list[SessionEventTag]
+
+
+@dataclass(frozen=True)
 class InstalledFactor:
     factor_id: str
     version: str
@@ -482,6 +507,83 @@ class SQLiteResultStore:
             )
             for row in rows
         ]
+
+    def list_session_events(self, *, session_id: str | None = None) -> list[SessionEventRecord]:
+        event_sql = """
+            SELECT
+                session_id,
+                event_id,
+                event_index,
+                role,
+                tool_name,
+                source_ref,
+                event_locator_json,
+                content_preview_redacted,
+                tool_result_preview_redacted
+            FROM session_events
+        """
+        event_params: list[str] = []
+        if session_id is not None:
+            event_sql += " WHERE session_id = ?"
+            event_params.append(session_id)
+        event_sql += " ORDER BY session_id, event_index"
+
+        tag_sql = """
+            SELECT
+                session_id,
+                event_id,
+                factor_id,
+                tag_type,
+                tag_value,
+                result_run_id,
+                analysis_run_id,
+                last_run_at
+            FROM event_factor_tags
+        """
+        tag_params: list[str] = []
+        if session_id is not None:
+            tag_sql += " WHERE session_id = ?"
+            tag_params.append(session_id)
+        tag_sql += " ORDER BY session_id, event_id, factor_id, tag_type, tag_value"
+
+        with self._connect() as conn:
+            event_rows = conn.execute(event_sql, event_params).fetchall()
+            tag_rows = conn.execute(tag_sql, tag_params).fetchall()
+
+        tags_by_event: dict[tuple[str, str], list[SessionEventTag]] = {}
+        for row in tag_rows:
+            key = (str(row["session_id"]), str(row["event_id"]))
+            tags_by_event.setdefault(key, []).append(
+                SessionEventTag(
+                    factor_id=str(row["factor_id"]),
+                    tag_type=str(row["tag_type"]),
+                    tag_value=str(row["tag_value"]),
+                    reason="",
+                    result_run_id=str(row["result_run_id"]),
+                    analysis_run_id=str(row["analysis_run_id"]),
+                    last_run_at=str(row["last_run_at"]),
+                )
+            )
+
+        records: list[SessionEventRecord] = []
+        for row in event_rows:
+            source_ref, source_line = _source_locator(row)
+            event_key = (str(row["session_id"]), str(row["event_id"]))
+            records.append(
+                SessionEventRecord(
+                    session_id=event_key[0],
+                    event_id=event_key[1],
+                    event_index=int(row["event_index"]),
+                    role=str(row["role"]),
+                    content=str(row["content_preview_redacted"]),
+                    tool_name=str(row["tool_name"] or ""),
+                    tool_result_preview=str(row["tool_result_preview_redacted"] or ""),
+                    source_ref=source_ref,
+                    source_line=source_line,
+                    tags=tags_by_event.get(event_key, []),
+                )
+            )
+        return records
 
     def get_session_ref(self, session_id: str) -> SessionRef:
         with self._connect() as conn:
