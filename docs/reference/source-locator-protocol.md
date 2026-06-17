@@ -13,6 +13,23 @@ Source Locator Protocol 定义 SQLite 如何记录“到原始数据的路标”
 4. resolver 跟随 scanner pack 安装。
 5. Agent 定位原文时必须读取对应 scanner pack 的 `SKILL.md`。
 
+## 归属决策
+
+Source Locator Protocol 只定义“账本如何指向原始数据”。它不定义任何 provider 私有解析规则。
+
+| Data | Stored In SQLite | Defined By |
+| --- | --- | --- |
+| `scanner_id` / `scanner_version` | yes | scanner pack manifest |
+| `source_ref` | yes | scanner pack |
+| `source_fingerprint` | yes | scanner pack hashing policy |
+| `event_locator_json` envelope | yes | core protocol |
+| `event_locator_json.payload` | yes | scanner pack locator schema |
+| `artifact_locator_json` envelope | yes | core protocol |
+| raw event content | no | source file or normalized artifact |
+| resolve command and failure handling | no | scanner pack `SKILL.md` and scripts |
+
+当 Agent 需要从某条 factor tag 回到原文时，它应先从 SQLite 读取 locator summary，再根据 `scanner_id` / `scanner_version` 找到对应 scanner pack。具体读取脚本和异常处理以该 pack 的 `SKILL.md` 为准。
+
 ## 查询链路
 
 ```text

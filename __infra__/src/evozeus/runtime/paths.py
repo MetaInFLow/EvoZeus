@@ -25,6 +25,10 @@ class RuntimePaths:
         return self.state_root / "sessions"
 
     @property
+    def logs_dir(self) -> Path:
+        return self.state_root / "logs"
+
+    @property
     def factors_runtime_dir(self) -> Path:
         return self.runtime_root / "factors"
 
@@ -45,6 +49,10 @@ class RuntimePaths:
         return self.runtime_root / "index"
 
     @property
+    def companion_runtime_dir(self) -> Path:
+        return self.runtime_root / "companion"
+
+    @property
     def result_index_db(self) -> Path:
         return self.runtime_index_dir / "results.sqlite3"
 
@@ -62,7 +70,9 @@ class RuntimePaths:
             self.installed_factors_dir,
             self.installed_scanners_dir,
             self.runtime_index_dir,
+            self.companion_runtime_dir,
             self.sessions_root,
+            self.logs_dir,
         ):
             path.mkdir(parents=True, exist_ok=True)
         return self

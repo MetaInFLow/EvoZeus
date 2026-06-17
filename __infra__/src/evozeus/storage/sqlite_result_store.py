@@ -5,6 +5,7 @@ import sqlite3
 from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
@@ -28,6 +29,7 @@ class SessionAnalysisStatus:
     last_analyzed_at: str
     analyzed_factor_count: int
     pending_factor_count: int
+    stale_reason: str = ""
 
 
 @dataclass(frozen=True)
@@ -45,6 +47,31 @@ class EventFactorTag:
     last_run_at: str
 
 
+@dataclass(frozen=True)
+class InstalledFactor:
+    factor_id: str
+    version: str
+    source: str
+    installed_at: str
+    enabled: bool
+    runtime_mode: str
+    status: str
+    supported_providers: list[str]
+    supported_target_types: list[str]
+
+
+@dataclass(frozen=True)
+class FactorResultRoute:
+    factor_id: str
+    result_type: str
+    route_area: str
+    route_key: str
+    component: str
+    title: str
+    priority: int
+    enabled: bool
+
+
 class SQLiteResultStore:
     def __init__(self, paths: RuntimePaths):
         self.paths = paths
@@ -56,6 +83,29 @@ class SQLiteResultStore:
         now = _utc_now()
         with self._connect() as conn:
             for ref in refs:
+                metadata = ref.metadata or {}
+                conn.execute(
+                    """
+                    INSERT INTO source_refs (
+                        provider, source_ref, source_size, source_mtime,
+                        source_fingerprint, last_seen_at
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(provider, source_ref) DO UPDATE SET
+                        source_size = excluded.source_size,
+                        source_mtime = excluded.source_mtime,
+                        source_fingerprint = excluded.source_fingerprint,
+                        last_seen_at = excluded.last_seen_at
+                    """,
+                    (
+                        ref.provider,
+                        str(ref.source_path),
+                        _int(metadata.get("source_size"), default=0),
+                        str(metadata.get("source_mtime") or ""),
+                        str(metadata.get("source_fingerprint") or ""),
+                        now,
+                    ),
+                )
                 conn.execute(
                     """
                     DELETE FROM sessions
@@ -78,6 +128,163 @@ class SQLiteResultStore:
                     """,
                     (ref.session_id, ref.provider, str(ref.source_path), now, now, now),
                 )
+
+    def record_installed_factors(self, packs: Iterable[Any], *, source: str) -> None:
+        now = _utc_now()
+        with self._connect() as conn:
+            for pack in packs:
+                manifest = pack.manifest
+                factor_id = str(manifest.id)
+                version = str(manifest.version)
+                runtime_mode = str(manifest.runtime.mode)
+                if "." in runtime_mode:
+                    runtime_mode = runtime_mode.rsplit(".", 1)[-1]
+                runtime_mode = getattr(manifest.runtime.mode, "value", runtime_mode)
+                conn.execute(
+                    """
+                    INSERT INTO installed_factors (
+                        factor_id, version, source, installed_at, enabled,
+                        runtime_mode, manifest_path, factor_xml_path, status, status_message
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, '')
+                    ON CONFLICT(factor_id, version) DO UPDATE SET
+                        source = excluded.source,
+                        enabled = excluded.enabled,
+                        runtime_mode = excluded.runtime_mode,
+                        manifest_path = excluded.manifest_path,
+                        factor_xml_path = excluded.factor_xml_path,
+                        status = excluded.status,
+                        status_message = excluded.status_message
+                    """,
+                    (
+                        factor_id,
+                        version,
+                        source,
+                        now,
+                        1,
+                        str(runtime_mode),
+                        str(pack.root / "factor.json"),
+                        str(pack.root / "FACTOR.xml"),
+                        "available",
+                    ),
+                )
+                conn.execute(
+                    """
+                    INSERT OR REPLACE INTO factor_capabilities (
+                        factor_id, version, provider, target_type, supported, reason
+                    )
+                    VALUES (?, ?, 'codex', 'session', 1, '')
+                    """,
+                    (factor_id, version),
+                )
+
+    def list_installed_factors(self) -> list[InstalledFactor]:
+        with self._connect() as conn:
+            factor_rows = conn.execute(
+                """
+                SELECT factor_id, version, source, installed_at, enabled, runtime_mode, status
+                FROM installed_factors
+                ORDER BY factor_id, version
+                """
+            ).fetchall()
+            capability_rows = conn.execute(
+                """
+                SELECT factor_id, version, provider, target_type
+                FROM factor_capabilities
+                WHERE supported = 1
+                ORDER BY factor_id, version, provider, target_type
+                """
+            ).fetchall()
+
+        providers_by_factor: dict[tuple[str, str], list[str]] = {}
+        targets_by_factor: dict[tuple[str, str], list[str]] = {}
+        for row in capability_rows:
+            key = (str(row["factor_id"]), str(row["version"]))
+            providers_by_factor.setdefault(key, [])
+            targets_by_factor.setdefault(key, [])
+            provider = str(row["provider"])
+            target_type = str(row["target_type"])
+            if provider not in providers_by_factor[key]:
+                providers_by_factor[key].append(provider)
+            if target_type not in targets_by_factor[key]:
+                targets_by_factor[key].append(target_type)
+
+        factors: list[InstalledFactor] = []
+        for row in factor_rows:
+            key = (str(row["factor_id"]), str(row["version"]))
+            factors.append(
+                InstalledFactor(
+                    factor_id=key[0],
+                    version=key[1],
+                    source=str(row["source"]),
+                    installed_at=str(row["installed_at"]),
+                    enabled=bool(row["enabled"]),
+                    runtime_mode=str(row["runtime_mode"]),
+                    status=str(row["status"]),
+                    supported_providers=providers_by_factor.get(key, []),
+                    supported_target_types=targets_by_factor.get(key, []),
+                )
+            )
+        return factors
+
+    def record_default_routes(self, packs: Iterable[Any]) -> None:
+        with self._connect() as conn:
+            for pack in packs:
+                factor_id = str(pack.manifest.id)
+                title = str(pack.introduction.name)
+                routes = [
+                    ("factor_result", "drawer", "factor_result", "factor_result_detail", title, 100),
+                    ("factor_tags", "sessions_table", "factor_tags", "factor_tag_column", title, 100),
+                    (
+                        "factor_dashboard",
+                        "dashboard",
+                        _dashboard_route_key(factor_id),
+                        _dashboard_component(factor_id),
+                        title,
+                        _dashboard_priority(factor_id),
+                    ),
+                ]
+                for result_type, route_area, route_key, component, route_title, priority in routes:
+                    conn.execute(
+                        """
+                        INSERT INTO factor_result_routes (
+                            factor_id, result_type, route_area, route_key,
+                            component, title, priority, enabled
+                        )
+                        VALUES (?, ?, ?, ?, ?, ?, ?, 1)
+                        ON CONFLICT(factor_id, route_area, route_key) DO UPDATE SET
+                            result_type = excluded.result_type,
+                            component = excluded.component,
+                            title = excluded.title,
+                            priority = excluded.priority,
+                            enabled = excluded.enabled
+                        """,
+                        (factor_id, result_type, route_area, route_key, component, route_title, priority),
+                    )
+
+    def list_factor_result_routes(self) -> list[FactorResultRoute]:
+        with self._connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT factor_id, result_type, route_area, route_key, component, title, priority, enabled
+                FROM factor_result_routes
+                WHERE enabled = 1
+                ORDER BY route_area, priority, factor_id, route_key
+                """
+            ).fetchall()
+        return [
+            FactorResultRoute(
+                factor_id=str(row["factor_id"]),
+                result_type=str(row["result_type"]),
+                route_area=str(row["route_area"]),
+                route_key=str(row["route_key"]),
+                component=str(row["component"]),
+                title=str(row["title"]),
+                priority=int(row["priority"]),
+                enabled=bool(row["enabled"]),
+            )
+            for row in rows
+        ]
 
     def record_factor_run(
         self,
@@ -116,7 +323,14 @@ class SQLiteResultStore:
                 ),
             )
             for result in results:
-                self._insert_result(conn, analysis_run_id, session.session_id, result, now)
+                self._insert_result(
+                    conn,
+                    analysis_run_id,
+                    session.session_id,
+                    result,
+                    now,
+                    source_fingerprint=str(session.metadata.get("source_fingerprint") or ""),
+                )
             for error in error_items:
                 self._insert_error(conn, analysis_run_id, session.session_id, error, now)
         return analysis_run_id
@@ -126,9 +340,18 @@ class SQLiteResultStore:
         with self._connect() as conn:
             session_rows = conn.execute(
                 """
-                SELECT session_id, provider, source_ref, discovered_at, event_count
-                FROM sessions
-                ORDER BY session_id
+                SELECT
+                    s.session_id,
+                    s.provider,
+                    s.source_ref,
+                    s.discovered_at,
+                    s.event_count,
+                    COALESCE(sr.source_fingerprint, '') AS source_fingerprint
+                FROM sessions s
+                LEFT JOIN source_refs sr
+                  ON sr.provider = s.provider
+                 AND sr.source_ref = s.source_ref
+                ORDER BY s.session_id
                 """
             ).fetchall()
             index_rows = self._select_factor_run_index(conn, requested_factor_ids)
@@ -141,8 +364,20 @@ class SQLiteResultStore:
         for row in session_rows:
             session_runs = runs_by_session.get(str(row["session_id"]), [])
             analyzed_factor_ids = {str(run["factor_id"]) for run in session_runs}
+            current_source_fingerprint = str(row["source_fingerprint"])
+            stale_factor_ids = {
+                str(run["factor_id"])
+                for run in session_runs
+                if current_source_fingerprint
+                and str(run["source_fingerprint"])
+                and str(run["source_fingerprint"]) != current_source_fingerprint
+            }
             analyzed_count = len(analyzed_factor_ids)
-            pending_count = max(len(requested_factor_ids) - analyzed_count, 0) if requested_factor_ids else 0
+            if requested_factor_ids:
+                missing_factor_ids = set(requested_factor_ids) - analyzed_factor_ids
+                pending_count = len(missing_factor_ids | stale_factor_ids)
+            else:
+                pending_count = 0
             last_analyzed_at = max((str(run["last_run_at"]) for run in session_runs), default="")
             statuses.append(
                 SessionAnalysisStatus(
@@ -154,6 +389,7 @@ class SQLiteResultStore:
                     last_analyzed_at=last_analyzed_at,
                     analyzed_factor_count=analyzed_count,
                     pending_factor_count=pending_count,
+                    stale_reason="source_changed" if stale_factor_ids else "",
                 )
             )
         return statuses
@@ -165,7 +401,7 @@ class SQLiteResultStore:
                 eft.event_id,
                 e.event_index,
                 e.role,
-                e.content,
+                e.content_preview_redacted AS content,
                 eft.factor_id,
                 eft.tag_type,
                 eft.tag_value,
@@ -201,6 +437,38 @@ class SQLiteResultStore:
             for row in rows
         ]
 
+    def get_session_ref(self, session_id: str) -> SessionRef:
+        with self._connect() as conn:
+            row = conn.execute(
+                """
+                SELECT
+                    s.provider,
+                    s.session_id,
+                    s.source_ref,
+                    COALESCE(sr.source_size, 0) AS source_size,
+                    COALESCE(sr.source_mtime, '') AS source_mtime,
+                    COALESCE(sr.source_fingerprint, '') AS source_fingerprint
+                FROM sessions s
+                LEFT JOIN source_refs sr
+                  ON sr.provider = s.provider
+                 AND sr.source_ref = s.source_ref
+                WHERE s.session_id = ?
+                """,
+                (session_id,),
+            ).fetchone()
+        if row is None:
+            raise KeyError(f"unknown session: {session_id}")
+        return SessionRef(
+            provider=str(row["provider"]),
+            session_id=str(row["session_id"]),
+            source_path=Path(str(row["source_ref"])),
+            metadata={
+                "source_size": str(row["source_size"]),
+                "source_mtime": str(row["source_mtime"]),
+                "source_fingerprint": str(row["source_fingerprint"]),
+            },
+        )
+
     def _connect(self) -> sqlite3.Connection:
         conn = sqlite3.connect(self.db_path)
         conn.row_factory = sqlite3.Row
@@ -228,14 +496,33 @@ class SQLiteResultStore:
                     metadata_json TEXT NOT NULL DEFAULT '{}'
                 );
 
+                CREATE TABLE IF NOT EXISTS source_refs (
+                    provider TEXT NOT NULL,
+                    source_ref TEXT NOT NULL,
+                    source_size INTEGER NOT NULL DEFAULT 0,
+                    source_mtime TEXT NOT NULL DEFAULT '',
+                    source_fingerprint TEXT NOT NULL DEFAULT '',
+                    last_seen_at TEXT NOT NULL,
+                    PRIMARY KEY (provider, source_ref)
+                );
+
                 CREATE TABLE IF NOT EXISTS session_events (
                     session_id TEXT NOT NULL,
                     event_id TEXT NOT NULL,
                     event_index INTEGER NOT NULL,
+                    provider TEXT NOT NULL DEFAULT '',
+                    scanner_id TEXT NOT NULL DEFAULT '',
+                    scanner_version TEXT NOT NULL DEFAULT '',
                     role TEXT NOT NULL,
-                    content TEXT NOT NULL,
                     tool_name TEXT,
-                    tool_result_json TEXT NOT NULL DEFAULT '{}',
+                    source_ref TEXT NOT NULL DEFAULT '',
+                    source_fingerprint TEXT NOT NULL DEFAULT '',
+                    event_locator_json TEXT NOT NULL DEFAULT '{}',
+                    artifact_locator_json TEXT NOT NULL DEFAULT '{}',
+                    content_hash TEXT NOT NULL DEFAULT '',
+                    content_preview_redacted TEXT NOT NULL DEFAULT '',
+                    tool_result_hash TEXT NOT NULL DEFAULT '',
+                    tool_result_preview_redacted TEXT NOT NULL DEFAULT '',
                     metadata_json TEXT NOT NULL DEFAULT '{}',
                     PRIMARY KEY (session_id, event_id),
                     FOREIGN KEY (session_id) REFERENCES sessions(session_id) ON DELETE CASCADE
@@ -312,6 +599,11 @@ class SQLiteResultStore:
                     session_id TEXT NOT NULL,
                     factor_id TEXT NOT NULL,
                     factor_version TEXT NOT NULL DEFAULT '',
+                    source_fingerprint TEXT NOT NULL DEFAULT '',
+                    factor_fingerprint TEXT NOT NULL DEFAULT '',
+                    runtime_fingerprint TEXT NOT NULL DEFAULT '',
+                    run_reason TEXT NOT NULL DEFAULT '',
+                    stale_reason TEXT NOT NULL DEFAULT '',
                     last_run_at TEXT NOT NULL,
                     last_analysis_run_id TEXT NOT NULL,
                     last_result_run_id TEXT NOT NULL DEFAULT '',
@@ -329,6 +621,43 @@ class SQLiteResultStore:
                     message TEXT NOT NULL,
                     created_at TEXT NOT NULL,
                     FOREIGN KEY (analysis_run_id) REFERENCES analysis_runs(analysis_run_id) ON DELETE CASCADE
+                );
+
+                CREATE TABLE IF NOT EXISTS installed_factors (
+                    factor_id TEXT NOT NULL,
+                    version TEXT NOT NULL,
+                    source TEXT NOT NULL,
+                    installed_at TEXT NOT NULL,
+                    enabled INTEGER NOT NULL DEFAULT 1,
+                    runtime_mode TEXT NOT NULL,
+                    manifest_path TEXT NOT NULL DEFAULT '',
+                    factor_xml_path TEXT NOT NULL DEFAULT '',
+                    status TEXT NOT NULL,
+                    status_message TEXT NOT NULL DEFAULT '',
+                    PRIMARY KEY (factor_id, version)
+                );
+
+                CREATE TABLE IF NOT EXISTS factor_capabilities (
+                    factor_id TEXT NOT NULL,
+                    version TEXT NOT NULL,
+                    provider TEXT NOT NULL,
+                    target_type TEXT NOT NULL,
+                    supported INTEGER NOT NULL DEFAULT 1,
+                    reason TEXT NOT NULL DEFAULT '',
+                    PRIMARY KEY (factor_id, version, provider, target_type),
+                    FOREIGN KEY (factor_id, version) REFERENCES installed_factors(factor_id, version) ON DELETE CASCADE
+                );
+
+                CREATE TABLE IF NOT EXISTS factor_result_routes (
+                    factor_id TEXT NOT NULL,
+                    result_type TEXT NOT NULL,
+                    route_area TEXT NOT NULL,
+                    route_key TEXT NOT NULL,
+                    component TEXT NOT NULL,
+                    title TEXT NOT NULL,
+                    priority INTEGER NOT NULL DEFAULT 100,
+                    enabled INTEGER NOT NULL DEFAULT 1,
+                    PRIMARY KEY (factor_id, route_area, route_key)
                 );
 
                 CREATE INDEX IF NOT EXISTS idx_event_factor_tags_session
@@ -382,25 +711,46 @@ class SQLiteResultStore:
             conn.execute(
                 """
                 INSERT INTO session_events (
-                    session_id, event_id, event_index, role, content, tool_name, tool_result_json, metadata_json
+                    session_id, event_id, event_index, provider, scanner_id, scanner_version,
+                    role, tool_name, source_ref, source_fingerprint, event_locator_json,
+                    artifact_locator_json, content_hash, content_preview_redacted,
+                    tool_result_hash, tool_result_preview_redacted, metadata_json
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(session_id, event_id) DO UPDATE SET
                     event_index = excluded.event_index,
+                    provider = excluded.provider,
+                    scanner_id = excluded.scanner_id,
+                    scanner_version = excluded.scanner_version,
                     role = excluded.role,
-                    content = excluded.content,
                     tool_name = excluded.tool_name,
-                    tool_result_json = excluded.tool_result_json,
+                    source_ref = excluded.source_ref,
+                    source_fingerprint = excluded.source_fingerprint,
+                    event_locator_json = excluded.event_locator_json,
+                    artifact_locator_json = excluded.artifact_locator_json,
+                    content_hash = excluded.content_hash,
+                    content_preview_redacted = excluded.content_preview_redacted,
+                    tool_result_hash = excluded.tool_result_hash,
+                    tool_result_preview_redacted = excluded.tool_result_preview_redacted,
                     metadata_json = excluded.metadata_json
                 """,
                 (
                     session.session_id,
                     event.event_id,
                     index,
+                    str(event.metadata.get("provider") or session.provider),
+                    str(event.metadata.get("scanner_id") or ""),
+                    str(event.metadata.get("scanner_version") or ""),
                     event.role,
-                    event.content,
                     event.tool_name,
-                    _json(event.tool_result or {}),
+                    str(event.metadata.get("source_ref") or session.source_ref),
+                    str(event.metadata.get("source_fingerprint") or session.metadata.get("source_fingerprint") or ""),
+                    _json(event.metadata.get("event_locator_json") or {}),
+                    _json(event.metadata.get("artifact_locator_json") or {}),
+                    str(event.metadata.get("content_hash") or _content_hash(event.content)),
+                    str(event.metadata.get("content_preview_redacted") or _preview(event.content)),
+                    str(event.metadata.get("tool_result_hash") or _content_hash(_json(event.tool_result or {})) if event.tool_result else ""),
+                    str(event.metadata.get("tool_result_preview_redacted") or _preview(_json(event.tool_result or {})) if event.tool_result else ""),
                     _json(event.metadata),
                 ),
             )
@@ -412,6 +762,7 @@ class SQLiteResultStore:
         session_id: str,
         result: FactorResult,
         now: str,
+        source_fingerprint: str,
     ) -> None:
         result_session_id = result.session_id or session_id
         conn.execute(
@@ -443,12 +794,18 @@ class SQLiteResultStore:
         conn.execute(
             """
             INSERT INTO factor_run_index (
-                session_id, factor_id, factor_version, last_run_at, last_analysis_run_id,
+                session_id, factor_id, factor_version, source_fingerprint, factor_fingerprint,
+                runtime_fingerprint, run_reason, stale_reason, last_run_at, last_analysis_run_id,
                 last_result_run_id, last_status
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, '', '', 'manual', '', ?, ?, ?, ?)
             ON CONFLICT(session_id, factor_id) DO UPDATE SET
                 factor_version = excluded.factor_version,
+                source_fingerprint = excluded.source_fingerprint,
+                factor_fingerprint = excluded.factor_fingerprint,
+                runtime_fingerprint = excluded.runtime_fingerprint,
+                run_reason = excluded.run_reason,
+                stale_reason = excluded.stale_reason,
                 last_run_at = excluded.last_run_at,
                 last_analysis_run_id = excluded.last_analysis_run_id,
                 last_result_run_id = excluded.last_result_run_id,
@@ -458,6 +815,7 @@ class SQLiteResultStore:
                 result_session_id,
                 result.factor_id,
                 result.factor_version,
+                source_fingerprint,
                 now,
                 analysis_run_id,
                 result.run_id,
@@ -536,10 +894,11 @@ class SQLiteResultStore:
         conn.execute(
             """
             INSERT INTO factor_run_index (
-                session_id, factor_id, last_run_at, last_analysis_run_id, last_status
+                session_id, factor_id, source_fingerprint, last_run_at, last_analysis_run_id, last_status
             )
-            VALUES (?, ?, ?, ?, 'error')
+            VALUES (?, ?, '', ?, ?, 'error')
             ON CONFLICT(session_id, factor_id) DO UPDATE SET
+                source_fingerprint = excluded.source_fingerprint,
                 last_run_at = excluded.last_run_at,
                 last_analysis_run_id = excluded.last_analysis_run_id,
                 last_status = excluded.last_status
@@ -560,12 +919,16 @@ class SQLiteResultStore:
         factor_ids: list[str],
     ) -> list[sqlite3.Row]:
         if not factor_ids:
-            return list(conn.execute("SELECT session_id, factor_id, last_run_at FROM factor_run_index").fetchall())
+            return list(
+                conn.execute(
+                    "SELECT session_id, factor_id, source_fingerprint, last_run_at FROM factor_run_index"
+                ).fetchall()
+            )
         placeholders = ", ".join("?" for _ in factor_ids)
         return list(
             conn.execute(
                 f"""
-                SELECT session_id, factor_id, last_run_at
+                SELECT session_id, factor_id, source_fingerprint, last_run_at
                 FROM factor_run_index
                 WHERE factor_id IN ({placeholders})
                 """,
@@ -586,3 +949,52 @@ def _value(value: Any, key: str) -> str:
     if isinstance(value, dict):
         return str(value.get(key) or "")
     return str(getattr(value, key, "") or "")
+
+
+def _int(value: Any, *, default: int) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _dashboard_route_key(factor_id: str) -> str:
+    return f"{factor_id}.dashboard"
+
+
+def _dashboard_component(factor_id: str) -> str:
+    components = {
+        "default.negative_feedback": "feedback_signal_dashboard",
+        "default.open_loop": "open_loop_dashboard",
+        "default.repeated_user_requests": "skill_mining_dashboard",
+        "default.same_target_rework": "rework_dashboard",
+        "default.success_closure_quality": "closure_quality_dashboard",
+        "default.task_span_extraction": "task_flow_dashboard",
+        "default.tool_failure": "tool_failure_dashboard",
+        "default.user_correction_loop": "correction_loop_dashboard",
+    }
+    return components.get(factor_id, "generic_factor_dashboard")
+
+
+def _dashboard_priority(factor_id: str) -> int:
+    priorities = {
+        "default.task_span_extraction": 10,
+        "default.tool_failure": 20,
+        "default.open_loop": 30,
+        "default.user_correction_loop": 40,
+        "default.negative_feedback": 50,
+        "default.same_target_rework": 60,
+        "default.repeated_user_requests": 70,
+        "default.success_closure_quality": 80,
+    }
+    return priorities.get(factor_id, 100)
+
+
+def _content_hash(content: str) -> str:
+    import hashlib
+
+    return f"sha256:{hashlib.sha256(content.encode('utf-8')).hexdigest()}"
+
+
+def _preview(content: str, *, limit: int = 160) -> str:
+    return content[:limit]

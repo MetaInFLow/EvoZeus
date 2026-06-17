@@ -15,6 +15,7 @@
 | `src/evozeus/factors/` | Factor manifest、抽象基类、registry、runner 和 result contract |
 | `src/evozeus/runtime/` | `.evozeus/runtime` 下载资产和本地状态路径 |
 | `src/evozeus/storage/` | session、event、factor result 的持久化 adapter |
+| `scanner_packs/` | 默认 scanner pack 示例，每个 provider 一个独立目录，携带 resolver、脚本和 Agent 使用说明 |
 | `factor_packs/` | 默认 factor pack 示例，每个 factor 一个独立目录，便于下载、替换和删除 |
 | `testdata/` | 固定测试集，覆盖 Codex flat JSONL 和 archived wrapper JSONL 两类输入 |
 | `scripts/` | session 扫描、factor 扫描、指定 factor 运行和 session report 生成脚本 |
@@ -41,6 +42,25 @@
 ```
 
 主代码只负责框架、协议、runner 和 storage。下载资产由 manifest 描述，由 registry 选择，由 runner 执行。
+
+## Scanner Pack Layout
+
+Scanner pack 以 provider/version 文件夹为最小安装单元：
+
+```text
+scanner_packs/
+  <scanner_id>/
+    <version>/
+      scanner.json
+      SCANNER.xml
+      SKILL.md
+      scanner.py
+      resolver.py
+      scripts/
+        resolve_event_source.py
+```
+
+SQLite result index 只保存 `scanner_id`、`scanner_version`、`source_ref`、fingerprint、locator envelope 和 redacted preview。如何把这些字段还原到 provider 原始 event，由对应 scanner pack 的 `resolver.py`、脚本和 `SKILL.md` 负责。
 
 ## Factor Pack Layout
 

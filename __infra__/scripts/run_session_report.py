@@ -3,14 +3,8 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from evozeus.factors.base import FactorContext
-from evozeus.factors.packs import FactorPackRepository
-from evozeus.factors.runner import FactorRunner
-from evozeus.runtime.paths import RuntimePaths
-from evozeus.scanners.base import ScanRequest, SessionRef
-from evozeus.scanners.providers.codex import CodexScanner
-from evozeus.storage.file_repository import FileSessionRepository
-from evozeus.storage.sqlite_result_store import SQLiteResultStore
+from evozeus.runtime.analysis_service import analyze_session, scan_sessions
+from evozeus.scanners.base import SessionRef
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -26,67 +20,38 @@ def main() -> None:
     parser.add_argument("--session-index", type=int, default=0)
     args = parser.parse_args()
 
-    scanner = CodexScanner()
-    refs = scanner.discover(
-        ScanRequest(
-            provider="codex",
-            source_dir=Path(args.source) if args.source else None,
-        )
+    scan_summary = scan_sessions(
+        workspace_root=Path(args.workspace),
+        source_dir=Path(args.source) if args.source else None,
     )
-    assert refs, "no sessions found"
-    paths = RuntimePaths.for_workspace(Path(args.workspace)).ensure()
-    result_store = SQLiteResultStore(paths)
-    result_store.record_session_refs(refs)
-
-    factor_repository = FactorPackRepository(Path(args.pack_root))
-    packs = factor_repository.discover()
-    selected_packs = [factor_repository.get(factor_id) for factor_id in args.factor] if args.factor else packs
-    selected_factor_ids = [pack.manifest.id for pack in selected_packs]
-
-    session = scanner.load(_select_session_ref(scanner, refs, args.session_id, args.session_index))
-    summary = FactorRunner(selected_packs).run(FactorContext(session=session))
-    analysis_run_id = result_store.record_factor_run(
-        session,
-        summary.results,
-        factor_ids=selected_factor_ids,
-        errors=summary.errors,
+    assert scan_summary.refs, "no sessions found"
+    session_id = _select_session_id(scan_summary.refs, args.session_id, args.session_index)
+    analysis_summary = analyze_session(
+        workspace_root=Path(args.workspace),
+        session_id=session_id,
+        factor_ids=args.factor or None,
+        pack_root=Path(args.pack_root),
     )
-    assert not summary.errors, summary.errors
-    assert summary.results, "expected factor results"
+    assert analysis_summary.error_count == 0
+    assert analysis_summary.result_count > 0, "expected factor results"
 
-    repository = FileSessionRepository(paths)
-    repository.write_session(session)
-    repository.append_factor_results(session.session_id, summary.results)
-    html_path = repository.write_factor_results_html(
-        session.session_id,
-        summary.results,
-        packs,
-        selected_factor_ids=args.factor or None,
-    )
-    md_path = html_path.with_name("factor-results.md")
     print(
         "session report ok: "
-        f"session_id={session.session_id} "
-        f"results={len(summary.results)} "
-        f"analysis_run_id={analysis_run_id} "
-        f"sqlite={paths.result_index_db} "
-        f"md={md_path} "
-        f"html={html_path}"
+        f"session_id={analysis_summary.session_id} "
+        f"results={analysis_summary.result_count} "
+        f"analysis_run_id={analysis_summary.analysis_run_id} "
+        f"sqlite={analysis_summary.sqlite_path} "
+        f"md={analysis_summary.markdown_path} "
+        f"html={analysis_summary.html_path}"
     )
 
 
-def _select_session_ref(scanner: CodexScanner, refs: list[SessionRef], session_id: str, session_index: int) -> SessionRef:
+def _select_session_id(refs: list[SessionRef], session_id: str, session_index: int) -> str:
     if session_id:
-        for ref in refs:
-            if ref.session_id == session_id:
-                return ref
-            session = scanner.load(ref)
-            if session.session_id == session_id:
-                return ref
-        raise AssertionError(f"session not found: {session_id}")
+        return session_id
     if session_index < 0 or session_index >= len(refs):
         raise AssertionError(f"session index out of range: {session_index}")
-    return refs[session_index]
+    return refs[session_index].session_id
 
 
 if __name__ == "__main__":

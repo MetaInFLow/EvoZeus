@@ -34,6 +34,7 @@ def render_factor_results_html(
             '  <meta charset="utf-8">',
             '  <meta name="viewport" content="width=device-width, initial-scale=1">',
             f"  <title>EvoZeus Factor Results - {escape(session_id)}</title>",
+            '  <link rel="icon" href="data:,">',
             '  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/antd@5/dist/reset.css">',
             "  <style>",
             _style(),
@@ -66,15 +67,28 @@ def _report_payload(
     pack_by_id: dict[str, FactorPack],
 ) -> dict[str, Any]:
     result_items = [_result_payload(result, pack_by_id.get(result.factor_id)) for result in results]
+    summary = _summary_payload(results)
     return {
         "renderer": "Ant Design dashboard",
         "session": {
             "id": session_id,
             "result_count": len(results),
         },
-        "summary": _summary_payload(results),
+        "sessions": [
+            {
+                "key": session_id,
+                "session_id": session_id,
+                "provider": "codex",
+                "result_count": len(results),
+                "matched": summary["matched"],
+                "skipped": summary["skipped"],
+                "top_verdict": summary["top_verdict"],
+            }
+        ],
+        "summary": summary,
         "visualizations": [_visualization_payload(visualization) for visualization in visualizations],
         "results": result_items,
+        "factor_packs": [_factor_pack_payload(pack) for pack in pack_by_id.values()],
     }
 
 
@@ -144,6 +158,21 @@ def _visualization_payload(visualization: ResultVisualization) -> dict[str, Any]
     }
 
 
+def _factor_pack_payload(pack: FactorPack) -> dict[str, Any]:
+    intro = pack.introduction
+    return {
+        "key": pack.manifest.id,
+        "factor_id": pack.manifest.id,
+        "name": intro.name,
+        "version": pack.manifest.version,
+        "stage": pack.manifest.stage.value,
+        "runtime": pack.manifest.runtime.mode.value,
+        "summary": intro.summary,
+        "category": intro.category,
+        "privacy": intro.privacy,
+    }
+
+
 def _fallback_html(payload: dict[str, Any]) -> str:
     results = payload["results"]
     cards = "\n".join(
@@ -163,6 +192,9 @@ def _fallback_html(payload: dict[str, Any]) -> str:
         [
             "  <noscript>",
             '    <main class="dashboard-shell fallback">',
+            '      <section data-workspace-tab="sessions"><h2>Sessions</h2></section>',
+            '      <section data-workspace-tab="dashboards"><h2>Dashboards</h2></section>',
+            '      <section data-workspace-tab="factor_packs"><h2>Factor Packs</h2></section>',
             '      <section data-component="result_summary">',
             f'        <strong>Matched</strong><span>{payload["summary"]["matched"]}</span>',
             f'        <strong>Skipped</strong><span>{payload["summary"]["skipped"]}</span>',
@@ -187,7 +219,7 @@ def _dashboard_script() -> str:
     return r"""
     (() => {
       const h = React.createElement;
-      const { App, Badge, Card, Col, Progress, Row, Space, Statistic, Table, Tag, Typography } = antd;
+      const { App, Badge, Card, Col, Drawer, Progress, Row, Space, Statistic, Table, Tabs, Tag, Typography } = antd;
       const { Text, Title } = Typography;
       const data = window.__EVOZEUS_REPORT__;
 
@@ -242,7 +274,7 @@ def _dashboard_script() -> str:
         );
       }
 
-      function ResultTable() {
+      function ResultTable({ onOpen }) {
         const columns = [
           {
             title: "Factor",
@@ -271,9 +303,15 @@ def _dashboard_script() -> str:
             dataIndex: "confidence",
             width: 140,
             render: (value) => h(Progress, { percent: Math.round(value * 100), size: "small" })
+          },
+          {
+            title: "",
+            dataIndex: "action",
+            width: 96,
+            render: (_, row) => h("a", { onClick: () => onOpen(row) }, "Details")
           }
         ];
-        return h(Card, { title: "Factor Result Matrix", className: "dashboard-card" },
+        return h(Card, { title: "Factor Result Matrix", className: "dashboard-card", "data-component": "factor_result_matrix" },
           h(Table, { columns, dataSource: data.results, pagination: false, size: "small" })
         );
       }
@@ -285,45 +323,117 @@ def _dashboard_script() -> str:
         );
       }
 
-      function ResultCards() {
-        return h("section", { className: "result-grid" },
-          data.results.map((result) => h(Card, {
-            key: result.factor_id,
-            "data-result-card": "factor_result",
-            "data-status": result.status,
-            className: `result-card status-${result.status}`,
-            title: h("div", null,
-              h(Text, { strong: true }, result.factor_name),
+      function ResultDetail({ result }) {
+        if (!result) return null;
+        return h("section", { "data-result-card": "factor_result", "data-status": result.status, className: `result-detail status-${result.status}` },
+          h("p", { className: "card-note" }, result.summary),
+          h("div", { className: "result-section" }, h(Text, { strong: true }, "Verdict"), h(Tags, { items: result.verdict_signals })),
+          h("div", { className: "result-section" }, h(Text, { strong: true }, "Tags"), h(Tags, { items: result.tags.map((tag) => `${tag.type}=${tag.value}`) })),
+          h("div", { className: "result-section" }, h(Text, { strong: true }, "Scores"), h(Tags, { items: result.scores.map((score) => `${score.key}=${score.value}`) })),
+          h("div", { className: "result-section" }, h(Text, { strong: true }, "Evidence"), h(Tags, { items: result.evidence_refs.map((ref) => `${ref.id} (${ref.kind})`) }))
+        );
+      }
+
+      function SessionsTab({ onOpen }) {
+        const columns = [
+          {
+            title: "Session",
+            dataIndex: "session_id",
+            render: (value, row) => h("div", null,
+              h(Text, { strong: true }, value),
               h("br"),
-              h(Text, { type: "secondary" }, `${result.factor_id} · ${result.version} · ${result.stage}`)
-            ),
-            extra: h(Badge, { status: statusColor(result.status), text: result.status })
+              h(Text, { type: "secondary" }, row.provider)
+            )
           },
-            h("p", { className: "card-note" }, result.summary),
-            h("div", { className: "result-section" }, h(Text, { strong: true }, "Verdict"), h(Tags, { items: result.verdict_signals })),
-            h("div", { className: "result-section" }, h(Text, { strong: true }, "Tags"), h(Tags, { items: result.tags.map((tag) => `${tag.type}=${tag.value}`) })),
-            h("div", { className: "result-section" }, h(Text, { strong: true }, "Scores"), h(Tags, { items: result.scores.map((score) => `${score.key}=${score.value}`) })),
-            h("div", { className: "result-section" }, h(Text, { strong: true }, "Evidence"), h(Tags, { items: result.evidence_refs.map((ref) => `${ref.id} (${ref.kind})`) }))
-          ))
+          { title: "Results", dataIndex: "result_count", width: 100 },
+          { title: "Matched", dataIndex: "matched", width: 100 },
+          {
+            title: "Top Verdict",
+            dataIndex: "top_verdict",
+            render: (value) => h(Tag, { color: verdictColor(value) }, value)
+          }
+        ];
+        return h("section", { "data-workspace-tab": "sessions", className: "workspace-tab" },
+          h(Table, {
+            columns,
+            dataSource: data.sessions,
+            pagination: false,
+            size: "small",
+            expandable: {
+              expandedRowRender: () => h(ResultTable, { onOpen }),
+              rowExpandable: () => true
+            }
+          })
+        );
+      }
+
+      function DashboardsTab({ onOpen }) {
+        return h("section", { "data-workspace-tab": "dashboards", className: "workspace-tab" },
+          h(Summary),
+          h(Row, { gutter: [16, 16], className: "dashboard-row" },
+            h(Col, { xs: 24, lg: 10 }, h(WordCloud)),
+            h(Col, { xs: 24, lg: 14 }, h(ResultTable, { onOpen }))
+          )
+        );
+      }
+
+      function FactorPacksTab() {
+        const columns = [
+          {
+            title: "Factor",
+            dataIndex: "name",
+            render: (_, row) => h("div", null,
+              h(Text, { strong: true }, row.name),
+              h("br"),
+              h(Text, { type: "secondary" }, row.factor_id)
+            )
+          },
+          { title: "Stage", dataIndex: "stage", width: 180 },
+          { title: "Runtime", dataIndex: "runtime", width: 140 },
+          { title: "Version", dataIndex: "version", width: 110 }
+        ];
+        return h("section", { "data-workspace-tab": "factor_packs", className: "workspace-tab" },
+          h(Table, {
+            columns,
+            dataSource: data.factor_packs,
+            pagination: false,
+            size: "small",
+            expandable: {
+              expandedRowRender: (row) => h("div", { className: "pack-detail" },
+                h("p", null, row.summary),
+                h(Text, { type: "secondary" }, row.privacy)
+              )
+            }
+          })
         );
       }
 
       function Dashboard() {
+        const [drawerResult, setDrawerResult] = React.useState(null);
         return h(App, null,
           h("main", { className: "dashboard-shell" },
             h("header", { className: "dashboard-header" },
               h("div", null,
-                h(Text, { type: "secondary" }, "EvoZeus Factor Results · Ant Design"),
+                h(Text, { type: "secondary" }, "EvoZeus Workspace · Ant Design"),
                 h(Title, { level: 1 }, data.session.id)
               ),
               h(Tag, { color: "blue" }, `${data.session.result_count} results`)
             ),
-            h(Summary),
-            h(Row, { gutter: [16, 16], className: "dashboard-row" },
-              h(Col, { xs: 24, lg: 10 }, h(WordCloud)),
-              h(Col, { xs: 24, lg: 14 }, h(ResultTable))
-            ),
-            h(ResultCards)
+            h(Tabs, {
+              items: [
+                { key: "sessions", label: "Sessions", children: h(SessionsTab, { onOpen: setDrawerResult }) },
+                { key: "dashboards", label: "Dashboards", children: h(DashboardsTab, { onOpen: setDrawerResult }) },
+                { key: "factor_packs", label: "Factor Packs", children: h(FactorPacksTab) }
+              ]
+            }),
+            h(Drawer, {
+              title: drawerResult ? drawerResult.factor_name : "Factor Result",
+              width: 520,
+              open: Boolean(drawerResult),
+              onClose: () => setDrawerResult(null)
+            },
+              h(ResultDetail, { result: drawerResult })
+            )
           )
         );
       }
@@ -341,6 +451,7 @@ def _style() -> str:
     .dashboard-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; border-bottom: 1px solid #d9d9d9; margin-bottom: 18px; padding-bottom: 16px; }
     .dashboard-header h1 { margin: 4px 0 0; font-size: 30px; line-height: 1.18; }
     .summary-panel { display: grid; gap: 12px; margin-bottom: 16px; }
+    .workspace-tab { padding-top: 4px; }
     .verdict-strip { border-color: #d6e4ff; background: #f8fbff; }
     .dashboard-row { margin-bottom: 16px; }
     .dashboard-card { height: 100%; border-radius: 8px; }
@@ -351,6 +462,8 @@ def _style() -> str:
     .result-card { border-radius: 8px; }
     .result-card.status-matched { border-left: 4px solid #1677ff; }
     .result-card.status-skipped { border-left: 4px solid #d9d9d9; }
+    .result-detail { display: grid; gap: 10px; }
+    .pack-detail { color: #5f6b7a; line-height: 1.55; max-width: 820px; }
     .result-section { border-top: 1px solid #f0f0f0; padding-top: 10px; margin-top: 10px; display: grid; gap: 7px; }
     .fallback { display: block; }
     @media (max-width: 760px) {

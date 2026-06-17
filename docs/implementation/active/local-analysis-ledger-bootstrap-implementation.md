@@ -8,6 +8,13 @@
 
 **Tech Stack:** Python 3.11, Typer, FastAPI, SQLite, Pydantic, pytest, Ant Design browser workspace.
 
+**Implementation status (2026-06-17):**
+
+- Completed: Task 1-8 core implementation.
+- Completed: Ant Design HTML workspace slice with Sessions / Dashboards / Factor Packs tabs.
+- Verified: `pytest -q` passes, onboard -> scan -> analyze -> HTML closes on local test data.
+- Remaining: broader browser workspace API documentation and future multi-provider scanner packs.
+
 ---
 
 ## File Map
@@ -262,6 +269,8 @@ Run:
 Expected: pass.
 
 ## Task 4: Scanner-Owned Source Locator
+
+**Decision:** SQLite 只记录 locator 和 lightweight index。回到原始 event 的逻辑、脚本和 Agent 使用方法跟随 scanner pack，不写进 factor、browser workspace 或通用 storage 层。
 
 **Files:**
 

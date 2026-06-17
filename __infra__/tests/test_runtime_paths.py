@@ -28,3 +28,10 @@ def test_runtime_paths_keep_downloaded_assets_outside_main_code(tmp_path: Path):
 
     assert paths.installed_factors_dir.is_dir()
     assert paths.installed_scanners_dir.is_dir()
+
+
+def test_runtime_paths_include_logs_and_companion(tmp_path: Path):
+    paths = RuntimePaths.for_workspace(tmp_path)
+
+    assert paths.logs_dir == tmp_path / ".evozeus" / "logs"
+    assert paths.companion_runtime_dir == tmp_path / ".evozeus" / "runtime" / "companion"

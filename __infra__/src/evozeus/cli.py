@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import typer
 
 from evozeus import __version__
@@ -23,7 +25,24 @@ def status() -> None:
 @app.command()
 def onboard() -> None:
     """Run first-time setup checks."""
+    from evozeus.factors.packs import FactorPackRepository
+    from evozeus.runtime.paths import RuntimePaths
+    from evozeus.storage.sqlite_result_store import SQLiteResultStore
+    from evozeus.workspace import create_workspace
+
+    cwd = Path.cwd()
+    workspace = create_workspace(cwd)
+    paths = RuntimePaths.for_workspace(cwd).ensure()
+    store = SQLiteResultStore(paths)
+    pack_root = Path(__file__).resolve().parents[2] / "factor_packs"
+    packs = FactorPackRepository(pack_root).discover()
+    store.record_installed_factors(packs, source="bundled")
+    store.record_default_routes(packs)
+
     typer.echo("EvoZeus onboard: local-first, zero-upload")
+    typer.echo(f"workspace={workspace.root}")
+    typer.echo(f"sqlite={paths.result_index_db}")
+    typer.echo(f"installed_factors={len(packs)}")
 
 
 @app.command()

@@ -1,3 +1,6 @@
+import sqlite3
+from pathlib import Path
+
 from typer.testing import CliRunner
 
 from evozeus.cli import app
@@ -26,6 +29,25 @@ def test_doctor_classifies_evidence_when_provided():
 
     assert result.exit_code == 0
     assert "network" in result.output
+
+
+def test_onboard_initializes_workspace_and_factor_routes(tmp_path: Path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+
+    result = runner.invoke(app, ["onboard"])
+    workspace = tmp_path / ".evozeus"
+    db_path = workspace / "runtime" / "index" / "results.sqlite3"
+
+    assert result.exit_code == 0, result.output
+    assert (workspace / "config.json").exists()
+    assert db_path.exists()
+    with sqlite3.connect(db_path) as conn:
+        factor_count = conn.execute("SELECT count(*) FROM installed_factors").fetchone()[0]
+        route_count = conn.execute("SELECT count(*) FROM factor_result_routes").fetchone()[0]
+    assert factor_count >= 8
+    assert route_count > 0
+    assert ".evozeus" in result.output
+    assert "results.sqlite3" in result.output
 
 
 def test_check_accepts_valid_branch_name():

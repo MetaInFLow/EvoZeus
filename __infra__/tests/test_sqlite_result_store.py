@@ -2,10 +2,77 @@ from pathlib import Path
 
 from evozeus.core.session import SessionEnvelope
 from evozeus.factors.protocol import FactorResult, FactorStage
+from evozeus.factors.packs import FactorPackRepository
 from evozeus.models import SessionEvent, Verdict
 from evozeus.runtime.paths import RuntimePaths
 from evozeus.scanners.base import SessionRef
 from evozeus.storage.sqlite_result_store import SQLiteResultStore
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+PACK_ROOT = PROJECT_ROOT / "__infra__" / "factor_packs"
+
+
+def test_sqlite_result_store_initializes_capability_and_route_tables(tmp_path: Path):
+    paths = RuntimePaths.for_workspace(tmp_path).ensure()
+    SQLiteResultStore(paths)
+
+    with _connect(paths) as conn:
+        table_names = {
+            row[0]
+            for row in conn.execute("SELECT name FROM sqlite_master WHERE type = 'table'").fetchall()
+        }
+
+    assert "source_refs" in table_names
+    assert "installed_factors" in table_names
+    assert "factor_capabilities" in table_names
+    assert "factor_result_routes" in table_names
+
+
+def test_sqlite_result_store_uses_lightweight_session_event_columns(tmp_path: Path):
+    paths = RuntimePaths.for_workspace(tmp_path).ensure()
+    SQLiteResultStore(paths)
+
+    with _connect(paths) as conn:
+        columns = {
+            row[1]
+            for row in conn.execute("PRAGMA table_info(session_events)").fetchall()
+        }
+
+    assert "content" not in columns
+    assert "tool_result_json" not in columns
+    assert "content_hash" in columns
+    assert "content_preview_redacted" in columns
+    assert "event_locator_json" in columns
+    assert "artifact_locator_json" in columns
+    assert "scanner_id" in columns
+    assert "scanner_version" in columns
+
+
+def test_sqlite_result_store_records_installed_factor_capabilities_and_routes(tmp_path: Path):
+    paths = RuntimePaths.for_workspace(tmp_path).ensure()
+    store = SQLiteResultStore(paths)
+    packs = FactorPackRepository(PACK_ROOT).discover()
+
+    store.record_installed_factors(packs, source="bundled")
+    store.record_default_routes(packs)
+
+    factors = store.list_installed_factors()
+    routes = store.list_factor_result_routes()
+    tool_failure = next(factor for factor in factors if factor.factor_id == "default.tool_failure")
+    tool_failure_routes = [route for route in routes if route.factor_id == "default.tool_failure"]
+
+    assert len(factors) == 8
+    assert tool_failure.version == "0.1.0"
+    assert tool_failure.source == "bundled"
+    assert tool_failure.enabled is True
+    assert tool_failure.runtime_mode == "in_process"
+    assert tool_failure.status == "available"
+    assert tool_failure.supported_providers == ["codex"]
+    assert tool_failure.supported_target_types == ["session"]
+    assert any(route.route_area == "dashboard" for route in tool_failure_routes)
+    assert any(route.route_area == "sessions_table" for route in tool_failure_routes)
+    assert any(route.route_area == "drawer" for route in tool_failure_routes)
 
 
 def test_sqlite_result_store_records_sessions_results_tags_and_event_content(tmp_path: Path):
@@ -108,7 +175,71 @@ def test_sqlite_result_store_replaces_stale_discovered_session_id_for_same_sourc
     assert statuses[0].pending_factor_count == 1
 
 
-def _session(session_id: str) -> SessionEnvelope:
+def test_sqlite_result_store_marks_factor_run_stale_when_source_fingerprint_changes(tmp_path: Path):
+    paths = RuntimePaths.for_workspace(tmp_path).ensure()
+    store = SQLiteResultStore(paths)
+    source_path = Path("session-alpha.jsonl")
+    store.record_session_refs(
+        [
+            SessionRef(
+                provider="codex",
+                session_id="session-alpha",
+                source_path=source_path,
+                metadata={
+                    "source_size": "10",
+                    "source_mtime": "100",
+                    "source_fingerprint": "sha256:old",
+                },
+            )
+        ]
+    )
+    session = _session("session-alpha", metadata={"source_fingerprint": "sha256:old"})
+    store.record_factor_run(
+        session,
+        [
+            FactorResult(
+                factor_id="default.open_loop",
+                factor_version="0.1.0",
+                framework_id="agent_session_review.v0",
+                stage=FactorStage.SIGNAL_EXTRACTION,
+                target_type="session",
+                target_id="session-alpha",
+                session_id="session-alpha",
+                status="skipped",
+                confidence=0.0,
+            )
+        ],
+        factor_ids=["default.open_loop"],
+    )
+    store.record_session_refs(
+        [
+            SessionRef(
+                provider="codex",
+                session_id="session-alpha",
+                source_path=source_path,
+                metadata={
+                    "source_size": "11",
+                    "source_mtime": "101",
+                    "source_fingerprint": "sha256:new",
+                },
+            )
+        ]
+    )
+
+    statuses = store.list_session_statuses(factor_ids=["default.open_loop"])
+
+    assert statuses[0].analyzed_factor_count == 1
+    assert statuses[0].pending_factor_count == 1
+    assert statuses[0].stale_reason == "source_changed"
+
+
+def _connect(paths: RuntimePaths):
+    import sqlite3
+
+    return sqlite3.connect(paths.result_index_db)
+
+
+def _session(session_id: str, *, metadata: dict[str, str] | None = None) -> SessionEnvelope:
     return SessionEnvelope(
         session_id=session_id,
         provider="codex",
@@ -123,4 +254,5 @@ def _session(session_id: str) -> SessionEnvelope:
                 tool_result={"stderr": "fatal: network timeout"},
             ),
         ],
+        metadata=metadata or {},
     )

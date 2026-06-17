@@ -182,6 +182,20 @@ tool_result_preview_redacted
 
 Scanner pack 是 provider-specific 能力包。Core runtime 只保存统一 locator envelope，不理解 provider 私有格式。
 
+### Scanner-Owned Source Resolution
+
+SQLite 和原始数据之间的对应机制归属 scanner pack。
+
+| Layer | Owns |
+| --- | --- |
+| SQLite | `scanner_id`、`scanner_version`、`source_ref`、fingerprint、locator envelope、redacted preview |
+| Core runtime | 通用 scanner / resolver contract、resolver registry、权限边界 |
+| Scanner pack | provider 私有 locator payload、原始文件解析、hash 校验、定位脚本、Agent 使用说明 |
+| Factor | 读取标准化 `SessionEnvelope`，只写 `FactorResult`、tags、evidence refs |
+| Browser / TUI | 默认展示 preview 和 locator summary，点击展开时通过 backend 调 scanner resolver |
+
+这个归属避免 SQLite 绑定 Codex、Claude Code、Cursor、Feishu 等私有格式。下载、升级或删除某个 scanner pack 时，它携带的 resolver、脚本和 `SKILL.md` 一起变化；Local Analysis Ledger 只保留可路由的引用。
+
 Bundled scanner pack 可以放在：
 
 ```text

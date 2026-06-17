@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
+from uuid import uuid4
 
 from evozeus.runtime.paths import RuntimePaths
 
@@ -42,11 +45,26 @@ def create_workspace(cwd: Path) -> Workspace:
     root = cwd / ".evozeus"
     workspace = Workspace(root=root)
     RuntimePaths.for_workspace(cwd).ensure()
-    workspace.sessions_dir.mkdir(parents=True, exist_ok=True)
-    (workspace.drafts_dir / "rule-proposals").mkdir(parents=True, exist_ok=True)
-    (workspace.drafts_dir / "skill-proposals").mkdir(parents=True, exist_ok=True)
-    (workspace.factors_dir / "installed").mkdir(parents=True, exist_ok=True)
-    (workspace.scanners_dir / "installed").mkdir(parents=True, exist_ok=True)
-    workspace.history_dir.mkdir(parents=True, exist_ok=True)
-    (root / "config.json").write_text('{"mode":"manual-session-review"}\n', encoding="utf-8")
+    config = {
+        "schema_version": "workspace_config.v0",
+        "workspace_id": f"ewk_{uuid4().hex}",
+        "created_at": datetime.now(UTC).isoformat(),
+        "mode": "local_manual",
+        "privacy": {
+            "upload_default": False,
+            "redaction_required_for_export": True,
+        },
+        "scan": {
+            "providers": ["codex"],
+            "auto_load_events": True,
+        },
+        "companion": {
+            "host": "127.0.0.1",
+            "port": 0,
+        },
+    }
+    (root / "config.json").write_text(
+        json.dumps(config, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
     return workspace

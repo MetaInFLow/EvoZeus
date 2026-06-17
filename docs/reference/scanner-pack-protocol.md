@@ -15,6 +15,20 @@ Local Analysis Ledger 只保存统一索引和 locator envelope。如何通过 l
 4. 原文定位脚本、resolver 和使用说明跟随 scanner pack 一起下载、安装、删除和升级。
 5. Agent 需要定位原文时，先读 SQLite 中的 `scanner_id` / `scanner_version`，再读取对应 scanner pack 的 `SKILL.md`。
 
+## 归属边界
+
+| Concern | Owner |
+| --- | --- |
+| 扫描目录、文件格式、provider 私有字段 | scanner pack |
+| `SessionEnvelope`、`SessionRef`、`SessionEvent` 通用结构 | core runtime |
+| `source_ref`、fingerprint、locator envelope、redacted preview | SQLite result index |
+| `payload` 里的 line、byte、record type、provider 私有定位信息 | scanner pack |
+| 根据 locator 读取原始 event 或 normalized artifact | scanner pack resolver |
+| 告诉 Agent 怎么定位、校验、处理失败 | scanner pack `SKILL.md` |
+| Factor 结果、tag、evidence ref | factor runner + SQLite result index |
+
+因此，新增一个 provider 时，优先新增 scanner pack；不要把 provider 私有解析逻辑写进 SQLite schema、factor 或 browser workspace。
+
 ## 目录结构
 
 Bundled scanner pack 可以放在：
