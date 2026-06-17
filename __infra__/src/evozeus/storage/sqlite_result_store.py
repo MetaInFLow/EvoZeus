@@ -29,6 +29,12 @@ class SessionAnalysisStatus:
     last_analyzed_at: str
     analyzed_factor_count: int
     pending_factor_count: int
+    first_user_preview: str = ""
+    first_user_source_ref: str = ""
+    first_user_source_line: int = 0
+    last_assistant_preview: str = ""
+    last_assistant_source_ref: str = ""
+    last_assistant_source_line: int = 0
     stale_reason: str = ""
 
 
@@ -128,6 +134,12 @@ class SQLiteResultStore:
                     """,
                     (ref.session_id, ref.provider, str(ref.source_path), now, now, now),
                 )
+
+    def record_session_envelope(self, session: SessionEnvelope) -> None:
+        now = _utc_now()
+        with self._connect() as conn:
+            self._upsert_session(conn, session, now)
+            self._upsert_events(conn, session)
 
     def record_installed_factors(self, packs: Iterable[Any], *, source: str) -> None:
         now = _utc_now()
@@ -354,15 +366,43 @@ class SQLiteResultStore:
                 ORDER BY s.session_id
                 """
             ).fetchall()
+            event_rows = conn.execute(
+                """
+                SELECT
+                    session_id,
+                    role,
+                    event_index,
+                    source_ref,
+                    event_locator_json,
+                    content_preview_redacted
+                FROM session_events
+                WHERE role IN ('user', 'assistant')
+                ORDER BY session_id, event_index
+                """
+            ).fetchall()
             index_rows = self._select_factor_run_index(conn, requested_factor_ids)
 
         runs_by_session: dict[str, list[sqlite3.Row]] = {}
         for row in index_rows:
             runs_by_session.setdefault(str(row["session_id"]), []).append(row)
 
+        first_user_by_session: dict[str, sqlite3.Row] = {}
+        last_assistant_by_session: dict[str, sqlite3.Row] = {}
+        for row in event_rows:
+            session_id = str(row["session_id"])
+            role = str(row["role"])
+            if role == "user" and session_id not in first_user_by_session:
+                first_user_by_session[session_id] = row
+            if role == "assistant":
+                last_assistant_by_session[session_id] = row
+
         statuses: list[SessionAnalysisStatus] = []
         for row in session_rows:
             session_runs = runs_by_session.get(str(row["session_id"]), [])
+            first_user = first_user_by_session.get(str(row["session_id"]))
+            last_assistant = last_assistant_by_session.get(str(row["session_id"]))
+            first_user_ref, first_user_line = _source_locator(first_user)
+            last_assistant_ref, last_assistant_line = _source_locator(last_assistant)
             analyzed_factor_ids = {str(run["factor_id"]) for run in session_runs}
             current_source_fingerprint = str(row["source_fingerprint"])
             stale_factor_ids = {
@@ -389,6 +429,12 @@ class SQLiteResultStore:
                     last_analyzed_at=last_analyzed_at,
                     analyzed_factor_count=analyzed_count,
                     pending_factor_count=pending_count,
+                    first_user_preview=_content_preview(first_user),
+                    first_user_source_ref=first_user_ref,
+                    first_user_source_line=first_user_line,
+                    last_assistant_preview=_content_preview(last_assistant),
+                    last_assistant_source_ref=last_assistant_ref,
+                    last_assistant_source_line=last_assistant_line,
                     stale_reason="source_changed" if stale_factor_ids else "",
                 )
             )
@@ -956,6 +1002,27 @@ def _int(value: Any, *, default: int) -> int:
         return int(value)
     except (TypeError, ValueError):
         return default
+
+
+def _content_preview(row: sqlite3.Row | None) -> str:
+    if row is None:
+        return ""
+    return str(row["content_preview_redacted"])
+
+
+def _source_locator(row: sqlite3.Row | None) -> tuple[str, int]:
+    if row is None:
+        return "", 0
+    fallback_ref = str(row["source_ref"])
+    try:
+        locator = json.loads(str(row["event_locator_json"] or "{}"))
+    except json.JSONDecodeError:
+        return fallback_ref, 0
+    payload = locator.get("payload") if isinstance(locator, dict) else {}
+    if not isinstance(payload, dict):
+        return fallback_ref, 0
+    source_ref = str(payload.get("source_path") or fallback_ref)
+    return source_ref, _int(payload.get("line_start"), default=0)
 
 
 def _dashboard_route_key(factor_id: str) -> str:

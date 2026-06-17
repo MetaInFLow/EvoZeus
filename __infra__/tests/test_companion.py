@@ -94,3 +94,7 @@ def test_companion_scans_and_analyzes_session(tmp_path):
     by_id = {session["session_id"]: session for session in sessions}
     assert by_id["session-alpha"]["pending_factor_count"] == 0
     assert by_id["session-alpha"]["analyzed_factor_count"] == 1
+    assert by_id["session-beta"]["event_count"] == 3
+    assert by_id["session-beta"]["first_user_preview"] == "这个 factor 结果不对，没改到默认输出"
+    assert by_id["session-beta"]["first_user_source_line"] == 1
+    assert by_id["session-beta"]["last_assistant_preview"] == "我会运行指定 factor。"

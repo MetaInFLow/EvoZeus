@@ -122,6 +122,58 @@ def test_sqlite_result_store_records_sessions_results_tags_and_event_content(tmp
     assert event_tag.analysis_run_id == analysis_run_id
 
 
+def test_sqlite_result_store_records_loaded_session_preview_and_source_locator(tmp_path: Path):
+    paths = RuntimePaths.for_workspace(tmp_path).ensure()
+    store = SQLiteResultStore(paths)
+    session = SessionEnvelope(
+        session_id="session-preview",
+        provider="codex",
+        source_ref="session-preview.jsonl",
+        events=[
+            SessionEvent(
+                event_id="u1",
+                role="user",
+                content="这个 factor 结果不对，没改到默认输出",
+                metadata={
+                    "content_preview_redacted": "这个 factor 结果不对，没改到默认输出",
+                    "event_locator_json": {
+                        "payload": {
+                            "source_path": "session-preview.jsonl",
+                            "line_start": 1,
+                        }
+                    },
+                },
+            ),
+            SessionEvent(
+                event_id="a1",
+                role="assistant",
+                content="我会运行指定 factor。",
+                metadata={
+                    "content_preview_redacted": "我会运行指定 factor。",
+                    "event_locator_json": {
+                        "payload": {
+                            "source_path": "session-preview.jsonl",
+                            "line_start": 2,
+                        }
+                    },
+                },
+            ),
+        ],
+    )
+
+    store.record_session_envelope(session)
+
+    statuses = store.list_session_statuses(factor_ids=["default.tool_failure"])
+    status = statuses[0]
+    assert status.event_count == 2
+    assert status.first_user_preview == "这个 factor 结果不对，没改到默认输出"
+    assert status.first_user_source_ref == "session-preview.jsonl"
+    assert status.first_user_source_line == 1
+    assert status.last_assistant_preview == "我会运行指定 factor。"
+    assert status.last_assistant_source_ref == "session-preview.jsonl"
+    assert status.last_assistant_source_line == 2
+
+
 def test_sqlite_result_store_marks_discovered_sessions_pending_until_factor_run(tmp_path: Path):
     paths = RuntimePaths.for_workspace(tmp_path).ensure()
     store = SQLiteResultStore(paths)

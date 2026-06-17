@@ -95,6 +95,7 @@ def _session_payloads(
                 "key": current_session_id,
                 "session_id": current_session_id,
                 "provider": "codex",
+                "is_current": True,
                 "result_count": current_summary["total"],
                 "matched": current_summary["matched"],
                 "skipped": current_summary["skipped"],
@@ -102,6 +103,12 @@ def _session_payloads(
                 "analyzed_factor_count": current_summary["total"],
                 "pending_factor_count": 0,
                 "last_analyzed_at": "",
+                "first_user_preview": "",
+                "first_user_source_ref": "",
+                "first_user_source_line": 0,
+                "last_assistant_preview": "",
+                "last_assistant_source_ref": "",
+                "last_assistant_source_line": 0,
             }
         ]
     rows = []
@@ -113,6 +120,7 @@ def _session_payloads(
                 "key": session_id,
                 "session_id": session_id,
                 "provider": str(getattr(status, "provider", "")),
+                "is_current": is_current,
                 "source_ref": str(getattr(status, "source_ref", "")),
                 "event_count": int(getattr(status, "event_count", 0)),
                 "result_count": current_summary["total"] if is_current else int(getattr(status, "analyzed_factor_count", 0)),
@@ -123,6 +131,12 @@ def _session_payloads(
                 "pending_factor_count": int(getattr(status, "pending_factor_count", 0)),
                 "last_analyzed_at": str(getattr(status, "last_analyzed_at", "")),
                 "stale_reason": str(getattr(status, "stale_reason", "")),
+                "first_user_preview": str(getattr(status, "first_user_preview", "")),
+                "first_user_source_ref": str(getattr(status, "first_user_source_ref", "")),
+                "first_user_source_line": int(getattr(status, "first_user_source_line", 0)),
+                "last_assistant_preview": str(getattr(status, "last_assistant_preview", "")),
+                "last_assistant_source_ref": str(getattr(status, "last_assistant_source_ref", "")),
+                "last_assistant_source_line": int(getattr(status, "last_assistant_source_line", 0)),
             }
         )
     return rows
@@ -384,15 +398,68 @@ def _dashboard_script() -> str:
         );
       }
 
+      function SourceLine({ label, sourceRef, sourceLine }) {
+        if (!sourceRef && !sourceLine) return null;
+        return h("div", { className: "source-line" },
+          h(Text, { type: "secondary" }, label),
+          h("br"),
+          h(Text, { code: true }, sourceLine ? `${sourceRef}:${sourceLine}` : sourceRef)
+        );
+      }
+
+      function SessionDetail({ row, onOpen }) {
+        return h("div", { className: "session-detail" },
+          h(Row, { gutter: [16, 12] },
+            h(Col, { xs: 24, md: 12 },
+              h("div", { className: "session-detail-block" },
+                h(Text, { strong: true }, "First user message"),
+                h("p", null, row.first_user_preview || "No user preview"),
+                h(SourceLine, {
+                  label: "Source locator",
+                  sourceRef: row.first_user_source_ref || row.source_ref,
+                  sourceLine: row.first_user_source_line
+                })
+              )
+            ),
+            h(Col, { xs: 24, md: 12 },
+              h("div", { className: "session-detail-block" },
+                h(Text, { strong: true }, "Last assistant message"),
+                h("p", null, row.last_assistant_preview || "No assistant preview"),
+                h(SourceLine, {
+                  label: "Source locator",
+                  sourceRef: row.last_assistant_source_ref || row.source_ref,
+                  sourceLine: row.last_assistant_source_line
+                })
+              )
+            )
+          ),
+          row.is_current ? h(ResultTable, { onOpen }) : h("div", { className: "session-empty-results" },
+            h(Text, { type: "secondary" }, row.pending_factor_count
+              ? `${row.pending_factor_count} pending factor runs. Analyze this session to see factor result details.`
+              : "No factor result details are bundled in this report.")
+          )
+        );
+      }
+
       function SessionsTab({ onOpen }) {
         const columns = [
           {
             title: "Session",
             dataIndex: "session_id",
-            render: (value, row) => h("div", null,
+            render: (value, row) => h("div", { className: "session-cell" },
               h(Text, { strong: true }, value),
-              h("br"),
-              h(Text, { type: "secondary" }, row.provider)
+              h(Space, { size: 6, className: "session-meta" },
+                h(Tag, null, row.provider),
+                row.event_count ? h(Text, { type: "secondary" }, `${row.event_count} events`) : null
+              ),
+              row.first_user_preview ? h("div", { className: "session-preview" },
+                h(Text, { type: "secondary" }, "User · "),
+                h(Text, null, row.first_user_preview)
+              ) : null,
+              row.last_assistant_preview ? h("div", { className: "session-preview assistant" },
+                h(Text, { type: "secondary" }, "Assistant · "),
+                h(Text, null, row.last_assistant_preview)
+              ) : null
             )
           },
           { title: "Results", dataIndex: "result_count", width: 100 },
@@ -417,7 +484,7 @@ def _dashboard_script() -> str:
             pagination: false,
             size: "small",
             expandable: {
-              expandedRowRender: () => h(ResultTable, { onOpen }),
+              expandedRowRender: (row) => h(SessionDetail, { row, onOpen }),
               rowExpandable: () => true
             }
           })
@@ -523,6 +590,15 @@ def _style() -> str:
     .result-detail { display: grid; gap: 10px; }
     .pack-detail { color: #5f6b7a; line-height: 1.55; max-width: 820px; }
     .result-section { border-top: 1px solid #f0f0f0; padding-top: 10px; margin-top: 10px; display: grid; gap: 7px; }
+    .session-cell { display: grid; gap: 5px; max-width: 560px; }
+    .session-meta { margin-top: 1px; }
+    .session-preview { line-height: 1.45; overflow-wrap: anywhere; }
+    .session-preview.assistant { color: #5f6b7a; }
+    .session-detail { display: grid; gap: 14px; padding: 4px 0 8px; }
+    .session-detail-block { min-height: 112px; border: 1px solid #edf0f5; background: #fafcff; border-radius: 8px; padding: 12px; }
+    .session-detail-block p { margin: 8px 0 10px; line-height: 1.55; overflow-wrap: anywhere; }
+    .source-line { overflow-wrap: anywhere; }
+    .session-empty-results { border-top: 1px solid #f0f0f0; padding-top: 12px; }
     .fallback { display: block; }
     @media (max-width: 760px) {
       .dashboard-shell { padding: 22px 14px 36px; }

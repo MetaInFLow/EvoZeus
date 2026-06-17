@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -45,6 +46,9 @@ def scan_sessions(
     scanner = CodexScanner()
     refs = scanner.discover(ScanRequest(provider="codex", source_dir=source_dir, limit=limit))
     store.record_session_refs(refs)
+    if _auto_load_events(paths):
+        for ref in refs:
+            store.record_session_envelope(scanner.load(ref))
     return ScanSummary(session_count=len(refs), refs=refs, sqlite_path=paths.result_index_db)
 
 
@@ -99,3 +103,17 @@ def analyze_session(
         markdown_path=html_path.with_name("factor-results.md"),
         html_path=html_path,
     )
+
+
+def _auto_load_events(paths: RuntimePaths) -> bool:
+    config_path = paths.state_root / "config.json"
+    if not config_path.exists():
+        return True
+    try:
+        config = json.loads(config_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return True
+    scan_config = config.get("scan") if isinstance(config, dict) else {}
+    if not isinstance(scan_config, dict):
+        return True
+    return bool(scan_config.get("auto_load_events", True))

@@ -98,6 +98,9 @@ def test_run_session_report_script_writes_html_for_selected_factors(tmp_path: Pa
     html = report_path.read_text(encoding="utf-8")
     assert 'data-component="word_cloud"' in html
     assert "session-beta" in html
+    assert "这个 factor 结果不对，没改到默认输出" in html
+    assert "我会运行指定 factor。" in html
+    assert "first_user_source_line" in html
     assert "pending_factor_count" in html
     assert "default.tool_failure" in html
     assert "default.open_loop" in html
@@ -107,7 +110,9 @@ def test_run_session_report_script_writes_html_for_selected_factors(tmp_path: Pa
         result_count = conn.execute("SELECT count(*) FROM factor_results").fetchone()[0]
         run_index_count = conn.execute("SELECT count(*) FROM factor_run_index").fetchone()[0]
         event_tag_count = conn.execute("SELECT count(*) FROM event_factor_tags").fetchone()[0]
+        loaded_event_count = conn.execute("SELECT count(*) FROM session_events").fetchone()[0]
     assert session_count == 4
     assert result_count == 2
     assert run_index_count == 2
     assert event_tag_count >= 1
+    assert loaded_event_count == 14
