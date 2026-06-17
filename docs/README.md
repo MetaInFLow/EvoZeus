@@ -11,6 +11,8 @@ This repository follows the Engineering Everything document layout.
 | --- | --- |
 | Product and protocol design | [design/active/design_doc-v0.1-agent-session-judgment-layer.md](design/active/design_doc-v0.1-agent-session-judgment-layer.md) |
 | Factor runtime isolation | [design/active/factor-runtime-isolation.md](design/active/factor-runtime-isolation.md) |
+| Local analysis ledger and bootstrap design | [design/active/local-analysis-ledger-bootstrap.md](design/active/local-analysis-ledger-bootstrap.md) |
+| Local analysis ledger implementation plan | [implementation/active/local-analysis-ledger-bootstrap-implementation.md](implementation/active/local-analysis-ledger-bootstrap-implementation.md) |
 | Architecture decision history | [decisions/](decisions/) |
 | Privacy and redaction rules | [governance/privacy-and-redaction.md](governance/privacy-and-redaction.md) |
 | Folder ownership | [governance/folder-declaration-v0.md](governance/folder-declaration-v0.md) |
@@ -24,5 +26,6 @@ This repository follows the Engineering Everything document layout.
 - Design docs live in `docs/design/{backlog,active,done}/`.
 - ADRs use continuous numbering: `ADR-0001-*.md`.
 - Governance docs live in `docs/governance/`.
+- Implementation docs live in `docs/implementation/{backlog,active,done}/`.
 - Stable reference docs live in `docs/reference/`.
 - Runtime output must not be committed; local runtime state belongs under `.evozeus/`.
