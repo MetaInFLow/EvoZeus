@@ -97,6 +97,8 @@ def test_run_session_report_script_writes_html_for_selected_factors(tmp_path: Pa
     assert "results.sqlite3" in result.stdout
     html = report_path.read_text(encoding="utf-8")
     assert 'data-component="word_cloud"' in html
+    assert "session-beta" in html
+    assert "pending_factor_count" in html
     assert "default.tool_failure" in html
     assert "default.open_loop" in html
     assert db_path.exists()

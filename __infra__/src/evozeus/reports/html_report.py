@@ -16,6 +16,7 @@ def render_factor_results_html(
     results: list[FactorResult],
     factor_packs: list[FactorPack],
     selected_factor_ids: Iterable[str] | None = None,
+    session_statuses: Iterable[Any] | None = None,
 ) -> str:
     selected_ids = set(selected_factor_ids) if selected_factor_ids is not None else None
     pack_by_id = {pack.manifest.id: pack for pack in factor_packs}
@@ -25,7 +26,7 @@ def render_factor_results_html(
         if selected_ids is None or result.factor_id in selected_ids
     ]
     visualizations = build_result_visualizations(selected_results)
-    payload = _report_payload(session_id, selected_results, visualizations, pack_by_id)
+    payload = _report_payload(session_id, selected_results, visualizations, pack_by_id, session_statuses)
     return "\n".join(
         [
             "<!doctype html>",
@@ -65,6 +66,7 @@ def _report_payload(
     results: list[FactorResult],
     visualizations: list[ResultVisualization],
     pack_by_id: dict[str, FactorPack],
+    session_statuses: Iterable[Any] | None,
 ) -> dict[str, Any]:
     result_items = [_result_payload(result, pack_by_id.get(result.factor_id)) for result in results]
     summary = _summary_payload(results)
@@ -74,22 +76,56 @@ def _report_payload(
             "id": session_id,
             "result_count": len(results),
         },
-        "sessions": [
-            {
-                "key": session_id,
-                "session_id": session_id,
-                "provider": "codex",
-                "result_count": len(results),
-                "matched": summary["matched"],
-                "skipped": summary["skipped"],
-                "top_verdict": summary["top_verdict"],
-            }
-        ],
+        "sessions": _session_payloads(session_id, summary, session_statuses),
         "summary": summary,
         "visualizations": [_visualization_payload(visualization) for visualization in visualizations],
         "results": result_items,
         "factor_packs": [_factor_pack_payload(pack) for pack in pack_by_id.values()],
     }
+
+
+def _session_payloads(
+    current_session_id: str,
+    current_summary: dict[str, Any],
+    session_statuses: Iterable[Any] | None,
+) -> list[dict[str, Any]]:
+    if session_statuses is None:
+        return [
+            {
+                "key": current_session_id,
+                "session_id": current_session_id,
+                "provider": "codex",
+                "result_count": current_summary["total"],
+                "matched": current_summary["matched"],
+                "skipped": current_summary["skipped"],
+                "top_verdict": current_summary["top_verdict"],
+                "analyzed_factor_count": current_summary["total"],
+                "pending_factor_count": 0,
+                "last_analyzed_at": "",
+            }
+        ]
+    rows = []
+    for status in session_statuses:
+        session_id = str(getattr(status, "session_id", ""))
+        is_current = session_id == current_session_id
+        rows.append(
+            {
+                "key": session_id,
+                "session_id": session_id,
+                "provider": str(getattr(status, "provider", "")),
+                "source_ref": str(getattr(status, "source_ref", "")),
+                "event_count": int(getattr(status, "event_count", 0)),
+                "result_count": current_summary["total"] if is_current else int(getattr(status, "analyzed_factor_count", 0)),
+                "matched": current_summary["matched"] if is_current else 0,
+                "skipped": current_summary["skipped"] if is_current else 0,
+                "top_verdict": current_summary["top_verdict"] if is_current else "Pending",
+                "analyzed_factor_count": int(getattr(status, "analyzed_factor_count", 0)),
+                "pending_factor_count": int(getattr(status, "pending_factor_count", 0)),
+                "last_analyzed_at": str(getattr(status, "last_analyzed_at", "")),
+                "stale_reason": str(getattr(status, "stale_reason", "")),
+            }
+        )
+    return rows
 
 
 def _summary_payload(results: list[FactorResult]) -> dict[str, Any]:
@@ -347,6 +383,13 @@ def _dashboard_script() -> str:
           },
           { title: "Results", dataIndex: "result_count", width: 100 },
           { title: "Matched", dataIndex: "matched", width: 100 },
+          { title: "Analyzed", dataIndex: "analyzed_factor_count", width: 110 },
+          {
+            title: "Pending",
+            dataIndex: "pending_factor_count",
+            width: 100,
+            render: (value) => h(Tag, { color: value ? "gold" : "green" }, value)
+          },
           {
             title: "Top Verdict",
             dataIndex: "top_verdict",

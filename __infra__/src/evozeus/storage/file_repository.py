@@ -39,6 +39,7 @@ class FileSessionRepository:
         results: list[FactorResult],
         factor_packs: list[FactorPack],
         selected_factor_ids: Iterable[str] | None = None,
+        session_statuses: Iterable[object] | None = None,
     ) -> Path:
         session_dir = self.paths.session_dir(session_id)
         session_dir.mkdir(parents=True, exist_ok=True)
@@ -49,6 +50,7 @@ class FileSessionRepository:
                 results,
                 factor_packs,
                 selected_factor_ids=selected_factor_ids,
+                session_statuses=session_statuses,
             ),
             encoding="utf-8",
         )
