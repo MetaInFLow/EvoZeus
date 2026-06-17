@@ -44,6 +44,10 @@ class RuntimePaths:
     def runtime_index_dir(self) -> Path:
         return self.runtime_root / "index"
 
+    @property
+    def result_index_db(self) -> Path:
+        return self.runtime_index_dir / "results.sqlite3"
+
     def session_dir(self, session_id: str) -> Path:
         return self.sessions_root / session_id
 

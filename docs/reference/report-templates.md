@@ -23,9 +23,11 @@ Input:
 - `FactorResult`
 - `FactorPack`
 - report-level visualization builder
+- SQLite result index for cross-session workspace views
 
 Output:
 
+- `.evozeus/runtime/index/results.sqlite3`
 - `.evozeus/sessions/<session_id>/factor-results.html`
 
 Script entry:
@@ -62,6 +64,8 @@ Dashboard sections:
 - Word cloud
 - Factor result matrix
 - Factor result cards
+
+The HTML report is a rendering artifact. Structured session/result/tag/evidence data lives in SQLite so the browser workspace can show all scanned sessions, selected-session dashboards, and incremental analysis status.
 
 ## Session Verdict Report
 

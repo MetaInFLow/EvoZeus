@@ -32,6 +32,7 @@
     factors/
       installed/<factor_id>/<version>/
     index/
+      results.sqlite3
   sessions/<session_id>/
     session-envelope.json
     events.jsonl
@@ -57,6 +58,8 @@ factor_packs/
 `factor.json` 声明 id、version、stage、runtime profile、entrypoint、输入输出和回滚方式。`FACTOR.xml` 提供固定介绍，给真人用户和 Agent 读取，包括用途、输入输出、适用场景、限制和隐私边界。`factor.py` 只实现该 factor 的运行逻辑。删除一个 factor 时，删除对应 `<factor_id>/<version>/` 文件夹即可。
 
 Repository 扫描 factor 时会同时读取 `factor.json` 和 `FACTOR.xml`，并校验二者的 id、version、stage 和 runtime 一致。
+
+SQLite result index 会记录扫描到的 session、每个 session 的 events、analysis run、factor result、tags、evidence refs，以及 event -> factor tag 的最新映射。它用于增量分析、跨 session 查询和 dashboard 聚合。
 
 HTML report 会把指定的 `FactorResult` 拼到同一个 `factor-results.html`。页面使用 React + Ant Design CDN 渲染本地 dashboard，包含 summary statistics、词云、factor result matrix 和 result cards。可视化由 report layer 生成，例如词云会读取 selected results 的 tags、verdict signals，并保留 factor 来源用于追溯。
 
@@ -102,7 +105,7 @@ Factor pack 通过 `factor.json` 的 `runtime.mode` 选择运行方式：
 | Scanner | Adapter + Registry | Codex、Claude Code、Cursor 等厂商输入格式不同，统一输出 `SessionEnvelope` |
 | Factor | Abstract Base Class + Template Method | 每个 factor 只实现 `run()`，通用校验、错误隔离和结果规范由框架处理 |
 | Runner | Serial Pipeline | P0 优先可复现和可调试，同一 stage 内并发放到后续版本 |
-| Storage | Repository Pattern | P0 用 JSON/JSONL 文件，后续可换 SQLite index |
+| Storage | Repository Pattern | SQLite index 负责结构化查询，Markdown/HTML 负责 Agent 和真人阅读 |
 
 ## Boundary
 
@@ -142,6 +145,7 @@ PYTHONPATH=__infra__/src python __infra__/scripts/run_session_report.py \
 This writes:
 
 ```text
+.evozeus/runtime/index/results.sqlite3
 .evozeus/sessions/<session_id>/factor-results.md
 .evozeus/sessions/<session_id>/factor-results.html
 ```

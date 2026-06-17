@@ -124,7 +124,26 @@ Python contracts 位于：
 - `__infra__/src/evozeus/factors/registry.py`
 - `__infra__/src/evozeus/factors/runner.py`
 
-P0 落盘结果使用 Markdown report：
+P0 结构化结果写入本地 SQLite index：
+
+```text
+.evozeus/runtime/index/results.sqlite3
+```
+
+核心表：
+
+| Table | Purpose |
+| --- | --- |
+| `sessions` | 记录扫描到的 session、来源、event 数、发现时间和最近加载时间 |
+| `session_events` | 记录每条标准化 event 的 role、content、tool 信息和 metadata |
+| `analysis_runs` | 记录一次分析运行的 session、factor 列表、开始/完成时间和状态 |
+| `factor_results` | 保存每个 `FactorResult` 的结构化字段、scores 和 verdict signals |
+| `factor_tags` | 保存 result-level tags |
+| `factor_evidence` | 保存 result 到具体 event 的 evidence refs |
+| `event_factor_tags` | 保存最新的 event -> factor tag 映射，供 session table 和 dashboard drill-down 查询 |
+| `factor_run_index` | 保存每个 session/factor 最近一次运行时间、状态和 result run |
+
+Markdown report 仍会生成，适合 Agent 读取：
 
 ```text
 .evozeus/sessions/<session_id>/factor-results.md

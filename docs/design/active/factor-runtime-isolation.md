@@ -184,7 +184,7 @@ SessionEnvelope
   -> RuntimeResolver
   -> in_process / subprocess_uv
   -> FactorResult
-  -> ResultRepository
+  -> SQLiteResultStore
   -> Markdown report / HTML report
 ```
 
@@ -195,7 +195,8 @@ SessionEnvelope
 3. subprocess 加载 `factor.py`。
 4. factor 执行并返回 `FactorResult`。
 5. 主进程校验结果 schema。
-6. 写入 report。
+6. 写入本地 SQLite result index。
+7. 按需生成 Markdown / HTML report。
 
 ## 错误处理
 

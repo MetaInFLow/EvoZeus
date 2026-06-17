@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import sqlite3
 import subprocess
 import sys
 from pathlib import Path
@@ -87,12 +88,24 @@ def test_run_session_report_script_writes_html_for_selected_factors(tmp_path: Pa
     )
 
     report_path = tmp_path / ".evozeus" / "sessions" / "session-alpha" / "factor-results.html"
+    db_path = tmp_path / ".evozeus" / "runtime" / "index" / "results.sqlite3"
     assert result.returncode == 0, result.stderr
     assert "session report ok" in result.stdout
     assert "session_id=session-alpha" in result.stdout
     assert "results=2" in result.stdout
     assert "factor-results.html" in result.stdout
+    assert "results.sqlite3" in result.stdout
     html = report_path.read_text(encoding="utf-8")
     assert 'data-component="word_cloud"' in html
     assert "default.tool_failure" in html
     assert "default.open_loop" in html
+    assert db_path.exists()
+    with sqlite3.connect(db_path) as conn:
+        session_count = conn.execute("SELECT count(*) FROM sessions").fetchone()[0]
+        result_count = conn.execute("SELECT count(*) FROM factor_results").fetchone()[0]
+        run_index_count = conn.execute("SELECT count(*) FROM factor_run_index").fetchone()[0]
+        event_tag_count = conn.execute("SELECT count(*) FROM event_factor_tags").fetchone()[0]
+    assert session_count == 4
+    assert result_count == 2
+    assert run_index_count == 2
+    assert event_tag_count >= 1

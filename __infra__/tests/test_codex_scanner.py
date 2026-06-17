@@ -53,6 +53,7 @@ def test_codex_scanner_loads_archived_payload_shape(tmp_path: Path):
     refs = scanner.discover(ScanRequest(provider="codex", source_dir=tmp_path))
     envelope = scanner.load(refs[0])
 
+    assert refs[0].session_id == "archive-session"
     assert envelope.session_id == "archive-session"
     assert [event.role for event in envelope.events] == ["user", "tool"]
     assert envelope.events[1].tool_name == "exec_command"

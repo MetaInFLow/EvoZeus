@@ -34,7 +34,7 @@ class CodexScanner:
         if request.limit is not None:
             paths = paths[: request.limit]
         return [
-            SessionRef(provider=self.provider, session_id=path.stem, source_path=path)
+            SessionRef(provider=self.provider, session_id=_discover_session_id(path), source_path=path)
             for path in paths
         ]
 
@@ -70,6 +70,28 @@ def _session_id_from_record(record: dict[str, Any]) -> str | None:
     if record.get("type") == "session_meta" and isinstance(payload, dict) and payload.get("id"):
         return str(payload["id"])
     return None
+
+
+def _discover_session_id(path: Path) -> str:
+    inspected = 0
+    with path.open(encoding="utf-8") as handle:
+        lines = handle.readlines(100_000)
+    for line in lines:
+        if not line.strip():
+            continue
+        inspected += 1
+        if inspected > 100:
+            break
+        try:
+            record = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(record, dict):
+            continue
+        session_id = _session_id_from_record(record)
+        if session_id is not None:
+            return session_id
+    return path.stem
 
 
 def _event_from_payload(index: int, record: dict[str, Any]) -> SessionEvent | None:

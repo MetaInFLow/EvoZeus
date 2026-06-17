@@ -10,6 +10,7 @@ from evozeus.runtime.paths import RuntimePaths
 from evozeus.scanners.base import ScanRequest, SessionRef
 from evozeus.scanners.providers.codex import CodexScanner
 from evozeus.storage.file_repository import FileSessionRepository
+from evozeus.storage.sqlite_result_store import SQLiteResultStore
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -33,17 +34,27 @@ def main() -> None:
         )
     )
     assert refs, "no sessions found"
-    session = scanner.load(_select_session_ref(scanner, refs, args.session_id, args.session_index))
+    paths = RuntimePaths.for_workspace(Path(args.workspace)).ensure()
+    result_store = SQLiteResultStore(paths)
+    result_store.record_session_refs(refs)
 
     factor_repository = FactorPackRepository(Path(args.pack_root))
     packs = factor_repository.discover()
     selected_packs = [factor_repository.get(factor_id) for factor_id in args.factor] if args.factor else packs
+    selected_factor_ids = [pack.manifest.id for pack in selected_packs]
 
+    session = scanner.load(_select_session_ref(scanner, refs, args.session_id, args.session_index))
     summary = FactorRunner(selected_packs).run(FactorContext(session=session))
+    analysis_run_id = result_store.record_factor_run(
+        session,
+        summary.results,
+        factor_ids=selected_factor_ids,
+        errors=summary.errors,
+    )
     assert not summary.errors, summary.errors
     assert summary.results, "expected factor results"
 
-    repository = FileSessionRepository(RuntimePaths.for_workspace(Path(args.workspace)).ensure())
+    repository = FileSessionRepository(paths)
     repository.write_session(session)
     repository.append_factor_results(session.session_id, summary.results)
     html_path = repository.write_factor_results_html(
@@ -57,6 +68,8 @@ def main() -> None:
         "session report ok: "
         f"session_id={session.session_id} "
         f"results={len(summary.results)} "
+        f"analysis_run_id={analysis_run_id} "
+        f"sqlite={paths.result_index_db} "
         f"md={md_path} "
         f"html={html_path}"
     )
