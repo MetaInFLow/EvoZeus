@@ -102,6 +102,8 @@ def test_file_repository_writes_html_report_for_selected_factor_results(tmp_path
     assert 'data-component="workspace_coverage"' in html
     assert "session_conversation" in html
     assert "event_tag_strip" in html
+    assert "visibleEventsForSession" in html
+    assert "dedupeVisibleEvents" in html
     assert "setDrawerResult" in html
     assert 'data-component="word_cloud"' in html
     assert 'data-result-card="factor_result"' in html

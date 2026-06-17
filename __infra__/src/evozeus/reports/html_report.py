@@ -456,6 +456,26 @@ def _dashboard_script() -> str:
         return (data.session_events || []).filter((event) => event.session_id === sessionId);
       }
 
+      function visibleEventsForSession(sessionId) {
+        return dedupeVisibleEvents(eventsForSession(sessionId).filter((event) => {
+          const hasBody = Boolean(event.content || event.tool_result_preview);
+          const hasTags = Boolean((event.tags || []).length);
+          if (hasBody || hasTags) return true;
+          return !["event", "reasoning"].includes(event.role);
+        }));
+      }
+
+      function dedupeVisibleEvents(events) {
+        return events.filter((event, index) => {
+          const previous = events[index - 1];
+          if (!previous) return true;
+          return !(
+            previous.role === event.role
+            && (previous.content || previous.tool_result_preview || "") === (event.content || event.tool_result_preview || "")
+          );
+        });
+      }
+
       function timestampValue(value) {
         const parsed = Number(value || 0);
         return Number.isFinite(parsed) ? parsed : 0;
@@ -505,7 +525,8 @@ def _dashboard_script() -> str:
       function ChatEvent({ event, onOpen }) {
         const isAssistant = event.role === "assistant";
         const isUser = event.role === "user";
-        const roleColor = isUser ? "blue" : isAssistant ? "green" : "default";
+        const isComplete = event.role === "task_complete";
+        const roleColor = isUser ? "blue" : isAssistant ? "green" : isComplete ? "purple" : "default";
         const body = event.content || event.tool_result_preview || "";
         return h("button", {
           type: "button",
@@ -538,7 +559,7 @@ def _dashboard_script() -> str:
 
       function SessionConversation({ session, onBack }) {
         const [drawerEvent, setDrawerEvent] = React.useState(null);
-        const events = eventsForSession(session.session_id);
+        const events = visibleEventsForSession(session.session_id);
         return h("section", { className: "session-conversation", "data-component": "session_conversation" },
           h("div", { className: "conversation-header" },
             h(Button, { onClick: onBack }, "Sessions"),

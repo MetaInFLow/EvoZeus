@@ -138,6 +138,74 @@ def test_codex_scanner_normalizes_archived_response_item_tools(tmp_path: Path):
     assert envelope.events[1].tool_result == {"output": "pytest failed with timeout", "call_id": "call-1"}
 
 
+def test_codex_scanner_marks_task_complete_without_repeating_final_answer(tmp_path: Path):
+    session_path = tmp_path / "session-complete.jsonl"
+    final_answer = "已经传上去了。"
+    session_path.write_text(
+        "\n".join(
+            [
+                json.dumps({"type": "session_meta", "payload": {"id": "complete-session"}}),
+                json.dumps(
+                    {
+                        "timestamp": "2026-04-21T10:49:28.472Z",
+                        "type": "event_msg",
+                        "payload": {"type": "agent_message", "message": final_answer, "phase": "final_answer"},
+                    }
+                ),
+                json.dumps(
+                    {
+                        "timestamp": "2026-04-21T10:49:28.556Z",
+                        "type": "event_msg",
+                        "payload": {
+                            "type": "task_complete",
+                            "last_agent_message": final_answer,
+                            "completed_at": 1776768568,
+                            "duration_ms": 266612,
+                        },
+                    }
+                ),
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    scanner = CodexScanner()
+    ref = scanner.discover(ScanRequest(provider="codex", source_dir=tmp_path))[0]
+    envelope = scanner.load(ref)
+
+    assert [(event.role, event.content) for event in envelope.events] == [
+        ("assistant", final_answer),
+        ("task_complete", "Task complete"),
+    ]
+    assert envelope.events[1].metadata["codex_event_type"] == "task_complete"
+    assert envelope.events[1].metadata["task_duration_ms"] == "266612"
+
+
+def test_codex_scanner_keeps_wrapped_records_that_share_timestamp(tmp_path: Path):
+    session_path = tmp_path / "session-same-timestamp.jsonl"
+    timestamp = "2026-04-21T10:49:28.472Z"
+    session_path.write_text(
+        "\n".join(
+            [
+                json.dumps({"type": "session_meta", "payload": {"id": "same-timestamp-session"}}),
+                json.dumps({"timestamp": timestamp, "type": "response_item", "payload": {"role": "user", "content": "第一条指令"}}),
+                json.dumps({"timestamp": timestamp, "type": "response_item", "payload": {"role": "assistant", "content": "第一条回复"}}),
+                json.dumps({"timestamp": timestamp, "type": "event_msg", "payload": {"type": "agent_message", "message": "第二条回复"}}),
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    scanner = CodexScanner()
+    envelope = scanner.load(scanner.discover(ScanRequest(provider="codex", source_dir=tmp_path))[0])
+
+    assert [event.content for event in envelope.events] == ["第一条指令", "第一条回复", "第二条回复"]
+    assert len({event.event_id for event in envelope.events}) == 3
+    assert all(timestamp in event.event_id for event in envelope.events)
+
+
 def test_codex_scanner_bridges_source_id_manifest_to_local_codex_source(tmp_path: Path, monkeypatch):
     source_id = "rollout-test-bridge"
     session_id = "bridge-session"

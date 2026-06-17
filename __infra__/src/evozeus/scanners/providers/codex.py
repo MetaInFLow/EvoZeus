@@ -161,7 +161,7 @@ def _event_from_wrapped_payload(index: int, record: dict[str, Any], payload: dic
         return None
 
     event_type = str(payload.get("type") or wrapper_type)
-    event_id = str(payload.get("id") or record.get("id") or record.get("timestamp") or f"event_{index:04d}")
+    event_id = _wrapped_event_id(index, record, payload)
 
     if wrapper_type == "response_item":
         if event_type in TOOL_RESPONSE_ITEM_TYPES:
@@ -174,6 +174,19 @@ def _event_from_wrapped_payload(index: int, record: dict[str, Any], payload: dic
         )
 
     if wrapper_type == "event_msg":
+        if event_type == "task_complete":
+            return SessionEvent(
+                event_id=event_id,
+                role="task_complete",
+                content="Task complete",
+                metadata={
+                    "provider": "codex",
+                    "codex_record_type": wrapper_type,
+                    "codex_event_type": event_type,
+                    "task_completed_at": str(payload.get("completed_at") or ""),
+                    "task_duration_ms": str(payload.get("duration_ms") or ""),
+                },
+            )
         message = payload.get("message") or payload.get("last_agent_message") or payload.get("content") or payload.get("text")
         role = _event_msg_role(event_type, payload)
         tool_result = {"message": _string_content(message)} if role == "tool" and message is not None else None
@@ -192,6 +205,16 @@ def _event_from_wrapped_payload(index: int, record: dict[str, Any], payload: dic
         content=_response_content(payload),
         metadata={"provider": "codex", "codex_record_type": wrapper_type, "codex_event_type": event_type},
     )
+
+
+def _wrapped_event_id(index: int, record: dict[str, Any], payload: dict[str, Any]) -> str:
+    explicit_id = payload.get("id") or record.get("id")
+    if explicit_id:
+        return str(explicit_id)
+    timestamp = record.get("timestamp")
+    if timestamp:
+        return f"{timestamp}#L{index}"
+    return f"event_{index:04d}"
 
 
 def _tool_response_item_event(
