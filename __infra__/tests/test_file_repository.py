@@ -98,6 +98,7 @@ def test_file_repository_writes_html_report_for_selected_factor_results(tmp_path
     assert "Sessions" in html
     assert "Dashboards" in html
     assert "Factor Packs" in html
+    assert 'data-component="workspace_coverage"' in html
     assert "expandable" in html
     assert "setDrawerResult" in html
     assert 'data-component="word_cloud"' in html

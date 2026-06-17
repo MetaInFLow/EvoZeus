@@ -231,6 +231,7 @@ def _fallback_html(payload: dict[str, Any]) -> str:
             '      <section data-workspace-tab="sessions"><h2>Sessions</h2></section>',
             '      <section data-workspace-tab="dashboards"><h2>Dashboards</h2></section>',
             '      <section data-workspace-tab="factor_packs"><h2>Factor Packs</h2></section>',
+            '      <section data-component="workspace_coverage"></section>',
             '      <section data-component="result_summary">',
             f'        <strong>Matched</strong><span>{payload["summary"]["matched"]}</span>',
             f'        <strong>Skipped</strong><span>{payload["summary"]["skipped"]}</span>',
@@ -306,6 +307,19 @@ def _dashboard_script() -> str:
                 title: term.source_factor_ids.join(", ")
               }, term.text)
             ) : h(Text, { type: "secondary" }, "No terms")
+          )
+        );
+      }
+
+      function WorkspaceCoverage() {
+        const sessions = data.sessions || [];
+        const analyzedSessions = sessions.filter((session) => session.analyzed_factor_count > 0).length;
+        const pendingFactorRuns = sessions.reduce((total, session) => total + (session.pending_factor_count || 0), 0);
+        return h("section", { "data-component": "workspace_coverage", className: "summary-panel" },
+          h(Row, { gutter: [12, 12] },
+            h(Col, { xs: 12, md: 8 }, h(Card, { size: "small" }, h(Statistic, { title: "Scanned Sessions", value: sessions.length }))),
+            h(Col, { xs: 12, md: 8 }, h(Card, { size: "small" }, h(Statistic, { title: "Analyzed Sessions", value: analyzedSessions }))),
+            h(Col, { xs: 24, md: 8 }, h(Card, { size: "small" }, h(Statistic, { title: "Pending Factor Runs", value: pendingFactorRuns })))
           )
         );
       }
@@ -412,6 +426,7 @@ def _dashboard_script() -> str:
 
       function DashboardsTab({ onOpen }) {
         return h("section", { "data-workspace-tab": "dashboards", className: "workspace-tab" },
+          h(WorkspaceCoverage),
           h(Summary),
           h(Row, { gutter: [16, 16], className: "dashboard-row" },
             h(Col, { xs: 24, lg: 10 }, h(WordCloud)),
