@@ -82,7 +82,7 @@ def test_companion_scans_and_analyzes_session(tmp_path):
 
     scan = client.post(f"/api/scan?token=secret&source={TESTDATA / 'codex_sessions'}")
     assert scan.status_code == 200
-    assert scan.json()["session_count"] == 4
+    assert scan.json()["session_count"] == 5
 
     analyze = client.post("/api/analyze/session-alpha?token=secret&factor_id=default.tool_failure")
     assert analyze.status_code == 200
@@ -98,3 +98,5 @@ def test_companion_scans_and_analyzes_session(tmp_path):
     assert by_id["session-beta"]["first_user_preview"] == "这个 factor 结果不对，没改到默认输出"
     assert by_id["session-beta"]["first_user_source_line"] == 1
     assert by_id["session-beta"]["last_assistant_preview"] == "我会运行指定 factor。"
+    assert by_id["session-zeta-realistic-long"]["event_count"] == 30
+    assert by_id["session-zeta-realistic-long"]["first_user_preview"].startswith("规划一个真实一点的 EvoZeus 本地扫描闭环")

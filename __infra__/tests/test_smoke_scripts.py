@@ -27,12 +27,12 @@ def run_script(name: str, *args: str) -> subprocess.CompletedProcess[str]:
 
 
 def test_scan_sessions_script_finds_session_with_enough_information():
-    result = run_script("scan_sessions_smoke.py", "--source", str(TESTDATA / "codex_sessions"), "--min-sessions", "4")
+    result = run_script("scan_sessions_smoke.py", "--source", str(TESTDATA / "codex_sessions"), "--min-sessions", "5")
 
     assert result.returncode == 0, result.stderr
     assert "scan sessions ok" in result.stdout
-    assert "sessions=4" in result.stdout
-    assert "total_events=14" in result.stdout
+    assert "sessions=5" in result.stdout
+    assert "total_events=44" in result.stdout
     assert "has_tool_result=True" in result.stdout
 
 
@@ -98,6 +98,9 @@ def test_run_session_report_script_writes_html_for_selected_factors(tmp_path: Pa
     html = report_path.read_text(encoding="utf-8")
     assert 'data-component="word_cloud"' in html
     assert "session-beta" in html
+    assert "session-zeta-realistic-long" in html
+    assert "规划一个真实一点的 EvoZeus 本地扫描闭环" in html
+    assert '"event_count":30' in html
     assert "这个 factor 结果不对，没改到默认输出" in html
     assert "我会运行指定 factor。" in html
     assert "first_user_source_line" in html
@@ -116,8 +119,8 @@ def test_run_session_report_script_writes_html_for_selected_factors(tmp_path: Pa
         run_index_count = conn.execute("SELECT count(*) FROM factor_run_index").fetchone()[0]
         event_tag_count = conn.execute("SELECT count(*) FROM event_factor_tags").fetchone()[0]
         loaded_event_count = conn.execute("SELECT count(*) FROM session_events").fetchone()[0]
-    assert session_count == 4
+    assert session_count == 5
     assert result_count == 2
     assert run_index_count == 2
     assert event_tag_count >= 1
-    assert loaded_event_count == 14
+    assert loaded_event_count == 44
