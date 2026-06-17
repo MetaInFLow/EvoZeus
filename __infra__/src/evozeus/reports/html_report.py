@@ -112,6 +112,11 @@ def _session_payloads(
                 "last_assistant_preview": "",
                 "last_assistant_source_ref": "",
                 "last_assistant_source_line": 0,
+                "session_title": current_session_id,
+                "session_cwd": "",
+                "session_group_key": "Ungrouped",
+                "session_group_label": "Ungrouped",
+                "session_updated_at": "",
             }
         ]
     rows = []
@@ -140,6 +145,11 @@ def _session_payloads(
                 "last_assistant_preview": str(getattr(status, "last_assistant_preview", "")),
                 "last_assistant_source_ref": str(getattr(status, "last_assistant_source_ref", "")),
                 "last_assistant_source_line": int(getattr(status, "last_assistant_source_line", 0)),
+                "session_title": str(getattr(status, "session_title", "") or session_id),
+                "session_cwd": str(getattr(status, "session_cwd", "")),
+                "session_group_key": str(getattr(status, "session_group_key", "") or "Ungrouped"),
+                "session_group_label": str(getattr(status, "session_group_label", "") or "Ungrouped"),
+                "session_updated_at": str(getattr(status, "session_updated_at", "")),
             }
         )
     return rows
@@ -446,6 +456,42 @@ def _dashboard_script() -> str:
         return (data.session_events || []).filter((event) => event.session_id === sessionId);
       }
 
+      function timestampValue(value) {
+        const parsed = Number(value || 0);
+        return Number.isFinite(parsed) ? parsed : 0;
+      }
+
+      function buildSessionGroups(sessions) {
+        const byKey = new Map();
+        sessions.forEach((session) => {
+          const key = session.session_group_key || "Ungrouped";
+          if (!byKey.has(key)) {
+            byKey.set(key, {
+              key,
+              label: session.session_group_label || key,
+              cwd: session.session_cwd || "",
+              latestUpdatedAt: 0,
+              sessions: []
+            });
+          }
+          const group = byKey.get(key);
+          group.sessions.push(session);
+          group.latestUpdatedAt = Math.max(group.latestUpdatedAt, timestampValue(session.session_updated_at));
+        });
+        const groups = Array.from(byKey.values());
+        groups.forEach((group) => {
+          group.sessions.sort((left, right) => (
+            timestampValue(right.session_updated_at) - timestampValue(left.session_updated_at)
+            || String(left.session_title || left.session_id).localeCompare(String(right.session_title || right.session_id), "zh-CN")
+          ));
+        });
+        groups.sort((left, right) => (
+          right.latestUpdatedAt - left.latestUpdatedAt
+          || String(left.label).localeCompare(String(right.label), "zh-CN")
+        ));
+        return groups;
+      }
+
       function EventTagStrip({ tags }) {
         return h("div", { className: "event-tag-strip", "data-component": "event_tag_strip" },
           tags.length ? tags.map((tag) =>
@@ -500,6 +546,8 @@ def _dashboard_script() -> str:
               h(Title, { level: 3 }, session.session_id),
               h(Space, { size: 6, wrap: true },
                 h(Tag, null, session.provider),
+                session.session_title && session.session_title !== session.session_id ? h(Tag, null, session.session_title) : null,
+                session.session_group_label ? h(Tag, null, session.session_group_label) : null,
                 h(Tag, null, `${session.event_count || events.length} events`),
                 h(Tag, { color: session.pending_factor_count ? "gold" : "green" }, `${session.pending_factor_count} pending`)
               )
@@ -525,14 +573,16 @@ def _dashboard_script() -> str:
         if (selectedSession) {
           return h(SessionConversation, { session: selectedSession, onBack: () => setSelectedSessionId(null) });
         }
+        const sessionGroups = buildSessionGroups(data.sessions || []);
         const columns = [
           {
             title: "Session",
             dataIndex: "session_id",
             render: (value, row) => h("div", { className: "session-cell" },
-              h(Button, { type: "link", className: "session-link", onClick: () => setSelectedSessionId(row.session_id) }, value),
+              h(Button, { type: "link", className: "session-link", onClick: () => setSelectedSessionId(row.session_id) }, row.session_title || value),
               h(Space, { size: 6, className: "session-meta" },
                 h(Tag, null, row.provider),
+                h(Text, { code: true }, value),
                 row.event_count ? h(Text, { type: "secondary" }, `${row.event_count} events`) : null
               ),
               row.first_user_preview ? h("div", { className: "session-preview" },
@@ -561,12 +611,30 @@ def _dashboard_script() -> str:
           }
         ];
         return h("section", { "data-workspace-tab": "sessions", className: "workspace-tab" },
-          h(Table, {
-            columns,
-            dataSource: data.sessions,
-            pagination: false,
-            size: "small"
-          })
+          h("div", { className: "session-folder-groups", "data-component": "session_folder_groups" },
+            sessionGroups.length ? sessionGroups.map((group) =>
+              h("section", { key: group.key, className: "session-folder-group" },
+                h("div", { className: "session-folder-header" },
+                  h("div", null,
+                    h(Text, { strong: true }, group.label),
+                    group.cwd ? h("div", { className: "session-folder-path" }, h(Text, { type: "secondary" }, group.cwd)) : null
+                  ),
+                  h(Space, { size: 6 },
+                    h(Tag, null, `${group.sessions.length} sessions`),
+                    h(Tag, { color: group.sessions.some((session) => session.pending_factor_count) ? "gold" : "green" },
+                      `${group.sessions.reduce((total, session) => total + (session.pending_factor_count || 0), 0)} pending`
+                    )
+                  )
+                ),
+                h(Table, {
+                  columns,
+                  dataSource: group.sessions,
+                  pagination: false,
+                  size: "small"
+                })
+              )
+            ) : h(Empty, { description: "No sessions" })
+          )
         );
       }
 
@@ -675,6 +743,10 @@ def _style() -> str:
     .session-preview { line-height: 1.45; overflow-wrap: anywhere; }
     .session-preview.assistant { color: #5f6b7a; }
     .source-line { overflow-wrap: anywhere; }
+    .session-folder-groups { display: grid; gap: 14px; }
+    .session-folder-group { background: #fff; border: 1px solid #edf0f5; border-radius: 8px; overflow: hidden; }
+    .session-folder-header { min-height: 52px; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 16px; background: #fbfcff; border-bottom: 1px solid #edf0f5; }
+    .session-folder-path { margin-top: 3px; overflow-wrap: anywhere; }
     .session-conversation { display: grid; gap: 14px; }
     .conversation-header { display: flex; gap: 14px; align-items: flex-start; border-bottom: 1px solid #edf0f5; padding-bottom: 14px; }
     .conversation-header h3 { margin: 0 0 8px; }

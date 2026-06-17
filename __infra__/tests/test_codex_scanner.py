@@ -172,3 +172,70 @@ def test_codex_scanner_bridges_source_id_manifest_to_local_codex_source(tmp_path
     assert envelope.session_id == session_id
     assert [event.content for event in envelope.events] == ["桥接扫描", "已读取原始 source"]
     assert envelope.events[0].metadata["event_locator_json"]["payload"]["source_path"] == str(codex_source)
+
+
+def test_codex_scanner_groups_sessions_by_codex_workspace_cwd(tmp_path: Path, monkeypatch):
+    fake_home = tmp_path / "home"
+    codex_root = fake_home / ".codex"
+    sessions_root = codex_root / "sessions"
+    project_a = "/Users/anthonyf/projects/evozeus"
+    project_b = "/Users/anthonyf/projects/openlifeos"
+
+    first_source = sessions_root / "2026" / "06" / "17" / "rollout-first.jsonl"
+    second_source = sessions_root / "2026" / "06" / "18" / "rollout-second.jsonl"
+    third_source = sessions_root / "2026" / "06" / "18" / "rollout-third.jsonl"
+    first_source.parent.mkdir(parents=True)
+    second_source.parent.mkdir(parents=True)
+    first_source.write_text(
+        "\n".join(
+            [
+                json.dumps({"type": "session_meta", "payload": {"id": "session-first", "cwd": project_a}}),
+                json.dumps({"type": "response_item", "payload": {"id": "u1", "role": "user", "content": "first"}}),
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    second_source.write_text(
+        "\n".join(
+            [
+                json.dumps({"type": "session_meta", "payload": {"id": "session-second", "cwd": project_a}}),
+                json.dumps({"type": "response_item", "payload": {"id": "u1", "role": "user", "content": "second"}}),
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    third_source.write_text(
+        "\n".join(
+            [
+                json.dumps({"type": "session_meta", "payload": {"id": "session-third", "cwd": project_b}}),
+                json.dumps({"type": "response_item", "payload": {"id": "u1", "role": "user", "content": "third"}}),
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (codex_root / "session_index.jsonl").write_text(
+        "\n".join(
+            [
+                json.dumps({"id": "session-first", "thread_name": "较早的 EvoZeus 调试", "updated_at": "2026-06-17T08:00:00Z"}),
+                json.dumps({"id": "session-second", "thread_name": "最新的 EvoZeus 调试", "updated_at": "2026-06-18T09:00:00Z"}),
+                json.dumps({"id": "session-third", "thread_name": "OpenLifeOS 调试", "updated_at": "2026-06-18T07:00:00Z"}),
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("HOME", str(fake_home))
+
+    scanner = CodexScanner()
+    refs = scanner.discover(ScanRequest(provider="codex"))
+
+    assert [ref.session_id for ref in refs] == ["session-second", "session-first", "session-third"]
+    assert refs[0].metadata["session_title"] == "最新的 EvoZeus 调试"
+    assert refs[0].metadata["session_cwd"] == project_a
+    assert refs[0].metadata["session_group_key"] == project_a
+    assert refs[0].metadata["session_group_label"] == "evozeus"
+    assert refs[0].metadata["session_updated_at"]
+    assert refs[0].metadata["codex_source_root"] == str(codex_root)

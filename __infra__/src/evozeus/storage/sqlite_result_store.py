@@ -36,6 +36,11 @@ class SessionAnalysisStatus:
     last_assistant_source_ref: str = ""
     last_assistant_source_line: int = 0
     stale_reason: str = ""
+    session_title: str = ""
+    session_cwd: str = ""
+    session_group_key: str = ""
+    session_group_label: str = ""
+    session_updated_at: str = ""
 
 
 @dataclass(frozen=True)
@@ -114,7 +119,7 @@ class SQLiteResultStore:
         now = _utc_now()
         with self._connect() as conn:
             for ref in refs:
-                metadata = ref.metadata or {}
+                metadata = {**(ref.metadata or {}), "source_ref": str(ref.source_path)}
                 conn.execute(
                     """
                     INSERT INTO source_refs (
@@ -149,15 +154,16 @@ class SQLiteResultStore:
                 conn.execute(
                     """
                     INSERT INTO sessions (
-                        session_id, provider, source_ref, discovered_at, first_seen_at, last_seen_at
+                        session_id, provider, source_ref, discovered_at, first_seen_at, last_seen_at, metadata_json
                     )
-                    VALUES (?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
                     ON CONFLICT(session_id) DO UPDATE SET
                         provider = excluded.provider,
                         source_ref = excluded.source_ref,
-                        last_seen_at = excluded.last_seen_at
+                        last_seen_at = excluded.last_seen_at,
+                        metadata_json = excluded.metadata_json
                     """,
-                    (ref.session_id, ref.provider, str(ref.source_path), now, now, now),
+                    (ref.session_id, ref.provider, str(ref.source_path), now, now, now, _json(metadata)),
                 )
 
     def record_session_envelope(self, session: SessionEnvelope) -> None:
@@ -383,6 +389,7 @@ class SQLiteResultStore:
                     s.source_ref,
                     s.discovered_at,
                     s.event_count,
+                    s.metadata_json,
                     COALESCE(sr.source_fingerprint, '') AS source_fingerprint
                 FROM sessions s
                 LEFT JOIN source_refs sr
@@ -423,6 +430,7 @@ class SQLiteResultStore:
 
         statuses: list[SessionAnalysisStatus] = []
         for row in session_rows:
+            session_metadata = _json_dict(str(row["metadata_json"] or "{}"))
             session_runs = runs_by_session.get(str(row["session_id"]), [])
             first_user = first_user_by_session.get(str(row["session_id"]))
             last_assistant = last_assistant_by_session.get(str(row["session_id"]))
@@ -461,6 +469,11 @@ class SQLiteResultStore:
                     last_assistant_source_ref=last_assistant_ref,
                     last_assistant_source_line=last_assistant_line,
                     stale_reason="source_changed" if stale_factor_ids else "",
+                    session_title=str(session_metadata.get("session_title") or ""),
+                    session_cwd=str(session_metadata.get("session_cwd") or ""),
+                    session_group_key=str(session_metadata.get("session_group_key") or ""),
+                    session_group_label=str(session_metadata.get("session_group_label") or ""),
+                    session_updated_at=str(session_metadata.get("session_updated_at") or ""),
                 )
             )
         return statuses
@@ -593,6 +606,7 @@ class SQLiteResultStore:
                     s.provider,
                     s.session_id,
                     s.source_ref,
+                    s.metadata_json,
                     COALESCE(sr.source_size, 0) AS source_size,
                     COALESCE(sr.source_mtime, '') AS source_mtime,
                     COALESCE(sr.source_fingerprint, '') AS source_fingerprint
@@ -606,15 +620,19 @@ class SQLiteResultStore:
             ).fetchone()
         if row is None:
             raise KeyError(f"unknown session: {session_id}")
+        metadata = _json_dict(str(row["metadata_json"] or "{}"))
+        metadata.update(
+            {
+                "source_size": str(row["source_size"]),
+                "source_mtime": str(row["source_mtime"]),
+                "source_fingerprint": str(row["source_fingerprint"]),
+            }
+        )
         return SessionRef(
             provider=str(row["provider"]),
             session_id=str(row["session_id"]),
             source_path=Path(str(row["source_ref"])),
-            metadata={
-                "source_size": str(row["source_size"]),
-                "source_mtime": str(row["source_mtime"]),
-                "source_fingerprint": str(row["source_fingerprint"]),
-            },
+            metadata=metadata,
         )
 
     def _connect(self) -> sqlite3.Connection:
@@ -1091,6 +1109,14 @@ def _utc_now() -> str:
 
 def _json(value: Any) -> str:
     return json.dumps(value, ensure_ascii=False, sort_keys=True)
+
+
+def _json_dict(value: str) -> dict[str, Any]:
+    try:
+        parsed = json.loads(value)
+    except json.JSONDecodeError:
+        return {}
+    return parsed if isinstance(parsed, dict) else {}
 
 
 def _value(value: Any, key: str) -> str:

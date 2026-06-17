@@ -7,6 +7,7 @@ from evozeus.models import SessionEvent, Verdict
 from evozeus.reports.html_report import render_factor_results_html
 from evozeus.runtime.paths import RuntimePaths
 from evozeus.storage.file_repository import FileSessionRepository
+from evozeus.storage.sqlite_result_store import SessionAnalysisStatus
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -149,3 +150,47 @@ def test_html_report_renders_summary_statuses_and_formatted_scores():
     assert "Skipped" in html
     assert "0.333" in html
     assert "0.3333333333333333" not in html
+
+
+def test_html_report_exposes_session_folder_groups_for_sessions_tab():
+    packs = FactorPackRepository(PACK_ROOT).discover()
+    statuses = [
+        SessionAnalysisStatus(
+            session_id="session-new",
+            provider="codex",
+            source_ref="/Users/anthonyf/.codex/sessions/2026/06/18/rollout-new.jsonl",
+            event_count=243,
+            discovered_at="2026-06-18T09:00:00Z",
+            last_analyzed_at="",
+            analyzed_factor_count=0,
+            pending_factor_count=8,
+            session_title="最新 scanner 复盘",
+            session_cwd="/Users/anthonyf/Documents/EvoZeus",
+            session_group_key="/Users/anthonyf/Documents/EvoZeus",
+            session_group_label="EvoZeus",
+            session_updated_at="1781679600",
+        ),
+        SessionAnalysisStatus(
+            session_id="session-old",
+            provider="codex",
+            source_ref="/Users/anthonyf/.codex/sessions/2026/06/17/rollout-old.jsonl",
+            event_count=120,
+            discovered_at="2026-06-17T08:00:00Z",
+            last_analyzed_at="",
+            analyzed_factor_count=0,
+            pending_factor_count=8,
+            session_title="较早 scanner 复盘",
+            session_cwd="/Users/anthonyf/Documents/EvoZeus",
+            session_group_key="/Users/anthonyf/Documents/EvoZeus",
+            session_group_label="EvoZeus",
+            session_updated_at="1781593200",
+        ),
+    ]
+
+    html = render_factor_results_html("session-new", [], packs, session_statuses=statuses)
+
+    assert "session_folder_groups" in html
+    assert "buildSessionGroups" in html
+    assert '"session_group_label":"EvoZeus"' in html
+    assert '"session_title":"最新 scanner 复盘"' in html
+    assert '"event_count":243' in html

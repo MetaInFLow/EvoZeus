@@ -287,6 +287,43 @@ def test_sqlite_result_store_marks_discovered_sessions_pending_until_factor_run(
     assert by_id["session-beta"].last_analyzed_at == ""
 
 
+def test_sqlite_result_store_persists_scanner_session_group_metadata(tmp_path: Path):
+    paths = RuntimePaths.for_workspace(tmp_path).ensure()
+    store = SQLiteResultStore(paths)
+    source_path = Path("/Users/anthonyf/.codex/sessions/2026/06/17/rollout-example.jsonl")
+
+    store.record_session_refs(
+        [
+            SessionRef(
+                provider="codex",
+                session_id="session-grouped",
+                source_path=source_path,
+                metadata={
+                    "session_title": "修复 Codex scanner 聚合",
+                    "session_cwd": "/Users/anthonyf/Documents/EvoZeus",
+                    "session_group_key": "/Users/anthonyf/Documents/EvoZeus",
+                    "session_group_label": "EvoZeus",
+                    "session_updated_at": "1781679600",
+                    "codex_source_root": "/Users/anthonyf/.codex",
+                },
+            )
+        ]
+    )
+
+    status = store.list_session_statuses(factor_ids=["default.open_loop"])[0]
+    ref = store.get_session_ref("session-grouped")
+
+    assert status.session_id == "session-grouped"
+    assert status.session_title == "修复 Codex scanner 聚合"
+    assert status.session_cwd == "/Users/anthonyf/Documents/EvoZeus"
+    assert status.session_group_key == "/Users/anthonyf/Documents/EvoZeus"
+    assert status.session_group_label == "EvoZeus"
+    assert status.session_updated_at == "1781679600"
+    assert status.pending_factor_count == 1
+    assert ref.metadata["session_group_label"] == "EvoZeus"
+    assert ref.metadata["source_ref"] == str(source_path)
+
+
 def test_sqlite_result_store_replaces_stale_discovered_session_id_for_same_source(tmp_path: Path):
     paths = RuntimePaths.for_workspace(tmp_path).ensure()
     store = SQLiteResultStore(paths)

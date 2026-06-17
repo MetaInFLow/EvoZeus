@@ -3,6 +3,8 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+from datetime import UTC, datetime
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -23,6 +25,8 @@ SCANNER_VERSION = "0.1.0"
 SOURCE_LOCATOR_SCHEMA = "locator.codex_jsonl.v0"
 ARTIFACT_LOCATOR_SCHEMA = "locator.evozeus_artifact_jsonl.v0"
 SOURCE_ID_MANIFEST_NAMES = {"codex-source-ids.jsonl", ".codex-source-ids.jsonl"}
+SESSION_INDEX_NAME = "session_index.jsonl"
+CODEX_SESSION_ROOT_NAMES = {"sessions", "archived_sessions"}
 SECRET_RE = re.compile(r"(?i)\b(api[_-]?key|token|secret|password)\b\s*[:=]\s*\S+")
 
 
@@ -40,17 +44,11 @@ class CodexScanner:
 
     def discover(self, request: ScanRequest) -> list[SessionRef]:
         discovered = _discover_source_paths(request)
+        refs = [_session_ref_from_source(self.provider, path, extra_metadata) for path, extra_metadata in discovered]
+        refs = _sort_session_refs(refs)
         if request.limit is not None:
-            discovered = discovered[: request.limit]
-        return [
-            SessionRef(
-                provider=self.provider,
-                session_id=_discover_session_id(path),
-                source_path=path,
-                metadata={**_source_metadata(path), **extra_metadata},
-            )
-            for path, extra_metadata in discovered
-        ]
+            refs = refs[: request.limit]
+        return refs
 
     def load(self, ref: SessionRef) -> SessionEnvelope:
         events: list[SessionEvent] = []
@@ -90,14 +88,26 @@ class CodexScanner:
                 "scanner_id": SCANNER_ID,
                 "scanner_version": SCANNER_VERSION,
                 "source_fingerprint": source_fingerprint,
+                "session_title": str(ref.metadata.get("session_title") or ""),
+                "session_cwd": str(ref.metadata.get("session_cwd") or ""),
+                "session_group_key": str(ref.metadata.get("session_group_key") or ""),
+                "session_group_label": str(ref.metadata.get("session_group_label") or ""),
+                "session_updated_at": str(ref.metadata.get("session_updated_at") or ""),
             },
         )
 
 
 def _session_id_from_record(record: dict[str, Any]) -> str | None:
     payload = record.get("payload")
-    if record.get("type") == "session_meta" and isinstance(payload, dict) and payload.get("id"):
-        return str(payload["id"])
+    if record.get("type") != "session_meta":
+        return None
+    if isinstance(payload, dict):
+        for key in ("id", "session_id", "sessionId"):
+            if payload.get(key):
+                return str(payload[key])
+    for key in ("id", "session_id", "sessionId"):
+        if record.get(key):
+            return str(record[key])
     return None
 
 
@@ -384,6 +394,232 @@ def _source_metadata(path: Path) -> dict[str, str]:
     }
 
 
+def _session_ref_from_source(provider: str, path: Path, extra_metadata: dict[str, str]) -> SessionRef:
+    metadata = {**_source_metadata(path), **_codex_session_metadata(path), **extra_metadata}
+    return SessionRef(
+        provider=provider,
+        session_id=str(metadata.get("codex_session_id") or _discover_session_id(path)),
+        source_path=path,
+        metadata=metadata,
+    )
+
+
+def _codex_session_metadata(path: Path) -> dict[str, str]:
+    session_meta = _read_first_session_meta(path)
+    session_id = _session_id_from_record(session_meta) if session_meta is not None else _discover_session_id(path)
+    codex_root = _codex_source_root(path)
+    index_entry = _session_index_entry(codex_root, session_id)
+    cwd = _session_cwd(session_meta) or _session_index_value(index_entry, ("cwd", "working_directory", "workingDirectory"))
+    title = _session_index_value(index_entry, ("thread_name", "threadName", "title", "name")) or session_id
+    updated_at = (
+        _session_index_updated_at_seconds(index_entry)
+        or _rollout_file_activity_seconds(path)
+        or int(path.stat().st_mtime)
+    )
+    group_key = cwd or _source_group_key(path)
+    return {
+        "codex_session_id": session_id,
+        "codex_source_root": str(codex_root) if codex_root is not None else "",
+        "session_title": title,
+        "session_cwd": cwd,
+        "session_group_key": group_key,
+        "session_group_label": _group_label(group_key),
+        "session_updated_at": str(updated_at),
+    }
+
+
+def _read_first_session_meta(path: Path) -> dict[str, Any] | None:
+    with path.open(encoding="utf-8") as handle:
+        for line in handle:
+            if not line.strip():
+                continue
+            try:
+                record = json.loads(line)
+            except json.JSONDecodeError:
+                return None
+            if isinstance(record, dict) and record.get("type") == "session_meta":
+                return record
+            return None
+    return None
+
+
+def _session_cwd(session_meta: dict[str, Any] | None) -> str:
+    if session_meta is None:
+        return ""
+    payload = session_meta.get("payload")
+    candidates = [payload] if isinstance(payload, dict) else []
+    candidates.append(session_meta)
+    for item in candidates:
+        for key in ("cwd", "working_directory", "workingDirectory"):
+            if item.get(key):
+                return str(item[key])
+    return ""
+
+
+def _codex_source_root(path: Path) -> Path | None:
+    current = path.resolve().parent
+    while True:
+        if current.name in CODEX_SESSION_ROOT_NAMES:
+            return current.parent
+        if current == current.parent:
+            return None
+        current = current.parent
+
+
+def _source_group_key(path: Path) -> str:
+    codex_root = _codex_source_root(path)
+    if codex_root is None:
+        return str(path.parent)
+    try:
+        relative_parent = path.parent.relative_to(codex_root)
+    except ValueError:
+        return str(path.parent)
+    return str(relative_parent.parent if relative_parent.name in CODEX_SESSION_ROOT_NAMES else relative_parent)
+
+
+def _group_label(group_key: str) -> str:
+    cleaned = group_key.rstrip("/").rstrip("\\")
+    if not cleaned:
+        return "Unknown"
+    return cleaned.replace("\\", "/").split("/")[-1] or cleaned
+
+
+def _session_index_entry(codex_root: Path | None, session_id: str) -> dict[str, Any]:
+    if codex_root is None or not session_id:
+        return {}
+    return _read_session_index_map(codex_root).get(session_id, {})
+
+
+@lru_cache(maxsize=16)
+def _read_session_index_map(codex_root: Path) -> dict[str, dict[str, Any]]:
+    index_path = codex_root / SESSION_INDEX_NAME
+    if not index_path.exists():
+        return {}
+    entries: dict[str, dict[str, Any]] = {}
+    with index_path.open(encoding="utf-8") as handle:
+        for line in handle:
+            if not line.strip():
+                continue
+            try:
+                record = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if not isinstance(record, dict):
+                continue
+            session_id = _session_index_value(record, ("id", "session_id", "sessionId", "thread_id", "threadId"))
+            if session_id:
+                entries[session_id] = record
+    return entries
+
+
+def _session_index_value(entry: dict[str, Any], keys: tuple[str, ...]) -> str:
+    for key in keys:
+        value = entry.get(key)
+        if value:
+            return str(value)
+    payload = entry.get("payload")
+    if isinstance(payload, dict):
+        for key in keys:
+            value = payload.get(key)
+            if value:
+                return str(value)
+    return ""
+
+
+def _session_index_updated_at_seconds(entry: dict[str, Any]) -> int:
+    for key in ("updated_at", "updatedAt", "last_updated_at", "lastUpdatedAt", "last_activity_at", "lastActivityAt"):
+        timestamp = _timestamp_seconds(entry.get(key))
+        if timestamp:
+            return timestamp
+    payload = entry.get("payload")
+    if isinstance(payload, dict):
+        for key in ("updated_at", "updatedAt", "last_updated_at", "lastUpdatedAt", "last_activity_at", "lastActivityAt"):
+            timestamp = _timestamp_seconds(payload.get(key))
+            if timestamp:
+                return timestamp
+    return 0
+
+
+def _rollout_file_activity_seconds(path: Path) -> int:
+    latest = 0
+    with path.open(encoding="utf-8") as handle:
+        for line in handle:
+            if not line.strip():
+                continue
+            try:
+                record = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if not isinstance(record, dict):
+                continue
+            latest = max(latest, _record_timestamp_seconds(record))
+    return latest
+
+
+def _record_timestamp_seconds(record: dict[str, Any]) -> int:
+    for key in ("timestamp", "created_at", "createdAt", "updated_at", "updatedAt", "time"):
+        timestamp = _timestamp_seconds(record.get(key))
+        if timestamp:
+            return timestamp
+    payload = record.get("payload")
+    if isinstance(payload, dict):
+        for key in ("timestamp", "created_at", "createdAt", "updated_at", "updatedAt", "time"):
+            timestamp = _timestamp_seconds(payload.get(key))
+            if timestamp:
+                return timestamp
+    return 0
+
+
+def _timestamp_seconds(value: Any) -> int:
+    if value is None:
+        return 0
+    if isinstance(value, (int, float)):
+        number = float(value)
+        return int(number / 1000) if number > 10_000_000_000 else int(number)
+    if not isinstance(value, str):
+        return 0
+    text = value.strip()
+    if not text:
+        return 0
+    try:
+        number = float(text)
+    except ValueError:
+        number = 0
+    if number:
+        return int(number / 1000) if number > 10_000_000_000 else int(number)
+    try:
+        parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except ValueError:
+        return 0
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=UTC)
+    return int(parsed.timestamp())
+
+
+def _sort_session_refs(refs: list[SessionRef]) -> list[SessionRef]:
+    latest_by_group: dict[str, int] = {}
+    for ref in refs:
+        group_key = str(ref.metadata.get("session_group_key") or "")
+        latest_by_group[group_key] = max(latest_by_group.get(group_key, 0), _metadata_timestamp(ref))
+    return sorted(
+        refs,
+        key=lambda ref: (
+            -latest_by_group.get(str(ref.metadata.get("session_group_key") or ""), 0),
+            str(ref.metadata.get("session_group_label") or "").casefold(),
+            -_metadata_timestamp(ref),
+            str(ref.metadata.get("session_title") or ref.session_id).casefold(),
+            ref.session_id,
+        ),
+    )
+
+
+def _metadata_timestamp(ref: SessionRef) -> int:
+    try:
+        return int(str(ref.metadata.get("session_updated_at") or "0"))
+    except ValueError:
+        return 0
+
+
 def _source_fingerprint(path: Path) -> str:
     stat = path.stat()
     digest = hashlib.sha256()
@@ -443,7 +679,7 @@ def _discover_source_paths(request: ScanRequest) -> list[tuple[Path, dict[str, s
 
 
 def _is_direct_session_source(path: Path) -> bool:
-    return path.name not in SOURCE_ID_MANIFEST_NAMES
+    return path.name not in SOURCE_ID_MANIFEST_NAMES and path.name != SESSION_INDEX_NAME
 
 
 def _is_source_id_manifest(path: Path) -> bool:
