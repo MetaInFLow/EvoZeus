@@ -11,28 +11,60 @@ from evozeus.storage.sqlite_result_store import SQLiteResultStore
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 TESTDATA = PROJECT_ROOT / "__infra__" / "testdata"
-BRIDGED_CODEX_SOURCE_ID = "rollout-2026-06-14T14-55-35-019ec4ea-0f23-77b1-a2e0-92b897167191"
-BRIDGED_CODEX_SESSION_ID = "019ec4ea-0f23-77b1-a2e0-92b897167191"
-BRIDGED_CODEX_EVENT_COUNT = 80
+BRIDGED_CODEX_SOURCES = [
+    (
+        "rollout-2026-06-14T14-55-35-019ec4ea-0f23-77b1-a2e0-92b897167191",
+        "019ec4ea-0f23-77b1-a2e0-92b897167191",
+        243,
+    ),
+    (
+        "rollout-2026-05-13T16-18-30-019e206a-7e07-7050-be2c-4e8a9465d30b",
+        "019e206a-7e07-7050-be2c-4e8a9465d30b",
+        4,
+    ),
+    (
+        "rollout-2026-04-21T18-37-58-019daf9e-45db-77e1-8a1f-0b71ab9a3c7f",
+        "019daf9e-45db-77e1-8a1f-0b71ab9a3c7f",
+        4,
+    ),
+    (
+        "rollout-2026-05-26T15-35-47-019e6336-0fdd-7062-9597-a7d1c12d92c2",
+        "019e6336-0fdd-7062-9597-a7d1c12d92c2",
+        4,
+    ),
+    (
+        "rollout-2026-04-29T13-42-14-019dd7c2-649b-7521-8b66-61a0f3a747ff",
+        "019dd7c2-649b-7521-8b66-61a0f3a747ff",
+        4,
+    ),
+]
+PRIMARY_CODEX_SESSION_ID = BRIDGED_CODEX_SOURCES[0][1]
+PRIMARY_CODEX_EVENT_COUNT = BRIDGED_CODEX_SOURCES[0][2]
 
 
-def _write_fake_codex_source(home: Path) -> Path:
-    source_path = home / ".codex" / "sessions" / "2026" / "06" / "14" / f"{BRIDGED_CODEX_SOURCE_ID}.jsonl"
-    source_path.parent.mkdir(parents=True, exist_ok=True)
-    records: list[dict[str, object]] = [{"type": "session_meta", "payload": {"id": BRIDGED_CODEX_SESSION_ID}}]
-    for index in range(BRIDGED_CODEX_EVENT_COUNT):
-        records.append(
-            {
-                "type": "response_item",
-                "payload": {
-                    "id": f"bridge-event-{index:03d}",
-                    "role": "user" if index % 2 == 0 else "assistant",
-                    "content": f"桥接生成事件 {index:03d}",
-                },
+def _write_fake_codex_sources(home: Path) -> dict[str, Path]:
+    paths: dict[str, Path] = {}
+    for source_index, (source_id, session_id, event_count) in enumerate(BRIDGED_CODEX_SOURCES):
+        source_path = home / ".codex" / "sessions" / "2026" / "06" / f"{14 + source_index:02d}" / f"{source_id}.jsonl"
+        source_path.parent.mkdir(parents=True, exist_ok=True)
+        records: list[dict[str, object]] = [{"type": "session_meta", "payload": {"id": session_id}}]
+        for event_index in range(event_count):
+            payload: dict[str, object] = {
+                "id": f"bridge-event-{event_index:03d}",
+                "role": "user" if event_index % 2 == 0 else "assistant",
+                "content": f"桥接生成事件 {source_index:02d}-{event_index:03d}",
             }
-        )
-    source_path.write_text("\n".join(json.dumps(record, ensure_ascii=False) for record in records) + "\n", encoding="utf-8")
-    return source_path
+            if source_index == 0 and event_index == 2:
+                payload = {
+                    "id": f"bridge-event-{event_index:03d}",
+                    "type": "function_call_output",
+                    "call_id": "call-bridge-timeout",
+                    "output": "fatal: network timeout",
+                }
+            records.append({"type": "response_item", "payload": payload})
+        source_path.write_text("\n".join(json.dumps(record, ensure_ascii=False) for record in records) + "\n", encoding="utf-8")
+        paths[session_id] = source_path
+    return paths
 
 
 def test_create_one_time_token_returns_non_empty_token():
@@ -101,7 +133,7 @@ def test_companion_lists_sessions_from_sqlite(tmp_path):
 
 def test_companion_scans_and_analyzes_session(tmp_path, monkeypatch):
     fake_home = tmp_path / "home"
-    bridged_source_path = _write_fake_codex_source(fake_home)
+    source_paths = _write_fake_codex_sources(fake_home)
     monkeypatch.setenv("HOME", str(fake_home))
     client = TestClient(create_app(token="secret", workspace_root=tmp_path))
     client.post("/api/bootstrap?token=secret")
@@ -110,19 +142,17 @@ def test_companion_scans_and_analyzes_session(tmp_path, monkeypatch):
     assert scan.status_code == 200
     assert scan.json()["session_count"] == 5
 
-    analyze = client.post("/api/analyze/session-alpha?token=secret&factor_id=default.tool_failure")
+    analyze = client.post(f"/api/analyze/{PRIMARY_CODEX_SESSION_ID}?token=secret&factor_id=default.open_loop")
     assert analyze.status_code == 200
-    assert analyze.json()["session_id"] == "session-alpha"
+    assert analyze.json()["session_id"] == PRIMARY_CODEX_SESSION_ID
     assert analyze.json()["result_count"] == 1
     assert analyze.json()["html_path"].endswith("factor-results.html")
 
-    sessions = client.get("/api/sessions?token=secret&factor_id=default.tool_failure").json()["sessions"]
+    sessions = client.get("/api/sessions?token=secret&factor_id=default.open_loop").json()["sessions"]
     by_id = {session["session_id"]: session for session in sessions}
-    assert by_id["session-alpha"]["pending_factor_count"] == 0
-    assert by_id["session-alpha"]["analyzed_factor_count"] == 1
-    assert by_id["session-beta"]["event_count"] == 3
-    assert by_id["session-beta"]["first_user_preview"] == "这个 factor 结果不对，没改到默认输出"
-    assert by_id["session-beta"]["first_user_source_line"] == 1
-    assert by_id["session-beta"]["last_assistant_preview"] == "我会运行指定 factor。"
-    assert by_id[BRIDGED_CODEX_SESSION_ID]["event_count"] == BRIDGED_CODEX_EVENT_COUNT
-    assert by_id[BRIDGED_CODEX_SESSION_ID]["source_ref"] == str(bridged_source_path)
+    assert by_id[PRIMARY_CODEX_SESSION_ID]["pending_factor_count"] == 0
+    assert by_id[PRIMARY_CODEX_SESSION_ID]["analyzed_factor_count"] == 1
+    assert by_id[PRIMARY_CODEX_SESSION_ID]["event_count"] == PRIMARY_CODEX_EVENT_COUNT
+    assert by_id[PRIMARY_CODEX_SESSION_ID]["source_ref"] == str(source_paths[PRIMARY_CODEX_SESSION_ID])
+    assert by_id[PRIMARY_CODEX_SESSION_ID]["first_user_preview"] == "桥接生成事件 00-000"
+    assert by_id[PRIMARY_CODEX_SESSION_ID]["first_user_source_line"] == 2
