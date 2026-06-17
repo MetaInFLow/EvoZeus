@@ -18,8 +18,10 @@
 | `__infra__/src/evozeus/runtime/paths.py` | `.evozeus` runtime 路径定义 |
 | `__infra__/src/evozeus/storage/sqlite_result_store.py` | SQLite schema、source/capability/execution/result/route 写入与查询 |
 | `__infra__/src/evozeus/factors/packs.py` | bundled/downloaded factor pack discovery |
-| `__infra__/src/evozeus/scanners/base.py` | source fingerprint 元数据扩展 |
-| `__infra__/src/evozeus/scanners/providers/codex.py` | Codex source discovery、canonical session id、fingerprint |
+| `__infra__/src/evozeus/scanners/base.py` | scanner metadata、locator、fingerprint contract |
+| `__infra__/src/evozeus/scanners/resolver.py` | SourceResolver protocol、EventLocator、ResolvedEvent |
+| `__infra__/src/evozeus/scanners/providers/codex.py` | Codex source discovery、canonical session id、locator、fingerprint |
+| `__infra__/scanner_packs/codex/0.1.0/` | bundled Codex scanner pack、SKILL、resolver script |
 | `__infra__/src/evozeus/cli.py` | `onboard`、scan/analyze 入口 |
 | `__infra__/src/evozeus/companion/app.py` | local API |
 | `__infra__/tests/test_workspace.py` | bootstrap 行为测试 |
@@ -259,7 +261,153 @@ Run:
 
 Expected: pass.
 
-## Task 4: Source Fingerprint and Incremental Status
+## Task 4: Scanner-Owned Source Locator
+
+**Files:**
+
+- Create: `__infra__/src/evozeus/scanners/resolver.py`
+- Modify: `__infra__/src/evozeus/scanners/base.py`
+- Modify: `__infra__/src/evozeus/scanners/providers/codex.py`
+- Modify: `__infra__/src/evozeus/storage/sqlite_result_store.py`
+- Create: `__infra__/scanner_packs/codex/0.1.0/SKILL.md`
+- Create: `__infra__/scanner_packs/codex/0.1.0/scanner.json`
+- Create: `__infra__/scanner_packs/codex/0.1.0/SCANNER.xml`
+- Create: `__infra__/scanner_packs/codex/0.1.0/resolver.py`
+- Create: `__infra__/scanner_packs/codex/0.1.0/scripts/resolve_event_source.py`
+- Test: `__infra__/tests/test_codex_scanner.py`
+- Test: `__infra__/tests/test_sqlite_result_store.py`
+- Test: `__infra__/tests/test_source_resolver.py`
+
+- [ ] **Step 1: Write failing scanner locator test**
+
+Extend Codex scanner tests so loaded events include scanner-owned locator metadata:
+
+```python
+event = envelope.events[0]
+locator = event.metadata["event_locator_json"]
+
+assert locator["schema_version"] == "locator.v0"
+assert locator["scanner_id"] == "codex"
+assert locator["scanner_version"] == "0.1.0"
+assert locator["locator_schema"] == "locator.codex_jsonl.v0"
+assert locator["kind"] == "source_event"
+assert locator["payload"]["line_start"] == 1
+assert event.metadata["content_hash"].startswith("sha256:")
+assert "content_preview_redacted" in event.metadata
+```
+
+- [ ] **Step 2: Write failing SQLite lightweight event test**
+
+Update SQLite tests so `session_events` no longer stores full raw content:
+
+```python
+columns = {
+    row[1]
+    for row in conn.execute("PRAGMA table_info(session_events)").fetchall()
+}
+
+assert "content" not in columns
+assert "tool_result_json" not in columns
+assert "content_hash" in columns
+assert "content_preview_redacted" in columns
+assert "event_locator_json" in columns
+assert "artifact_locator_json" in columns
+assert "scanner_id" in columns
+assert "scanner_version" in columns
+```
+
+- [ ] **Step 3: Write failing resolver contract test**
+
+Create a Codex JSONL source, scan it, then resolve one event through Codex resolver:
+
+```python
+resolver = CodexSourceResolver()
+resolved = resolver.resolve_event(EventLocator.model_validate(locator))
+
+assert resolved.content == "请修复测试"
+assert resolver.verify_hash(resolved, event.metadata["content_hash"]) is True
+```
+
+- [ ] **Step 4: Verify failure**
+
+Run:
+
+```bash
+.venv/bin/python -m pytest __infra__/tests/test_codex_scanner.py __infra__/tests/test_sqlite_result_store.py __infra__/tests/test_source_resolver.py -q
+```
+
+Expected: locator fields, resolver protocol, and lightweight columns are missing.
+
+- [ ] **Step 5: Implement resolver protocol**
+
+Create `__infra__/src/evozeus/scanners/resolver.py` with:
+
+```python
+from typing import Protocol, Any
+from pydantic import BaseModel, Field
+
+
+class EventLocator(BaseModel):
+    schema_version: str = "locator.v0"
+    scanner_id: str
+    scanner_version: str
+    locator_schema: str
+    kind: str
+    payload: dict[str, Any] = Field(default_factory=dict)
+
+
+class ResolvedEvent(BaseModel):
+    scanner_id: str
+    scanner_version: str
+    session_id: str = ""
+    event_id: str = ""
+    source_ref: str
+    content: str
+    content_hash: str
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class SourceResolver(Protocol):
+    scanner_id: str
+    scanner_version: str
+
+    def resolve_event(self, locator: EventLocator) -> ResolvedEvent:
+        ...
+
+    def verify_hash(self, resolved: ResolvedEvent, expected_hash: str) -> bool:
+        ...
+```
+
+- [ ] **Step 6: Implement Codex locator and resolver**
+
+Codex scanner should emit `event_locator_json`, `artifact_locator_json`, `content_hash`, `content_preview_redacted`, `scanner_id`, and `scanner_version` in event metadata.
+
+Codex resolver should read the original JSONL line from `payload.source_path` and `payload.line_start`, normalize content the same way scanner does, and verify hash.
+
+- [ ] **Step 7: Add scanner pack docs and script**
+
+Create bundled Codex scanner pack files:
+
+```text
+__infra__/scanner_packs/codex/0.1.0/SKILL.md
+__infra__/scanner_packs/codex/0.1.0/scanner.json
+__infra__/scanner_packs/codex/0.1.0/SCANNER.xml
+__infra__/scanner_packs/codex/0.1.0/scripts/resolve_event_source.py
+```
+
+`SKILL.md` must explain how an Agent uses SQLite `scanner_id/scanner_version` to call the resolver.
+
+- [ ] **Step 8: Verify green**
+
+Run:
+
+```bash
+.venv/bin/python -m pytest __infra__/tests/test_codex_scanner.py __infra__/tests/test_sqlite_result_store.py __infra__/tests/test_source_resolver.py -q
+```
+
+Expected: pass.
+
+## Task 5: Source Fingerprint and Incremental Status
 
 **Files:**
 
@@ -343,7 +491,7 @@ Run:
 
 Expected: pass.
 
-## Task 5: Bootstrap CLI Registers Bundled Factors
+## Task 6: Bootstrap CLI Registers Bundled Factors
 
 **Files:**
 
@@ -395,7 +543,7 @@ Run:
 
 Expected: pass.
 
-## Task 6: Companion Backend Read APIs
+## Task 7: Companion Backend Read APIs
 
 **Files:**
 
@@ -448,7 +596,7 @@ Run:
 
 Expected: pass.
 
-## Task 7: Scan and Analyze Action APIs
+## Task 8: Scan and Analyze Action APIs
 
 **Files:**
 
@@ -503,13 +651,15 @@ Run:
 
 Expected: pass.
 
-## Task 8: Browser Workspace Data Contract
+## Task 9: Browser Workspace Data Contract
 
 **Files:**
 
 - Modify: `docs/reference/report-templates.md`
 - Modify: `docs/reference/factor-analysis-protocol.md`
 - Create: `docs/reference/browser-workspace-api.md`
+- Modify: `docs/reference/scanner-pack-protocol.md`
+- Modify: `docs/reference/source-locator-protocol.md`
 
 - [ ] **Step 1: Document API payloads**
 
@@ -534,18 +684,29 @@ drawer
 tui
 ```
 
-- [ ] **Step 3: Verify docs links**
+- [ ] **Step 3: Document scanner-owned source resolution**
+
+Add browser workspace notes:
+
+```text
+Event detail drawer receives locator summary from SQLite.
+Raw event expansion calls backend resolver API.
+Backend chooses resolver by scanner_id / scanner_version.
+Resolver implementation comes from installed scanner pack.
+```
+
+- [ ] **Step 4: Verify docs links**
 
 Run:
 
 ```bash
-rg -n "browser-workspace-api|factor_result_routes|Local Analysis Ledger" docs __infra__/README.md
+rg -n "browser-workspace-api|factor_result_routes|Local Analysis Ledger|scanner-pack-protocol|source-locator-protocol" docs __infra__/README.md
 git diff --check
 ```
 
 Expected: references exist and diff check passes.
 
-## Task 9: Full Verification and Commit
+## Task 10: Full Verification and Commit
 
 **Files:**
 

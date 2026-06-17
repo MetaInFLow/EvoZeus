@@ -45,7 +45,7 @@ agent_session_review.v0
 | `status` | 状态 | `matched`、`skipped` 或后续扩展状态 |
 | `tags` | 标签 | 算法生成的 tags |
 | `scores` | 信号值 | 数值型算法信号 |
-| `evidence_refs` | 证据引用 | 指向证据，不携带原始私密内容 |
+| `evidence_refs` | 证据引用 | 指向 event / source locator，不携带原始私密内容 |
 | `verdict_signals` | 裁决信号 | 支持哪些可能的 Verdict |
 | `confidence` | 置信度 | 0 到 1 的 confidence |
 
@@ -135,13 +135,30 @@ P0 结构化结果写入本地 SQLite index：
 | Table | Purpose |
 | --- | --- |
 | `sessions` | 记录扫描到的 session、来源、event 数、发现时间和最近加载时间 |
-| `session_events` | 记录每条标准化 event 的 role、content、tool 信息和 metadata |
+| `session_events` | 记录每条标准化 event 的 role、hash、redacted preview、locator 和 metadata |
 | `analysis_runs` | 记录一次分析运行的 session、factor 列表、开始/完成时间和状态 |
 | `factor_results` | 保存每个 `FactorResult` 的结构化字段、scores 和 verdict signals |
 | `factor_tags` | 保存 result-level tags |
 | `factor_evidence` | 保存 result 到具体 event 的 evidence refs |
 | `event_factor_tags` | 保存最新的 event -> factor tag 映射，供 session table 和 dashboard drill-down 查询 |
 | `factor_run_index` | 保存每个 session/factor 最近一次运行时间、状态和 result run |
+
+`session_events` 不默认保存完整原文。原文定位字段遵循：
+
+- [source-locator-protocol.md](source-locator-protocol.md)
+- [scanner-pack-protocol.md](scanner-pack-protocol.md)
+
+通用链路：
+
+```text
+evidence_refs
+  -> event_factor_tags
+  -> session_events(session_id, event_id)
+  -> scanner_id / scanner_version
+  -> event_locator_json / artifact_locator_json
+  -> scanner pack resolver
+  -> provider 原始 event 或 normalized artifact
+```
 
 Markdown report 仍会生成，适合 Agent 读取：
 

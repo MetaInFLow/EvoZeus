@@ -20,6 +20,8 @@ This repository follows the Engineering Everything document layout.
 | Verdict reference | [reference/verdicts.md](reference/verdicts.md) |
 | Session Verdict Card | [reference/verdict-card.md](reference/verdict-card.md) |
 | Report templates | [reference/report-templates.md](reference/report-templates.md) |
+| Scanner pack protocol | [reference/scanner-pack-protocol.md](reference/scanner-pack-protocol.md) |
+| Source locator protocol | [reference/source-locator-protocol.md](reference/source-locator-protocol.md) |
 
 ## Lifecycle Rules
 

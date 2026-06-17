@@ -16,6 +16,8 @@
 | [Session Verdict Card](verdict-card.md) | Manual Session Review 默认输出结构 |
 | [Report Templates](report-templates.md) | 报告模板和字段结构 |
 | [Factor Analysis Protocol](factor-analysis-protocol.md) | Factor 与 analysis framework 的绑定协议 |
+| [Scanner Pack Protocol](scanner-pack-protocol.md) | Scanner pack 的结构、resolver、SKILL 和脚本规范 |
+| [Source Locator Protocol](source-locator-protocol.md) | SQLite locator envelope 与原文定位协议 |
 
 ## 边界
 

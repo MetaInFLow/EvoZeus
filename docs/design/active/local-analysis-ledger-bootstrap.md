@@ -134,6 +134,7 @@ P0 bootstrap 不默认创建：
 ```text
 Local Analysis Ledger
 ├── Source Layer
+├── Scanner Layer
 ├── Capability Layer
 ├── Execution Layer
 ├── Result Layer
@@ -148,9 +149,76 @@ Local Analysis Ledger
 | --- | --- |
 | `source_refs` | provider、source_path、mtime、size、source_fingerprint |
 | `sessions` | session_id、provider、source_ref、event_count、discovered_at、loaded_at |
-| `session_events` | event_id、role、content、tool_name、tool_result_json、metadata_json |
+| `session_events` | event_id、role、hash、redacted preview、locator、tool_name、metadata_json |
 
 `source_fingerprint` 用于判断 session 文件是否变化。P0 可以使用 `mtime + size + partial content hash`。
+
+SQLite 不默认保存完整原文。`session_events` 保存定位和索引字段：
+
+```text
+provider
+scanner_id
+scanner_version
+source_ref
+source_fingerprint
+event_locator_json
+artifact_locator_json
+content_hash
+content_preview_redacted
+tool_result_hash
+tool_result_preview_redacted
+```
+
+原文读取由对应 scanner pack 的 resolver 处理。
+
+### Scanner Layer
+
+记录本地 scanner 能力和原文定位机制。
+
+| Table | Purpose |
+| --- | --- |
+| `installed_scanners` | scanner_id、version、provider、installed_at、enabled、status |
+| `scanner_capabilities` | scanner_id、version、source_format、locator_schema、supported |
+
+Scanner pack 是 provider-specific 能力包。Core runtime 只保存统一 locator envelope，不理解 provider 私有格式。
+
+Bundled scanner pack 可以放在：
+
+```text
+__infra__/scanner_packs/<scanner_id>/<version>/
+```
+
+用户下载的 scanner pack 放在：
+
+```text
+.evozeus/runtime/scanners/installed/<scanner_id>/<version>/
+```
+
+每个 scanner pack 至少包含：
+
+```text
+scanner.json
+SCANNER.xml
+SKILL.md
+scanner.py
+resolver.py
+scripts/resolve_event_source.py
+```
+
+`scanner.py` 负责 discover / load / normalize。`resolver.py` 负责根据 SQLite 的 locator 找回原始 event。`SKILL.md` 负责告诉 Agent 如何使用该 scanner 定位原文、校验 hash、处理 source missing 或 hash mismatch。
+
+原文定位链路：
+
+```text
+event_factor_tags
+  -> session_events(session_id, event_id)
+  -> scanner_id / scanner_version
+  -> event_locator_json / artifact_locator_json
+  -> installed scanner pack
+  -> scanner pack SKILL.md
+  -> resolver.py
+  -> provider 原始 event 或 normalized artifact
+```
 
 ### Capability Layer
 
@@ -311,7 +379,9 @@ scan provider=codex
   -> update source_refs
   -> upsert sessions
   -> if auto_load_events: load SessionEnvelope
-  -> upsert session_events
+  -> generate scanner-owned locators
+  -> write normalized artifact if configured
+  -> upsert lightweight session_events
   -> compute source_fingerprint
 ```
 
@@ -393,7 +463,9 @@ Factor Packs
 
 ## 隐私边界
 
-Raw session content 只留在本地 SQLite 和本地 session artifact。
+SQLite 默认不保存完整原文，只保存 hash、redacted preview 和 locator。
+
+Raw session content 留在 provider 原始文件或 `.evozeus/sessions/<session_id>/events.jsonl` normalized artifact 中。读取原文必须通过 scanner pack resolver。
 
 导出、社区贡献、远程分享必须经过 redaction。
 
@@ -408,7 +480,8 @@ P0 backend 不提供上传接口。
 5. Analyze 后 DB 有 analysis_runs / factor_results / event_factor_tags / factor_run_index。
 6. 重复 analyze 未变化 session 时能判断 fresh。
 7. 修改 source 或 factor fingerprint 后能判断 stale。
-8. Browser workspace 可以从 backend 读取 sessions、factors、routes、dashboard payload。
+8. 通过 scanner pack resolver 可以从 SQLite locator 找回原始 event 或 normalized artifact。
+9. Browser workspace 可以从 backend 读取 sessions、factors、routes、dashboard payload。
 
 ## Open Questions
 
