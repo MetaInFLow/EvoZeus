@@ -136,3 +136,39 @@ def test_codex_scanner_normalizes_archived_response_item_tools(tmp_path: Path):
     assert envelope.events[0].tool_result == {"arguments": "{\"cmd\":\"pytest\"}", "call_id": "call-1"}
     assert envelope.events[1].tool_name == "function_call_output"
     assert envelope.events[1].tool_result == {"output": "pytest failed with timeout", "call_id": "call-1"}
+
+
+def test_codex_scanner_bridges_source_id_manifest_to_local_codex_source(tmp_path: Path, monkeypatch):
+    source_id = "rollout-test-bridge"
+    session_id = "bridge-session"
+    fake_home = tmp_path / "home"
+    codex_source = fake_home / ".codex" / "sessions" / "2026" / "06" / "17" / f"{source_id}.jsonl"
+    codex_source.parent.mkdir(parents=True)
+    codex_source.write_text(
+        "\n".join(
+            [
+                json.dumps({"type": "session_meta", "payload": {"id": session_id}}),
+                json.dumps({"type": "response_item", "payload": {"id": "u1", "role": "user", "content": "桥接扫描"}}),
+                json.dumps({"type": "response_item", "payload": {"id": "a1", "role": "assistant", "content": "已读取原始 source"}}),
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    source_dir = tmp_path / "testdata"
+    source_dir.mkdir()
+    (source_dir / "codex-source-ids.jsonl").write_text(json.dumps({"source_id": source_id}) + "\n", encoding="utf-8")
+    monkeypatch.setenv("HOME", str(fake_home))
+
+    scanner = CodexScanner()
+    refs = scanner.discover(ScanRequest(provider="codex", source_dir=source_dir))
+    envelope = scanner.load(refs[0])
+
+    assert len(refs) == 1
+    assert refs[0].session_id == session_id
+    assert refs[0].source_path == codex_source
+    assert refs[0].metadata["bridge_source_id"] == source_id
+    assert refs[0].metadata["bridge_manifest"] == str(source_dir / "codex-source-ids.jsonl")
+    assert envelope.session_id == session_id
+    assert [event.content for event in envelope.events] == ["桥接扫描", "已读取原始 source"]
+    assert envelope.events[0].metadata["event_locator_json"]["payload"]["source_path"] == str(codex_source)

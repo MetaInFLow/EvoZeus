@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -10,6 +11,28 @@ from evozeus.storage.sqlite_result_store import SQLiteResultStore
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 TESTDATA = PROJECT_ROOT / "__infra__" / "testdata"
+BRIDGED_CODEX_SOURCE_ID = "rollout-2026-06-14T14-55-35-019ec4ea-0f23-77b1-a2e0-92b897167191"
+BRIDGED_CODEX_SESSION_ID = "019ec4ea-0f23-77b1-a2e0-92b897167191"
+BRIDGED_CODEX_EVENT_COUNT = 80
+
+
+def _write_fake_codex_source(home: Path) -> Path:
+    source_path = home / ".codex" / "sessions" / "2026" / "06" / "14" / f"{BRIDGED_CODEX_SOURCE_ID}.jsonl"
+    source_path.parent.mkdir(parents=True, exist_ok=True)
+    records: list[dict[str, object]] = [{"type": "session_meta", "payload": {"id": BRIDGED_CODEX_SESSION_ID}}]
+    for index in range(BRIDGED_CODEX_EVENT_COUNT):
+        records.append(
+            {
+                "type": "response_item",
+                "payload": {
+                    "id": f"bridge-event-{index:03d}",
+                    "role": "user" if index % 2 == 0 else "assistant",
+                    "content": f"桥接生成事件 {index:03d}",
+                },
+            }
+        )
+    source_path.write_text("\n".join(json.dumps(record, ensure_ascii=False) for record in records) + "\n", encoding="utf-8")
+    return source_path
 
 
 def test_create_one_time_token_returns_non_empty_token():
@@ -76,7 +99,10 @@ def test_companion_lists_sessions_from_sqlite(tmp_path):
     assert sessions[0]["pending_factor_count"] == 1
 
 
-def test_companion_scans_and_analyzes_session(tmp_path):
+def test_companion_scans_and_analyzes_session(tmp_path, monkeypatch):
+    fake_home = tmp_path / "home"
+    bridged_source_path = _write_fake_codex_source(fake_home)
+    monkeypatch.setenv("HOME", str(fake_home))
     client = TestClient(create_app(token="secret", workspace_root=tmp_path))
     client.post("/api/bootstrap?token=secret")
 
@@ -98,5 +124,5 @@ def test_companion_scans_and_analyzes_session(tmp_path):
     assert by_id["session-beta"]["first_user_preview"] == "这个 factor 结果不对，没改到默认输出"
     assert by_id["session-beta"]["first_user_source_line"] == 1
     assert by_id["session-beta"]["last_assistant_preview"] == "我会运行指定 factor。"
-    assert by_id["session-zeta-realistic-long"]["event_count"] == 30
-    assert by_id["session-zeta-realistic-long"]["first_user_preview"].startswith("规划一个真实一点的 EvoZeus 本地扫描闭环")
+    assert by_id[BRIDGED_CODEX_SESSION_ID]["event_count"] == BRIDGED_CODEX_EVENT_COUNT
+    assert by_id[BRIDGED_CODEX_SESSION_ID]["source_ref"] == str(bridged_source_path)

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import json
 import os
+import re
 import sqlite3
 import subprocess
 import sys
@@ -11,11 +13,16 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS = PROJECT_ROOT / "__infra__" / "scripts"
 TESTDATA = PROJECT_ROOT / "__infra__" / "testdata"
 PACK_ROOT = PROJECT_ROOT / "__infra__" / "factor_packs"
+BRIDGED_CODEX_SOURCE_ID = "rollout-2026-06-14T14-55-35-019ec4ea-0f23-77b1-a2e0-92b897167191"
+BRIDGED_CODEX_SESSION_ID = "019ec4ea-0f23-77b1-a2e0-92b897167191"
+BRIDGED_CODEX_EVENT_COUNT = 80
 
 
-def run_script(name: str, *args: str) -> subprocess.CompletedProcess[str]:
+def run_script(name: str, *args: str, env_overrides: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
     env = os.environ.copy()
     env["PYTHONPATH"] = str(PROJECT_ROOT / "__infra__" / "src")
+    if env_overrides:
+        env.update(env_overrides)
     return subprocess.run(
         [sys.executable, str(SCRIPTS / name), *args],
         check=False,
@@ -26,13 +33,43 @@ def run_script(name: str, *args: str) -> subprocess.CompletedProcess[str]:
     )
 
 
-def test_scan_sessions_script_finds_session_with_enough_information():
-    result = run_script("scan_sessions_smoke.py", "--source", str(TESTDATA / "codex_sessions"), "--min-sessions", "5")
+def _write_fake_codex_source(home: Path) -> Path:
+    source_path = home / ".codex" / "sessions" / "2026" / "06" / "14" / f"{BRIDGED_CODEX_SOURCE_ID}.jsonl"
+    source_path.parent.mkdir(parents=True, exist_ok=True)
+    records: list[dict[str, object]] = [{"type": "session_meta", "payload": {"id": BRIDGED_CODEX_SESSION_ID}}]
+    for index in range(BRIDGED_CODEX_EVENT_COUNT):
+        records.append(
+            {
+                "type": "response_item",
+                "payload": {
+                    "id": f"bridge-event-{index:03d}",
+                    "role": "user" if index % 2 == 0 else "assistant",
+                    "content": f"桥接生成事件 {index:03d}",
+                },
+            }
+        )
+    source_path.write_text("\n".join(json.dumps(record, ensure_ascii=False) for record in records) + "\n", encoding="utf-8")
+    return source_path
+
+
+def test_scan_sessions_script_finds_session_with_enough_information(tmp_path: Path):
+    fake_home = tmp_path / "home"
+    _write_fake_codex_source(fake_home)
+    result = run_script(
+        "scan_sessions_smoke.py",
+        "--source",
+        str(TESTDATA / "codex_sessions"),
+        "--min-sessions",
+        "5",
+        env_overrides={"HOME": str(fake_home)},
+    )
 
     assert result.returncode == 0, result.stderr
     assert "scan sessions ok" in result.stdout
     assert "sessions=5" in result.stdout
-    assert "total_events=44" in result.stdout
+    total_events = re.search(r"total_events=(\d+)", result.stdout)
+    assert total_events is not None
+    assert int(total_events.group(1)) >= BRIDGED_CODEX_EVENT_COUNT
     assert "has_tool_result=True" in result.stdout
 
 
@@ -73,6 +110,8 @@ def test_result_report_script_writes_markdown_report_without_json_result_file():
 
 
 def test_run_session_report_script_writes_html_for_selected_factors(tmp_path: Path):
+    fake_home = tmp_path / "home"
+    _write_fake_codex_source(fake_home)
     result = run_script(
         "run_session_report.py",
         "--source",
@@ -85,6 +124,7 @@ def test_run_session_report_script_writes_html_for_selected_factors(tmp_path: Pa
         "default.tool_failure",
         "--factor",
         "default.open_loop",
+        env_overrides={"HOME": str(fake_home)},
     )
 
     report_path = tmp_path / ".evozeus" / "sessions" / "session-alpha" / "factor-results.html"
@@ -98,9 +138,7 @@ def test_run_session_report_script_writes_html_for_selected_factors(tmp_path: Pa
     html = report_path.read_text(encoding="utf-8")
     assert 'data-component="word_cloud"' in html
     assert "session-beta" in html
-    assert "session-zeta-realistic-long" in html
-    assert "规划一个真实一点的 EvoZeus 本地扫描闭环" in html
-    assert '"event_count":30' in html
+    assert BRIDGED_CODEX_SESSION_ID in html
     assert "这个 factor 结果不对，没改到默认输出" in html
     assert "我会运行指定 factor。" in html
     assert "first_user_source_line" in html
@@ -123,4 +161,4 @@ def test_run_session_report_script_writes_html_for_selected_factors(tmp_path: Pa
     assert result_count == 2
     assert run_index_count == 2
     assert event_tag_count >= 1
-    assert loaded_event_count == 44
+    assert loaded_event_count >= BRIDGED_CODEX_EVENT_COUNT

@@ -22,6 +22,7 @@ SCANNER_ID = "codex"
 SCANNER_VERSION = "0.1.0"
 SOURCE_LOCATOR_SCHEMA = "locator.codex_jsonl.v0"
 ARTIFACT_LOCATOR_SCHEMA = "locator.evozeus_artifact_jsonl.v0"
+SOURCE_ID_MANIFEST_NAMES = {"codex-source-ids.jsonl", ".codex-source-ids.jsonl"}
 SECRET_RE = re.compile(r"(?i)\b(api[_-]?key|token|secret|password)\b\s*[:=]\s*\S+")
 
 
@@ -31,26 +32,24 @@ class CodexScanner:
     scanner_version = SCANNER_VERSION
 
     def can_discover(self, request: ScanRequest) -> bool:
-        return any(source_dir.exists() and any(source_dir.rglob("*.jsonl")) for source_dir in _source_dirs(request))
+        return any(
+            source_dir.exists()
+            and any(_is_direct_session_source(path) or _is_source_id_manifest(path) for path in source_dir.rglob("*.jsonl"))
+            for source_dir in _source_dirs(request)
+        )
 
     def discover(self, request: ScanRequest) -> list[SessionRef]:
-        paths = [
-            path
-            for source_dir in _source_dirs(request)
-            if source_dir.exists()
-            for path in source_dir.rglob("*.jsonl")
-        ]
-        paths = sorted(paths)
+        discovered = _discover_source_paths(request)
         if request.limit is not None:
-            paths = paths[: request.limit]
+            discovered = discovered[: request.limit]
         return [
             SessionRef(
                 provider=self.provider,
                 session_id=_discover_session_id(path),
                 source_path=path,
-                metadata=_source_metadata(path),
+                metadata={**_source_metadata(path), **extra_metadata},
             )
-            for path in paths
+            for path, extra_metadata in discovered
         ]
 
     def load(self, ref: SessionRef) -> SessionEnvelope:
@@ -422,7 +421,97 @@ def _read_jsonl_record(source_path: Path, line_number: int) -> dict[str, Any]:
 def _source_dirs(request: ScanRequest) -> list[Path]:
     if request.source_dir is not None:
         return [request.source_dir]
+    return _default_codex_source_dirs()
+
+
+def _default_codex_source_dirs() -> list[Path]:
     return [
         Path.home() / ".codex" / "sessions",
         Path.home() / ".codex" / "archived_sessions",
     ]
+
+
+def _discover_source_paths(request: ScanRequest) -> list[tuple[Path, dict[str, str]]]:
+    direct_paths: list[tuple[Path, dict[str, str]]] = []
+    bridged_paths: list[tuple[Path, dict[str, str]]] = []
+    for source_dir in _source_dirs(request):
+        if not source_dir.exists():
+            continue
+        direct_paths.extend((path, {}) for path in sorted(source_dir.rglob("*.jsonl")) if _is_direct_session_source(path))
+        bridged_paths.extend(_resolve_source_id_manifests(source_dir))
+    return _dedupe_source_paths(direct_paths + bridged_paths)
+
+
+def _is_direct_session_source(path: Path) -> bool:
+    return path.name not in SOURCE_ID_MANIFEST_NAMES
+
+
+def _is_source_id_manifest(path: Path) -> bool:
+    return path.name in SOURCE_ID_MANIFEST_NAMES
+
+
+def _resolve_source_id_manifests(source_dir: Path) -> list[tuple[Path, dict[str, str]]]:
+    resolved: list[tuple[Path, dict[str, str]]] = []
+    for manifest_path in sorted(path for path in source_dir.rglob("*.jsonl") if _is_source_id_manifest(path)):
+        for source_id in _read_source_ids(manifest_path):
+            source_path = _resolve_codex_source_id(source_id)
+            if source_path is None:
+                continue
+            resolved.append(
+                (
+                    source_path,
+                    {
+                        "bridge_source_id": source_id,
+                        "bridge_manifest": str(manifest_path),
+                    },
+                )
+            )
+    return resolved
+
+
+def _read_source_ids(manifest_path: Path) -> list[str]:
+    source_ids: list[str] = []
+    for line_number, line in enumerate(manifest_path.read_text(encoding="utf-8").splitlines(), start=1):
+        if not line.strip():
+            continue
+        try:
+            record = json.loads(line)
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"invalid codex source id manifest at {manifest_path}:{line_number}") from exc
+        source_id = record if isinstance(record, str) else record.get("source_id") if isinstance(record, dict) else ""
+        if source_id:
+            source_ids.append(str(source_id))
+    return source_ids
+
+
+def _resolve_codex_source_id(source_id: str) -> Path | None:
+    source_id = source_id.strip()
+    if not source_id:
+        return None
+
+    all_candidates: list[Path] = []
+    for source_dir in _default_codex_source_dirs():
+        if not source_dir.exists():
+            continue
+        candidates = sorted(path for path in source_dir.rglob("*.jsonl") if path.name not in SOURCE_ID_MANIFEST_NAMES)
+        for path in candidates:
+            if path.stem == source_id:
+                return path
+        all_candidates.extend(candidates)
+
+    for path in all_candidates:
+        if _discover_session_id(path) == source_id:
+            return path
+    return None
+
+
+def _dedupe_source_paths(items: list[tuple[Path, dict[str, str]]]) -> list[tuple[Path, dict[str, str]]]:
+    seen: set[str] = set()
+    deduped: list[tuple[Path, dict[str, str]]] = []
+    for path, metadata in items:
+        key = str(path)
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append((path, metadata))
+    return deduped
