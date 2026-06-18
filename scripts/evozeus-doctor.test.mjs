@@ -82,6 +82,12 @@ describe("evozeus-doctor", () => {
 
     assert.equal(result.status, 0, result.stderr);
     assert.match(result.stdout, /doctor_verdict: ready_for_protocol_judgment/);
+    assert.match(result.stdout, /available_capabilities: .*protocol-only judgment/);
+    assert.match(result.stdout, /available_capabilities: .*health doctor diagnostics/);
+    assert.match(result.stdout, /available_capabilities: .*fixture-only scanner\/runner infra smoke/);
+    assert.match(result.stdout, /available_capabilities: .*fixture-only official factor runner smoke/);
+    assert.match(result.stdout, /approval_required_capabilities: .*workspace scan/);
+    assert.match(result.stdout, /approval_required_capabilities: .*factor execution on user data/);
     assert.match(result.stdout, /Session Verdict Card/);
   });
 
