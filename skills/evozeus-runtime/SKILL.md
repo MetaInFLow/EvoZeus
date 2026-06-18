@@ -3,7 +3,7 @@ name: evozeus-runtime
 description: Use when working on EvoZeus runtime behavior, local registry, CLI, TUI, Doctor, browser companion, workspace state, or report generation surfaces.
 ---
 
-# EvoZeus-Runtime
+# EvoZeus Runtime
 
 Runtime work must preserve local-first behavior and user approval gates. The repository currently promises protocol and contribution surfaces; runtime code is still reviewed per issue or PR.
 

@@ -3,7 +3,7 @@ name: evozeus-doctor-debugging
 description: Use when an EvoZeus session, runtime, report, contribution, or agent workflow is failed, blocked, slow, flaky, or environment-dependent.
 ---
 
-# EvoZeus-Doctor Debugging
+# EvoZeus Doctor Debugging
 
 Doctor work separates environment failure from reasoning failure. Do not turn every failed session into a Skill or Factor.
 

@@ -3,7 +3,7 @@ name: evozeus-community-contribution
 description: Use when preparing an external EvoZeus contribution, community Candidate, Case, Pattern, Factor, report, issue, or pull request.
 ---
 
-# EvoZeus-Community Contribution
+# EvoZeus Community Contribution
 
 Community contribution is evidence contribution first. It does not grant broad permission to change infra, runtime, governance, PR templates, or development rules.
 

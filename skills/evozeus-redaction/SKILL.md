@@ -3,7 +3,7 @@ name: evozeus-redaction
 description: Use when preparing EvoZeus evidence, reports, logs, screenshots, examples, issues, pull requests, or session excerpts for public sharing.
 ---
 
-# EvoZeus-Redaction
+# EvoZeus Redaction
 
 Public EvoZeus artifacts must preserve judgment value while removing private data. Raw sessions are not public contribution material.
 
