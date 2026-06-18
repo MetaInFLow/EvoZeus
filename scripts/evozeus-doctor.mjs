@@ -9,6 +9,23 @@ const REQUIRED_COMPONENTS = [
   "scripts/evozeus-doctor.mjs"
 ];
 
+const READY_CAPABILITIES = [
+  "protocol-only judgment",
+  "health doctor diagnostics",
+  "component and release checks",
+  "fixture-only scanner/runner infra smoke",
+  "fixture-only official factor runner smoke"
+];
+
+const APPROVAL_REQUIRED_CAPABILITIES = [
+  "workspace scan",
+  "runtime execution",
+  "factor execution on user data",
+  "report file generation",
+  "artifact preservation",
+  "GitHub issue/PR/public artifact"
+];
+
 function readStdin() {
   return readFileSync(0, "utf8").trim();
 }
@@ -166,10 +183,12 @@ function diagnose(report) {
   if (reason === "run_judgment" || release.status === "up_to_date") {
     return {
       ...diagnosis,
+      available_capabilities: READY_CAPABILITIES.join("; "),
+      approval_required_capabilities: APPROVAL_REQUIRED_CAPABILITIES.join("; "),
       doctor_verdict: "ready_for_protocol_judgment",
       requires_user_approval: true,
       next_step:
-        "Ask whether to run protocol-only judgment: read this repository's SKILL.md and output only a Session Verdict Card."
+        "Show available_capabilities and approval_required_capabilities, then ask whether to run protocol-only judgment: read this repository's SKILL.md and output only a Session Verdict Card."
     };
   }
 

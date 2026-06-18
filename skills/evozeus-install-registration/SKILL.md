@@ -57,6 +57,17 @@ After install or reconciliation, output:
 Registration status -> Skeleton source -> Skills inventory -> Files written -> Next command -> Approval needed
 ```
 
+If the doctor verdict is `ready_for_protocol_judgment`, show a short capability summary before asking for the next approval:
+
+| Capability | Status after health OK |
+| --- | --- |
+| Protocol-only judgment | Available now; read root `SKILL.md` and output only a Session Verdict Card |
+| Health doctor diagnostics | Available now through `scripts/evozeus-doctor.mjs` |
+| Component and release checks | Available now for EvoZeus, scanner/runner infra, and official factors |
+| Fixture-only scanner/runner infra smoke | Available now if `evozeus-runtime` is downloaded and smoke passed |
+| Fixture-only official factor runner smoke | Available now if `evozeus-factors-official` is downloaded and smoke passed |
+| Workspace scan, runtime execution, factor execution on user data, report files, artifact preservation, GitHub issue/PR/public artifact | Not enabled yet; ask for explicit user approval and route to the matching scenario skill first |
+
 The next command should be protocol-only:
 
 ```text
