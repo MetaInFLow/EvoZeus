@@ -3,7 +3,7 @@ name: evozeus-factor-authoring
 description: Use when authoring, reviewing, refining, or promoting an EvoZeus Factor or judgment criterion from session evidence.
 ---
 
-# EvoZeus Factor Authoring
+# EvoZeus-Factor Authoring
 
 A Factor is a reusable judgment criterion. It should help reviewers make a more consistent Verdict; it should not become a vague principle or motivational sentence.
 

@@ -75,8 +75,8 @@ EvoZeus is currently an **agent-readable protocol repository**, not a stable CLI
 | Goal | Start here | Output |
 | --- | --- | --- |
 | Judge one Agent Session | [SKILL.md](SKILL.md) | Session Verdict Card |
-| Choose the right work scenario | [skills/index/SKILL.md](skills/index/SKILL.md) | development / contribution / reporting / redaction skill |
-| Develop EvoZeus itself | [skills/evozeus-development/SKILL.md](skills/evozeus-development/SKILL.md) | small issue/branch/PR |
+| Choose the right work scenario | [EvoZeus-Skill Index](skills/index/SKILL.md) | `EvoZeus-Development` / `EvoZeus-Community Contribution` / `EvoZeus-Reporting` / `EvoZeus-Redaction` |
+| Develop EvoZeus itself | [EvoZeus-Development](skills/evozeus-development/SKILL.md) | small issue/branch/PR |
 | Contribute a Case or Candidate | [CONTRIBUTING.md](CONTRIBUTING.md) | redacted Case / Candidate PR |
 | Review PR rules | [docs/governance/pr-guidelines.md](docs/governance/pr-guidelines.md) | proof-backed PR |
 | Understand the semantic model | [docs/reference/ontology.md](docs/reference/ontology.md) | Candidate / Evidence / Verdict boundaries |
@@ -133,6 +133,8 @@ GitHub automation is dry-run by default: labeler, proof gate, privacy scan, dirt
 | Candidate Schema | [schemas/candidate.schema.json](schemas/candidate.schema.json) |
 | Privacy and redaction | [docs/governance/privacy-and-redaction.md](docs/governance/privacy-and-redaction.md) |
 | PR routing state machine | [docs/governance/pr-routing-policy.md](docs/governance/pr-routing-policy.md) |
+| Factor registry governance | [docs/governance/factor-registry-governance.md](docs/governance/factor-registry-governance.md) |
+| Launch readiness criteria | [docs/governance/launch-readiness-criteria.md](docs/governance/launch-readiness-criteria.md) |
 | Labels and protected paths | [docs/governance/labels.md](docs/governance/labels.md), [docs/governance/protected-paths.md](docs/governance/protected-paths.md) |
 
 ## <img src="assets/icons/evozeus-silver-128.png" alt="" width="24" align="absmiddle"> What Exists Today

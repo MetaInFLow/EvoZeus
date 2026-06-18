@@ -21,7 +21,9 @@ or asks to review a session, submit a Case, generate an Evidence Report, or cont
 
 This root skill is the stable zero-install entry. If the user asks for repository development, community contribution, runtime work, redaction, report writing, Factor authoring, debugging, or skill proposal work, read `skills/index/SKILL.md` and then the matching scenario skill before acting.
 
-Development requests such as changing docs, scripts, templates, PR rules, branch rules, `SKILL.md`, or `skills/` must read `skills/evozeus-development/SKILL.md` first.
+User-facing local scenario skill names must start with `EvoZeus-`. Keep the frontmatter `name` and folder paths lowercase `evozeus-*` so Codex skill validation and routing continue to work.
+
+Development requests such as changing docs, scripts, templates, PR rules, branch rules, `SKILL.md`, or `skills/` must read `EvoZeus-Development` at `skills/evozeus-development/SKILL.md` first.
 
 ## Core Rule
 

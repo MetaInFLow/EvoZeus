@@ -3,7 +3,7 @@ name: evozeus-development
 description: Use when developing EvoZeus itself, changing repository files, branch structure, PR templates, docs, scripts, runtime code, governance, or agent-facing instructions.
 ---
 
-# EvoZeus Development
+# EvoZeus-Development
 
 Development work must keep EvoZeus small, reviewable, and evidence-backed. One PR should have one primary purpose, one primary layer, and one validation story.
 
@@ -50,6 +50,7 @@ Do not mix Candidate content, runtime code, and governance changes in one PR unl
 
 ## Naming Rule
 
+- User-facing local scenario skill names must start with `EvoZeus-`; keep frontmatter `name` and folder paths lowercase `evozeus-*` to pass skill validation.
 - Reuse project terms from `../../docs/governance/terminology-glossary.md` and `../../docs/reference/ontology.md`.
 - Prefer canonical names such as `Session`, `Evidence`, `Case`, `Verdict`, `Artifact`, `Candidate`, `Factor`, `Pattern`, `Rejected Pattern`, and `Environment Rule`.
 - New variables, filenames, headings, schemas, and CLI flags should make the layer and artifact kind obvious.
