@@ -103,7 +103,7 @@ flowchart LR
   H --> I
 
   I -- "No" --> J["Rejected Record<br/>negative pattern or revision request"]
-  I -- "Yes" --> K["Reviewed Candidate<br/>explicit install only"]
+  I -- "Yes" --> K["Reviewed Candidate<br/>maintainer sandbox only"]
 
   K --> L["Promotion PR<br/>to official Factor pack repo"]
   L --> M["Official CI<br/>manifest, hashes, compatibility"]
@@ -280,7 +280,7 @@ Registry CI should verify:
 | Channel | Source | User install behavior |
 | --- | --- | --- |
 | `stable` | main registry approved release | visible by default |
-| `reviewed` | reviewed lab release | explicit install only |
+| `reviewed` | reviewed lab release | maintainer sandbox only; ordinary runtime install must wait for official promotion |
 | `community` | third-party or lab source | requires explicit community flag |
 | `local` | local workspace path | never auto-updated |
 | `deprecated` | old but still reproducible | warning before install |

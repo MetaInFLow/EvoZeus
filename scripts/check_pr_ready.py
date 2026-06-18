@@ -104,10 +104,7 @@ LAYER_PATHS = {
         "examples/invalid-candidates/",
     ),
     "execution": (
-        "src/",
-        "tests/",
         "scripts/",
-        "pyproject.toml",
     ),
     "governance": (
         ".github/",

@@ -18,7 +18,7 @@ Factor submissions.
 
 A Factor is a reusable judgment rule that produces tags or supports verdicts.
 
-EvoZeus 的主仓库不承载完整 Factor library。主仓库只保留协议、最小 builtin Factors、registry 入口和治理规则。大型 Factor pack、社区 Candidate 和 scanner module 应通过外部 lab / official pack repo 按需发布和安装。
+EvoZeus 的主仓库不承载完整 Factor library，也不保存可执行 builtin Factor pack body。主仓库只保留协议、semantic Factor proposal、registry 入口和治理规则。Factor pack、社区 Candidate 和 scanner module 应通过外部 lab / official pack repo 按需发布和安装。
 
 A Factor should define:
 

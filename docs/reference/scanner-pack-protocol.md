@@ -31,10 +31,12 @@ Local Analysis Ledger 只保存统一索引和 locator envelope。如何通过 l
 
 ## 目录结构
 
-Bundled scanner pack 可以放在：
+Runtime-owned bundled scanner packs belong in `evozeus-runtime` after explicit permission and sandbox review. Lab or official review assets belong in the Factor lifecycle repos:
 
 ```text
-__infra__/scanner_packs/<scanner_id>/<version>/
+evozeus-runtime/<runtime-pack-location>/<scanner_id>/<version>/
+evozeus-factor-lab/submissions/<domain>/<scanner-id>/
+evozeus-factors-official/packs/<pack-id>/
 ```
 
 用户下载的 scanner pack 放在：
@@ -218,7 +220,7 @@ metadata
 脚本接口：
 
 ```bash
-PYTHONPATH=__infra__/src python scripts/resolve_event_source.py \
+<runtime command> scanner resolve-event \
   --workspace . \
   --session-id session-alpha \
   --event-id u1

@@ -7,7 +7,7 @@ description: Use when developing EvoZeus protocol/governance itself, changing re
 
 Development work must keep EvoZeus small, reviewable, and evidence-backed. One PR should have one primary purpose, one primary layer, and one validation story.
 
-The `EvoZeus` main repo is Protocol-only. Runtime implementation, scanner execution, CLI/TUI, companion, `.evozeus` local state, lockfile, SQLite ledger, and report execution belong in `evozeus-runtime`, not this repo. Existing `__infra__` content is migration source / prototype material, not a target responsibility to expand.
+The `EvoZeus` main repo is Protocol-only. Runtime implementation, scanner execution, CLI/TUI, companion, `.evozeus` local state, lockfile, SQLite ledger, and report execution belong in `evozeus-runtime`, not this repo. The old main-repo runtime prototype has been removed from this repo; use the runtime repo for implementation work and the main repo only for protocol, governance, registry pointer, or routing changes.
 
 ## Branch Rule
 
@@ -34,7 +34,7 @@ Examples:
 
 ```text
 codex/docs/20260616-skill-scenario-routing
-codex/refactor/20260616-infra-python-package
+codex/docs/20260616-runtime-routing-boundary
 codex/bug/20260616-runtime-report-id
 ```
 
@@ -74,7 +74,7 @@ These require explicit evidence and maintainer-level attention:
 - `docs/reference/ontology.md`
 - `docs/reference/evidence-grading.md`
 - future schema, redaction, upload, session ingestion, or candidate extraction code
-- any change that expands `__infra__` instead of migrating execution responsibility to `evozeus-runtime`
+- any change that reintroduces runtime implementation into this repo instead of using `evozeus-runtime`
 
 ## Pre-Submit Gate
 
