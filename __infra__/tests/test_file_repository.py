@@ -103,7 +103,10 @@ def test_file_repository_writes_html_report_for_selected_factor_results(tmp_path
     assert "session_conversation" in html
     assert "event_signal_rail" in html
     assert "event-signal-icon" in html
-    assert "pending-event-result-hint" in html
+    assert "pending-event-result-hint" not in html
+    assert "factor runs pending for this session" not in html
+    assert "待分析" in html
+    assert "待分析因子运行" in html
     assert "visibleEventsForSession" in html
     assert "dedupeVisibleEvents" in html
     assert "setDrawerResult" in html
@@ -248,3 +251,5 @@ def test_html_report_exposes_session_folder_groups_for_sessions_tab():
     assert '"session_group_label":"EvoZeus"' in html
     assert '"session_title":"最新 scanner 复盘"' in html
     assert '"event_count":243' in html
+    assert "待分析" in html
+    assert "个因子待分析" in html

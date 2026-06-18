@@ -134,7 +134,7 @@ def _session_payloads(
                 "result_count": current_summary["total"] if is_current else int(getattr(status, "analyzed_factor_count", 0)),
                 "matched": current_summary["matched"] if is_current else 0,
                 "skipped": current_summary["skipped"] if is_current else 0,
-                "top_verdict": current_summary["top_verdict"] if is_current else "Pending",
+                "top_verdict": current_summary["top_verdict"] if is_current else "待分析",
                 "analyzed_factor_count": int(getattr(status, "analyzed_factor_count", 0)),
                 "pending_factor_count": int(getattr(status, "pending_factor_count", 0)),
                 "last_analyzed_at": str(getattr(status, "last_analyzed_at", "")),
@@ -329,7 +329,18 @@ def _dashboard_script() -> str:
         if (verdict === "Fix Environment") return "red";
         if (verdict === "Open Case") return "gold";
         if (verdict === "Promote to Skill") return "blue";
+        if (verdict === "待分析") return "gold";
         return "default";
+      }
+
+      function pendingFactorLabel(count) {
+        const normalized = Number(count || 0);
+        return normalized > 0 ? `待分析 ${normalized} 个因子` : "分析完成";
+      }
+
+      function pendingGroupLabel(count) {
+        const normalized = Number(count || 0);
+        return normalized > 0 ? `${normalized} 个因子待分析` : "分析完成";
       }
 
       function Summary() {
@@ -378,7 +389,7 @@ def _dashboard_script() -> str:
           h(Row, { gutter: [12, 12] },
             h(Col, { xs: 12, md: 8 }, h(Card, { size: "small" }, h(Statistic, { title: "Scanned Sessions", value: sessions.length }))),
             h(Col, { xs: 12, md: 8 }, h(Card, { size: "small" }, h(Statistic, { title: "Analyzed Sessions", value: analyzedSessions }))),
-            h(Col, { xs: 24, md: 8 }, h(Card, { size: "small" }, h(Statistic, { title: "Pending Factor Runs", value: pendingFactorRuns })))
+            h(Col, { xs: 24, md: 8 }, h(Card, { size: "small" }, h(Statistic, { title: "待分析因子运行", value: pendingFactorRuns })))
           )
         );
       }
@@ -522,7 +533,7 @@ def _dashboard_script() -> str:
         return tag.reason ? `${label}\n${tag.reason}` : label;
       }
 
-      function EventSignalRail({ event, session }) {
+      function EventSignalRail({ event }) {
         const tags = event.tags || [];
         if (tags.length) {
           return h("div", { className: "event-signal-rail has-signals", "data-component": "event_signal_rail" },
@@ -535,13 +546,6 @@ def _dashboard_script() -> str:
             tags.length > 5 ? h(Tooltip, { title: `${tags.length - 5} more signals`, placement: "left" },
               h("span", { className: "event-signal-more" }, `+${tags.length - 5}`)
             ) : null
-          );
-        }
-        if (session && session.pending_factor_count > 0) {
-          return h("div", { className: "event-signal-rail pending-event-result-hint", "data-component": "event_signal_rail" },
-            h(Tooltip, { title: `${session.pending_factor_count} factor runs pending for this session`, placement: "left" },
-              h("span", { className: "event-signal-icon pending", "data-component": "event_signal_icon" }, "P")
-            )
           );
         }
         return h("div", { className: "event-signal-rail empty", "data-component": "event_signal_rail" });
@@ -595,7 +599,7 @@ def _dashboard_script() -> str:
                 session.session_title && session.session_title !== session.session_id ? h(Tag, null, session.session_title) : null,
                 session.session_group_label ? h(Tag, null, session.session_group_label) : null,
                 h(Tag, null, `${session.event_count || events.length} events`),
-                h(Tag, { color: session.pending_factor_count ? "gold" : "green" }, `${session.pending_factor_count} pending`)
+                h(Tag, { color: session.pending_factor_count ? "gold" : "green" }, pendingFactorLabel(session.pending_factor_count))
               )
             )
           ),
@@ -645,10 +649,10 @@ def _dashboard_script() -> str:
           { title: "Matched", dataIndex: "matched", width: 100 },
           { title: "Analyzed", dataIndex: "analyzed_factor_count", width: 110 },
           {
-            title: "Pending",
+            title: "待分析",
             dataIndex: "pending_factor_count",
             width: 100,
-            render: (value) => h(Tag, { color: value ? "gold" : "green" }, value)
+            render: (value) => h(Tag, { color: value ? "gold" : "green" }, value ? `${value} 个因子` : "完成")
           },
           {
             title: "Top Verdict",
@@ -668,7 +672,7 @@ def _dashboard_script() -> str:
                   h(Space, { size: 6 },
                     h(Tag, null, `${group.sessions.length} sessions`),
                     h(Tag, { color: group.sessions.some((session) => session.pending_factor_count) ? "gold" : "green" },
-                      `${group.sessions.reduce((total, session) => total + (session.pending_factor_count || 0), 0)} pending`
+                      pendingGroupLabel(group.sessions.reduce((total, session) => total + (session.pending_factor_count || 0), 0))
                     )
                   )
                 ),
@@ -807,10 +811,8 @@ def _style() -> str:
     .chat-event-content { line-height: 1.58; white-space: pre-wrap; overflow-wrap: anywhere; }
     .event-signal-rail { display: flex; justify-content: flex-end; align-items: flex-start; flex-wrap: wrap; gap: 6px; min-height: 28px; }
     .event-signal-rail.empty { opacity: 0; pointer-events: none; }
-    .event-signal-rail.pending-event-result-hint { opacity: 0.72; }
     .event-signal-count { min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px; background: #f0f5ff; color: #0958d9; border: 1px solid #adc6ff; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; line-height: 1; }
     .event-signal-icon { width: 24px; height: 24px; border-radius: 50%; background: #e6f4ff; color: #0958d9; border: 1px solid #91caff; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; line-height: 1; box-shadow: 0 1px 2px rgba(5, 57, 128, 0.08); }
-    .event-signal-icon.pending { background: #fffbe6; color: #ad6800; border-color: #ffe58f; }
     .event-signal-more { min-width: 24px; height: 24px; padding: 0 5px; border-radius: 999px; background: #f5f5f5; color: #595959; border: 1px solid #d9d9d9; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; line-height: 1; }
     .event-detail { display: grid; gap: 8px; }
     .fallback { display: block; }

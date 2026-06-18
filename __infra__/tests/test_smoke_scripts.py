@@ -180,6 +180,8 @@ def test_run_session_report_script_writes_html_for_selected_factors(tmp_path: Pa
     assert 'data-component": "session_conversation"' in html
     assert "event_signal_rail" in html
     assert "event-signal-icon" in html
+    assert "待分析" in html
+    assert "factor runs pending for this session" not in html
     assert "fatal: network timeout" in html
     assert "tool_failure" in html
     assert "pending_factor_count" in html
