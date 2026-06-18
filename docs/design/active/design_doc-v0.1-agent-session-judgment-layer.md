@@ -2,7 +2,7 @@
 
 - Status: active
 - Owner: MetaInFlow
-- Last updated: 2026-06-14
+- Last updated: 2026-06-18
 - Linked ADR(s): [ADR-0001](../../decisions/ADR-0001-static-skill-entry-and-zero-install.md)
 
 ## Agent Session Judgment Layer
@@ -283,6 +283,8 @@ EvoZeus/
 
 这个结构采用“协议 + schema + scripts + output”的工程组织方式，核心资产是 Agent Session 判例。
 
+`factors/` 在主 repo 中只保留公共语义、registry pointer 和贡献路由，不承载可执行 Factor pack 或 scanner module。Factor pack / scanner module 的孵化进入 `evozeus-factor-lab`；maintainer-promoted official pack 进入 `evozeus-factors-official`，再由主 repo registry 引用稳定 release manifest。
+
 ---
 
 ## 9. v0.1 Scope
@@ -299,6 +301,7 @@ EvoZeus/
 - 示例 Case
 - 示例 Report
 - 本地文件结构约定
+- Factor Candidate intake 和 registry pointer
 
 不包含：
 
@@ -308,6 +311,7 @@ EvoZeus/
 - 完整 CLI
 - Marketplace
 - 大规模 benchmark
+- 可执行 Factor pack 或 scanner module 的主 repo 内置发布
 
 ---
 
@@ -323,11 +327,11 @@ EvoZeus/
 
 ### Track C - Local Runtime
 
-实现 `evozeus review`、SQLite registry、Codex scanner、基础 Factor、脱敏检查。
+实现 `evozeus review`、SQLite registry、registry consumer、scanner hook、脱敏检查。
 
 ### Track D - Community Library
 
-沉淀 Cases、Factors、Patterns、Rejected Patterns 的社区治理和判例页。
+沉淀 Cases、Factor references、Patterns、Rejected Patterns 的社区治理和判例页；需要可执行 pack 或 scanner 的 Factor 进入 lab / official release 流程。
 
 ### Long Horizon - Global Agent Session Judgment Layer
 

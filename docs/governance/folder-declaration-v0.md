@@ -1,7 +1,7 @@
 # Folder Declaration v0
 
 - Status: active
-- Last updated: 2026-06-16
+- Last updated: 2026-06-18
 
 ## Root Files
 
@@ -25,7 +25,7 @@
 | `assets/` | README and public visual assets |
 | `candidates/` | Candidate lifecycle directories: community, reviewed, core, deprecated |
 | `cases/` | Case library surface |
-| `factors/` | Factor library surface |
+| `factors/` | Factor registry pointer and semantic contract; not executable pack or scanner storage |
 | `patterns/` | Pattern library surface |
 | `examples/` | Redacted examples for Cases and reports |
 | `docs/` | Project documentation |
@@ -40,6 +40,15 @@
 | `.github/workflows/` | GitHub Actions for dry-run governance gates |
 | `scripts/github/` | GitHub triage, proof, privacy, queue, schema, and marker comment scripts |
 | `docs/rfcs/` | Governance and workflow RFCs |
+
+## External Factor Repos
+
+| Repo | Responsibility |
+| --- | --- |
+| `evozeus-factor-lab` | Factor pack and scanner module submissions, reviewed/rejected records, and incubation templates |
+| `evozeus-factors-official` | Official Factor pack releases, manifests, checksums, SBOM, and attestations |
+
+The main repo remains the public intake and canonical governance surface. It should not host executable Factor pack code or scanner modules directly.
 
 ## Planned Runtime Directories
 

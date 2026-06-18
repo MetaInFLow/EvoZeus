@@ -143,11 +143,12 @@ GitHub automation is dry-run by default: labeler, proof gate, privacy scan, dirt
 | Ontology Layer | Candidate taxonomy, evidence grading, negative patterns, review contract |
 | Developer Workflow | branch rules, PR templates, dry-run governance gates, pre-submit checks |
 | Public Examples | redacted Case, Evidence Report, valid/invalid Candidate examples |
+| Factor Surface | public Factor Candidate intake and registry pointers; executable packs live outside this repo |
 
 Planned but not stable yet:
 
 - Local Runtime: `.evozeus/` local state, SQLite registry, Markdown/JSON report
-- Community Library: Cases, Factors, Habits, Environment Rules, Rejected Patterns
+- Community Library: Cases, Factor references, Habits, Environment Rules, Rejected Patterns
 - CLI / TUI / browser companion
 
 Not promised:

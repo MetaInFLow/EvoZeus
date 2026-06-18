@@ -1,7 +1,7 @@
 # Ontology Layer
 
 - Status: draft
-- Last updated: 2026-06-15
+- Last updated: 2026-06-18
 
 Ontology Layer 定义 EvoZeus 可以稳定生产、评估、复用的认知单位。它优先解决语义收敛，不处理 runtime 实现、bot 自动化或社区激励。
 
@@ -48,12 +48,23 @@ session-derived finding + evidence + proposed artifact kind + review target
 | Kind | 中文名 | Use when | Final Artifact |
 | --- | --- | --- | --- |
 | `skill` | Skill 候选 | 行为模式需要变成 agent instruction | `skills/<name>/SKILL.md` |
-| `factor` | Factor 候选 | 判断规则需要可重复触发 | `factors/` 或 reference |
+| `factor` | Factor 候选 | 判断规则需要可重复触发 | main registry reference、`evozeus-factor-lab` submission 或 `evozeus-factors-official` release manifest |
 | `pattern` | Pattern 候选 | 行为模式值得保留或推广 | `patterns/` |
 | `habit` | Habit 候选 | 轻量实践足够，不需要完整 Skill | checklist 或 docs |
 | `environment_rule` | 环境规则候选 | 根因在路径、网络、权限、版本、认证 | governance 或 diagnostics |
 | `report_template` | 报告模板候选 | 需要更稳定的 review surface | `docs/reference/report-templates.md` |
 | `negative_pattern` | 负样本候选 | 模式应被拒绝、限制或记录为反例 | `docs/reference/negative-patterns.md` |
+
+## Factor Asset Boundary
+
+`factor` 是主 repo 的核心 Candidate kind，但不是所有 Factor 资产都存放在主 repo。
+
+| Stage | Location | Rule |
+| --- | --- | --- |
+| Proposal | `EvoZeus` issue / Candidate PR | 只提交脱敏 evidence、trigger、applicability、counterexample 和 review target |
+| Incubation | `evozeus-factor-lab` | 承接 Factor pack、scanner module、reviewed/rejected 记录和实验性模板 |
+| Official release | `evozeus-factors-official` | 只接 maintainer-promoted pack，必须有 tag、manifest、checksum 和 attestation |
+| Registry publication | `EvoZeus` | 只引用稳定 release manifest 或公共语义定义，不追踪 lab moving branch |
 
 ## What Is Not A Candidate
 

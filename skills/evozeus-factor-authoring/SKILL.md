@@ -33,6 +33,22 @@ Promote only when:
 - a reviewer can apply it without knowing the original private session
 - rejection criteria are clear
 
+## Repository Route
+
+Use the public `EvoZeus` repo for Factor proposals, Candidate PRs, registry references, and governance changes.
+
+Route heavier assets as follows:
+
+| Asset | Repo |
+| --- | --- |
+| Draft Factor pack | `evozeus-factor-lab` |
+| Scanner module | `evozeus-factor-lab` |
+| Reviewed/rejected lab record | `evozeus-factor-lab` |
+| Official released Factor pack | `evozeus-factors-official` |
+| Stable registry pointer | `EvoZeus` |
+
+Do not place executable scanner code, unreviewed pack assets, or raw private session evidence in the main repo.
+
 ## Common Rejections
 
 - too broad to evaluate
