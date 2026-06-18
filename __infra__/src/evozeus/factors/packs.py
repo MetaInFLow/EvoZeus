@@ -10,19 +10,38 @@ from evozeus.factors.manifest import FactorManifest, load_manifest
 
 
 @dataclass(frozen=True)
+class FactorTagLabel:
+    type: str
+    value: str
+    label_zh: str
+    label_en: str
+
+
+@dataclass(frozen=True)
 class FactorIntroduction:
     id: str
     version: str
     name: str
+    name_zh: str
+    name_en: str
     summary: str
+    summary_zh: str
+    summary_en: str
     category: str
     stage: str
     runtime: str
     inputs: list[str]
     outputs: list[str]
     when_to_use: str
+    when_to_use_zh: str
+    when_to_use_en: str
     limitations: str
+    limitations_zh: str
+    limitations_en: str
     privacy: str
+    privacy_zh: str
+    privacy_en: str
+    tag_labels: list[FactorTagLabel]
 
 
 @dataclass(frozen=True)
@@ -71,19 +90,35 @@ def load_introduction(path: Path) -> FactorIntroduction:
     if root.tag != "factor":
         raise ValueError(f"FACTOR.xml root element must be <factor>: {path}")
 
+    name_zh, name_en = _required_bilingual_text(root, "name", path)
+    summary_zh, summary_en = _required_bilingual_text(root, "summary", path)
+    when_to_use_zh, when_to_use_en = _required_bilingual_text(root, "when_to_use", path)
+    limitations_zh, limitations_en = _required_bilingual_text(root, "limitations", path)
+    privacy_zh, privacy_en = _required_bilingual_text(root, "privacy", path)
     introduction = FactorIntroduction(
         id=(root.attrib.get("id") or "").strip(),
         version=(root.attrib.get("version") or "").strip(),
-        name=_required_text(root, "name", path),
-        summary=_required_text(root, "summary", path),
+        name=_bilingual_display(name_zh, name_en),
+        name_zh=name_zh,
+        name_en=name_en,
+        summary=_bilingual_display(summary_zh, summary_en),
+        summary_zh=summary_zh,
+        summary_en=summary_en,
         category=_required_text(root, "category", path),
         stage=_required_text(root, "stage", path),
         runtime=_required_text(root, "runtime", path),
         inputs=_required_list(root, "inputs", "input", path),
         outputs=_required_list(root, "outputs", "output", path),
-        when_to_use=_required_text(root, "when_to_use", path),
-        limitations=_required_text(root, "limitations", path),
-        privacy=_required_text(root, "privacy", path),
+        when_to_use=_bilingual_display(when_to_use_zh, when_to_use_en),
+        when_to_use_zh=when_to_use_zh,
+        when_to_use_en=when_to_use_en,
+        limitations=_bilingual_display(limitations_zh, limitations_en),
+        limitations_zh=limitations_zh,
+        limitations_en=limitations_en,
+        privacy=_bilingual_display(privacy_zh, privacy_en),
+        privacy_zh=privacy_zh,
+        privacy_en=privacy_en,
+        tag_labels=_required_tag_labels(root, path),
     )
     if not introduction.id or not introduction.version:
         raise ValueError(f"FACTOR.xml must declare id and version attributes: {path}")
@@ -135,6 +170,46 @@ def _required_text(root: ET.Element, name: str, path: Path) -> str:
     if not text:
         raise ValueError(f"FACTOR.xml missing required <{name}> text: {path}")
     return text
+
+
+def _required_bilingual_text(root: ET.Element, name: str, path: Path) -> tuple[str, str]:
+    child = root.find(name)
+    if child is None:
+        raise ValueError(f"FACTOR.xml missing required <{name}> element: {path}")
+    zh = _child_text(child, "zh")
+    en = _child_text(child, "en")
+    if not zh or not en:
+        raise ValueError(f"FACTOR.xml <{name}> must include non-empty <zh> and <en>: {path}")
+    return zh, en
+
+
+def _required_tag_labels(root: ET.Element, path: Path) -> list[FactorTagLabel]:
+    parent = root.find("tag_labels")
+    if parent is None:
+        raise ValueError(f"FACTOR.xml missing required <tag_labels>: {path}")
+    labels = []
+    for child in list(parent):
+        if child.tag != "tag":
+            continue
+        tag_type = (child.attrib.get("type") or "").strip()
+        tag_value = (child.attrib.get("value") or "").strip()
+        label_zh = _child_text(child, "zh")
+        label_en = _child_text(child, "en")
+        if not tag_type or not tag_value or not label_zh or not label_en:
+            raise ValueError(f"FACTOR.xml invalid <tag> label; type, value, zh and en are required: {path}")
+        labels.append(FactorTagLabel(type=tag_type, value=tag_value, label_zh=label_zh, label_en=label_en))
+    if not labels:
+        raise ValueError(f"FACTOR.xml <tag_labels> must include at least one <tag>: {path}")
+    return labels
+
+
+def _child_text(root: ET.Element, name: str) -> str:
+    child = root.find(name)
+    return child.text.strip() if child is not None and child.text else ""
+
+
+def _bilingual_display(zh: str, en: str) -> str:
+    return f"{zh} / {en}"
 
 
 def _required_list(root: ET.Element, parent_name: str, item_name: str, path: Path) -> list[str]:

@@ -79,7 +79,7 @@ def _report_payload(
             "result_count": len(results),
         },
         "sessions": _session_payloads(session_id, summary, session_statuses),
-        "session_events": _session_event_payloads(session_events),
+        "session_events": _session_event_payloads(session_events, pack_by_id),
         "summary": summary,
         "visualizations": [_visualization_payload(visualization) for visualization in visualizations],
         "results": result_items,
@@ -155,7 +155,7 @@ def _session_payloads(
     return rows
 
 
-def _session_event_payloads(session_events: Iterable[Any] | None) -> list[dict[str, Any]]:
+def _session_event_payloads(session_events: Iterable[Any] | None, pack_by_id: dict[str, FactorPack]) -> list[dict[str, Any]]:
     if session_events is None:
         return []
     rows = []
@@ -172,19 +172,37 @@ def _session_event_payloads(session_events: Iterable[Any] | None) -> list[dict[s
                 "tool_result_preview": str(getattr(event, "tool_result_preview", "")),
                 "source_ref": str(getattr(event, "source_ref", "")),
                 "source_line": int(getattr(event, "source_line", 0)),
-                "tags": [
-                    {
-                        "factor_id": str(getattr(tag, "factor_id", "")),
-                        "type": str(getattr(tag, "tag_type", "")),
-                        "value": str(getattr(tag, "tag_value", "")),
-                        "reason": str(getattr(tag, "reason", "")),
-                        "result_run_id": str(getattr(tag, "result_run_id", "")),
-                    }
-                    for tag in getattr(event, "tags", [])
-                ],
+                "tags": [_event_tag_payload(tag, pack_by_id) for tag in getattr(event, "tags", [])],
             }
         )
     return rows
+
+
+def _event_tag_payload(tag: Any, pack_by_id: dict[str, FactorPack]) -> dict[str, str]:
+    factor_id = str(getattr(tag, "factor_id", ""))
+    tag_type = str(getattr(tag, "tag_type", ""))
+    tag_value = str(getattr(tag, "tag_value", ""))
+    pack = pack_by_id.get(factor_id)
+    intro = pack.introduction if pack is not None else None
+    label = _find_tag_label(pack, tag_type, tag_value)
+    label_zh = label.label_zh if label is not None else ""
+    label_en = label.label_en if label is not None else ""
+    return {
+        "factor_id": factor_id,
+        "factor_name": intro.name if intro is not None else factor_id,
+        "factor_name_zh": intro.name_zh if intro is not None else "",
+        "factor_name_en": intro.name_en if intro is not None else "",
+        "factor_summary": intro.summary if intro is not None else "",
+        "factor_summary_zh": intro.summary_zh if intro is not None else "",
+        "factor_summary_en": intro.summary_en if intro is not None else "",
+        "type": tag_type,
+        "value": tag_value,
+        "label": _bilingual_display(label_zh, label_en) if label_zh and label_en else "",
+        "label_zh": label_zh,
+        "label_en": label_en,
+        "reason": str(getattr(tag, "reason", "")),
+        "result_run_id": str(getattr(tag, "result_run_id", "")),
+    }
 
 
 def _summary_payload(results: list[FactorResult]) -> dict[str, Any]:
@@ -211,14 +229,18 @@ def _result_payload(result: FactorResult, pack: FactorPack | None) -> dict[str, 
         "key": result.factor_id,
         "factor_id": result.factor_id,
         "factor_name": intro.name if intro is not None else result.factor_id,
+        "factor_name_zh": intro.name_zh if intro is not None else "",
+        "factor_name_en": intro.name_en if intro is not None else "",
         "summary": intro.summary if intro is not None else "",
+        "summary_zh": intro.summary_zh if intro is not None else "",
+        "summary_en": intro.summary_en if intro is not None else "",
         "version": result.factor_version or "unknown",
         "stage": result.stage.value,
         "status": result.status,
         "confidence": _round_float(result.confidence),
         "verdict_signals": result.verdict_signals,
         "tags": [
-            {"type": str(tag.get("type") or ""), "value": str(tag.get("value") or "")}
+            _result_tag_payload(tag, pack)
             for tag in result.tags
         ],
         "scores": [
@@ -259,13 +281,72 @@ def _factor_pack_payload(pack: FactorPack) -> dict[str, Any]:
         "key": pack.manifest.id,
         "factor_id": pack.manifest.id,
         "name": intro.name,
+        "name_zh": intro.name_zh,
+        "name_en": intro.name_en,
         "version": pack.manifest.version,
         "stage": pack.manifest.stage.value,
         "runtime": pack.manifest.runtime.mode.value,
         "summary": intro.summary,
+        "summary_zh": intro.summary_zh,
+        "summary_en": intro.summary_en,
+        "when_to_use": intro.when_to_use,
+        "when_to_use_zh": intro.when_to_use_zh,
+        "when_to_use_en": intro.when_to_use_en,
+        "limitations": intro.limitations,
+        "limitations_zh": intro.limitations_zh,
+        "limitations_en": intro.limitations_en,
         "category": intro.category,
         "privacy": intro.privacy,
+        "privacy_zh": intro.privacy_zh,
+        "privacy_en": intro.privacy_en,
+        "tag_labels": [
+            {
+                "type": label.type,
+                "value": label.value,
+                "label": _bilingual_display(label.label_zh, label.label_en),
+                "label_zh": label.label_zh,
+                "label_en": label.label_en,
+            }
+            for label in intro.tag_labels
+        ],
     }
+
+
+def _result_tag_payload(tag: dict[str, str], pack: FactorPack | None) -> dict[str, str]:
+    tag_type = str(tag.get("type") or "")
+    tag_value = str(tag.get("value") or "")
+    label = _find_tag_label(pack, tag_type, tag_value)
+    label_zh = label.label_zh if label is not None else ""
+    label_en = label.label_en if label is not None else ""
+    return {
+        "type": tag_type,
+        "value": tag_value,
+        "label": _bilingual_display(label_zh, label_en) if label_zh and label_en else "",
+        "label_zh": label_zh,
+        "label_en": label_en,
+    }
+
+
+def _find_tag_label(pack: FactorPack | None, tag_type: str, tag_value: str) -> Any | None:
+    if pack is None:
+        return None
+    exact = [
+        label
+        for label in pack.introduction.tag_labels
+        if label.type == tag_type and label.value == tag_value
+    ]
+    if exact:
+        return exact[0]
+    wildcard = [
+        label
+        for label in pack.introduction.tag_labels
+        if label.type == tag_type and label.value == "*"
+    ]
+    return wildcard[0] if wildcard else None
+
+
+def _bilingual_display(zh: str, en: str) -> str:
+    return f"{zh} / {en}"
 
 
 def _fallback_html(payload: dict[str, Any]) -> str:
@@ -341,6 +422,15 @@ def _dashboard_script() -> str:
       function pendingGroupLabel(count) {
         const normalized = Number(count || 0);
         return normalized > 0 ? `${normalized} 个因子待分析` : "分析完成";
+      }
+
+      function bilingualText(zh, en, fallback) {
+        if (zh && en) return `${zh} / ${en}`;
+        return zh || en || fallback || "";
+      }
+
+      function readableTag(tag) {
+        return bilingualText(tag.label_zh, tag.label_en, tag.label || `${tag.type}:${tag.value}`);
       }
 
       function Summary() {
@@ -446,9 +536,9 @@ def _dashboard_script() -> str:
       function ResultDetail({ result }) {
         if (!result) return null;
         return h("section", { "data-result-card": "factor_result", "data-status": result.status, className: `result-detail status-${result.status}` },
-          h("p", { className: "card-note" }, result.summary),
+          h("p", { className: "card-note" }, bilingualText(result.summary_zh, result.summary_en, result.summary)),
           h("div", { className: "result-section" }, h(Text, { strong: true }, "Verdict"), h(Tags, { items: result.verdict_signals })),
-          h("div", { className: "result-section" }, h(Text, { strong: true }, "Tags"), h(Tags, { items: result.tags.map((tag) => `${tag.type}=${tag.value}`) })),
+          h("div", { className: "result-section" }, h(Text, { strong: true }, "Tags"), h(Tags, { items: result.tags.map((tag) => `${readableTag(tag)} (${tag.type}=${tag.value})`) })),
           h("div", { className: "result-section" }, h(Text, { strong: true }, "Scores"), h(Tags, { items: result.scores.map((score) => `${score.key}=${score.value}`) })),
           h("div", { className: "result-section" }, h(Text, { strong: true }, "Evidence"), h(Tags, { items: result.evidence_refs.map((ref) => `${ref.id} (${ref.kind})`) }))
         );
@@ -524,13 +614,21 @@ def _dashboard_script() -> str:
       }
 
       function signalInitial(tag) {
-        const value = String(tag.type || tag.factor_id || "signal").trim();
+        const value = String(tag.label_zh || tag.factor_name_zh || tag.type || tag.factor_id || "signal").trim();
         return value ? value.slice(0, 1).toUpperCase() : "S";
       }
 
       function signalTooltip(tag) {
-        const label = `${tag.factor_id} · ${tag.type}:${tag.value}`;
-        return tag.reason ? `${label}\n${tag.reason}` : label;
+        const tagLabel = readableTag(tag);
+        const factorName = bilingualText(tag.factor_name_zh, tag.factor_name_en, tag.factor_name || tag.factor_id);
+        const factorSummary = bilingualText(tag.factor_summary_zh, tag.factor_summary_en, tag.factor_summary);
+        return [
+          tagLabel,
+          `Factor: ${factorName}`,
+          `Raw: ${tag.type}:${tag.value}`,
+          factorSummary,
+          tag.reason ? `原因: ${tag.reason}` : ""
+        ].filter(Boolean).join("\n");
       }
 
       function EventSignalRail({ event }) {
@@ -581,7 +679,7 @@ def _dashboard_script() -> str:
           h("div", { className: "result-section" }, h(Text, { strong: true }, "Event"), h(Tags, { items: [event.event_id, event.role, event.tool_name].filter(Boolean) })),
           h("div", { className: "result-section" }, h(Text, { strong: true }, "Content"), h("p", null, event.content || event.tool_result_preview || "")),
           event.tool_result_preview ? h("div", { className: "result-section" }, h(Text, { strong: true }, "Tool Result"), h("p", null, event.tool_result_preview)) : null,
-          h("div", { className: "result-section" }, h(Text, { strong: true }, "Tags"), h(Tags, { items: tags.map((tag) => `${tag.factor_id} · ${tag.type}:${tag.value}`) })),
+          h("div", { className: "result-section" }, h(Text, { strong: true }, "Tags"), h(Tags, { items: tags.map((tag) => `${readableTag(tag)} · ${bilingualText(tag.factor_name_zh, tag.factor_name_en, tag.factor_name || tag.factor_id)}`) })),
           h(SourceLine, { label: "Source locator", sourceRef: event.source_ref, sourceLine: event.source_line })
         );
       }
@@ -722,8 +820,9 @@ def _dashboard_script() -> str:
             size: "small",
             expandable: {
               expandedRowRender: (row) => h("div", { className: "pack-detail" },
-                h("p", null, row.summary),
-                h(Text, { type: "secondary" }, row.privacy)
+                h("p", null, bilingualText(row.summary_zh, row.summary_en, row.summary)),
+                h("p", null, bilingualText(row.when_to_use_zh, row.when_to_use_en, row.when_to_use)),
+                h(Text, { type: "secondary" }, bilingualText(row.privacy_zh, row.privacy_en, row.privacy))
               )
             }
           })

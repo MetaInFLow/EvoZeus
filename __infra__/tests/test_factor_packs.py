@@ -42,15 +42,31 @@ def test_factor_pack_repository_loads_factor_xml_introductions():
         assert pack.introduction.id == pack.manifest.id
         assert pack.introduction.version == pack.manifest.version
         assert pack.introduction.name
+        assert pack.introduction.name_zh
+        assert pack.introduction.name_en
         assert pack.introduction.summary
+        assert pack.introduction.summary_zh
+        assert pack.introduction.summary_en
         assert pack.introduction.category
         assert pack.introduction.stage == pack.manifest.stage
         assert pack.introduction.runtime == pack.manifest.runtime.mode
         assert pack.introduction.inputs
         assert pack.introduction.outputs
         assert pack.introduction.when_to_use
+        assert pack.introduction.when_to_use_zh
+        assert pack.introduction.when_to_use_en
         assert pack.introduction.limitations
+        assert pack.introduction.limitations_zh
+        assert pack.introduction.limitations_en
         assert pack.introduction.privacy
+        assert pack.introduction.privacy_zh
+        assert pack.introduction.privacy_en
+        assert pack.introduction.tag_labels
+        for tag_label in pack.introduction.tag_labels:
+            assert tag_label.type
+            assert tag_label.value
+            assert tag_label.label_zh
+            assert tag_label.label_en
         assert not hasattr(pack.introduction, "visualization")
 
 

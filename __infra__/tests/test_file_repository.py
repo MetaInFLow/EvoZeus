@@ -205,6 +205,12 @@ def test_html_report_exposes_sentence_level_factor_tags_as_event_signal_icons():
     assert "EventSignalRail" in html
     assert '"factor_id":"default.open_loop"' in html
     assert '"value":"follow_up_required"' in html
+    assert '"factor_name_zh":"未闭环"' in html
+    assert '"factor_name_en":"Open Loop"' in html
+    assert '"label_zh":"需要跟进"' in html
+    assert '"label_en":"Follow-up required"' in html
+    assert "未闭环 / Open Loop" in html
+    assert "需要跟进 / Follow-up required" in html
     assert "event-signal-icon" in html
     assert "event-signal-count" in html
 

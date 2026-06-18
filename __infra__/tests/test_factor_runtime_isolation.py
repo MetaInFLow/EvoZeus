@@ -227,8 +227,14 @@ def _factor_xml(factor_id: str, runtime: dict[str, object]) -> str:
     runtime_mode = runtime.get("mode", "in_process")
     return f"""<?xml version="1.0" encoding="UTF-8"?>
 <factor id="{factor_id}" version="0.1.0">
-  <name>{factor_id.replace(".", "-")}</name>
-  <summary>runtime isolation test factor</summary>
+  <name>
+    <zh>运行时隔离测试因子</zh>
+    <en>{factor_id.replace(".", "-")}</en>
+  </name>
+  <summary>
+    <zh>runtime isolation 测试因子。</zh>
+    <en>Runtime isolation test factor.</en>
+  </summary>
   <category>test</category>
   <stage>signal_extraction</stage>
   <runtime>{runtime_mode}</runtime>
@@ -238,9 +244,28 @@ def _factor_xml(factor_id: str, runtime: dict[str, object]) -> str:
   <outputs>
     <output>factor_result</output>
   </outputs>
-  <when_to_use>测试 runtime runner 行为时使用。</when_to_use>
-  <limitations>只用于测试，不代表真实分析能力。</limitations>
-  <privacy>只读取测试 SessionEnvelope。</privacy>
+  <tag_labels>
+    <tag type="runtime" value="in_process">
+      <zh>进程内运行</zh>
+      <en>In-process runtime</en>
+    </tag>
+    <tag type="pid" value="*">
+      <zh>子进程编号</zh>
+      <en>Subprocess pid</en>
+    </tag>
+  </tag_labels>
+  <when_to_use>
+    <zh>测试 runtime runner 行为时使用。</zh>
+    <en>Use this for testing runtime runner behavior.</en>
+  </when_to_use>
+  <limitations>
+    <zh>只用于测试，不代表真实分析能力。</zh>
+    <en>Test-only factor; it does not represent real analysis capability.</en>
+  </limitations>
+  <privacy>
+    <zh>只读取测试 SessionEnvelope。</zh>
+    <en>Reads only the test SessionEnvelope.</en>
+  </privacy>
 </factor>
 """
 
