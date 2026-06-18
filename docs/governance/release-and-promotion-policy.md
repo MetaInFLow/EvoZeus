@@ -41,10 +41,25 @@ These require explicit maintainer review before merge or promotion:
 - `docs/governance/privacy-and-redaction.md`
 - `docs/reference/ontology.md`
 - `docs/reference/evidence-grading.md`
+- future `factors/registry/`
+- future official Factor pack manifests
+- future scanner modules
 - future `schemas/`
 - future redaction, session, candidate extraction, or upload code
 
 Add `.github/CODEOWNERS` after the concrete GitHub maintainer team or owner handles are confirmed. Do not add placeholder owners that GitHub cannot resolve.
+
+## Factor Pack Promotion
+
+Factor pack and scanner module promotion follows [Factor Registry Governance](factor-registry-governance.md).
+
+Key rule:
+
+```text
+lab merge != official release != main registry publication
+```
+
+The main registry should only accept versioned, reviewed, checksum-verifiable release manifest references. It must not crawl lab repo moving branches or publish unreviewed community scanner code by default.
 
 ## No Automerge Yet
 

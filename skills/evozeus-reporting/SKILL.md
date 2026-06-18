@@ -3,7 +3,7 @@ name: evozeus-reporting
 description: Use when generating, reviewing, or refining EvoZeus Evidence Reports, Session Verdict Cards, Case summaries, or report templates.
 ---
 
-# EvoZeus Reporting
+# EvoZeus-Reporting
 
 Reports translate a raw session into reviewable evidence. They should make the next decision easier: preserve, promote, extract, fix, reject, or keep open.
 

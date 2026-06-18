@@ -30,7 +30,7 @@
 | `examples/` | Redacted examples for Cases and reports |
 | `docs/` | Project documentation |
 | `schemas/` | JSON schemas for Candidate, Session, and Evidence Report artifacts |
-| `skills/` | Agent-readable scenario skills for development, contribution, runtime, reporting, redaction, debugging, Factor authoring, and skill proposals |
+| `skills/` | Agent-readable scenario skills. User-facing local names use `EvoZeus-...`; machine names and folder paths stay lowercase `evozeus-*` |
 | `scripts/` | Local repository checks and maintainer utility scripts |
 
 ## Important Subdirectories

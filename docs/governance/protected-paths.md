@@ -22,6 +22,9 @@ These paths require owner review and must not be auto-merged.
 | `docs/governance/privacy-and-redaction.md` | Privacy rule |
 | `candidates/core/` | Core reusable library |
 | `candidates/reviewed/` | Maintainer-reviewed Candidate library |
+| future `factors/registry/` | Main Factor registry and install trust boundary |
+| future official Factor pack manifests | Versioned Factor distribution surface |
+| future scanner modules | Executable plugin surface |
 
 CODEOWNERS requests review for these paths. Branch protection or repository rulesets must enable code owner review to enforce it.
 

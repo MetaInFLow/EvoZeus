@@ -9,8 +9,8 @@ This repository follows the Engineering Everything document layout.
 
 | Need | Document |
 | --- | --- |
-| Scenario skill routing | [../skills/index/SKILL.md](../skills/index/SKILL.md) |
-| Repository development rules | [../skills/evozeus-development/SKILL.md](../skills/evozeus-development/SKILL.md) |
+| Scenario skill routing | [EvoZeus-Skill Index](../skills/index/SKILL.md) |
+| Repository development rules | [EvoZeus-Development](../skills/evozeus-development/SKILL.md) |
 | Product and protocol design | [design/active/design_doc-v0.1-agent-session-judgment-layer.md](design/active/design_doc-v0.1-agent-session-judgment-layer.md) |
 | Architecture decision history | [decisions/](decisions/) |
 | Privacy and redaction rules | [governance/privacy-and-redaction.md](governance/privacy-and-redaction.md) |
@@ -26,6 +26,8 @@ This repository follows the Engineering Everything document layout.
 | GitHub settings checklist | [governance/github-settings.md](governance/github-settings.md) |
 | Candidate lifecycle | [governance/candidate-lifecycle.md](governance/candidate-lifecycle.md) |
 | Release and promotion policy | [governance/release-and-promotion-policy.md](governance/release-and-promotion-policy.md) |
+| Factor registry governance | [governance/factor-registry-governance.md](governance/factor-registry-governance.md) |
+| Launch readiness criteria | [governance/launch-readiness-criteria.md](governance/launch-readiness-criteria.md) |
 | Folder ownership | [governance/folder-declaration-v0.md](governance/folder-declaration-v0.md) |
 | Terminology | [governance/terminology-glossary.md](governance/terminology-glossary.md) |
 | Ontology layer | [reference/ontology.md](reference/ontology.md) |
@@ -44,6 +46,7 @@ This repository follows the Engineering Everything document layout.
 - Governance docs live in `docs/governance/`.
 - Stable reference docs live in `docs/reference/`.
 - Runtime output must not be committed; local runtime state belongs under `.evozeus/`.
-- Scenario skills live under `../skills/`; changes to them are governance-risk instruction changes.
+- Scenario skills live under `../skills/`; user-facing names use `EvoZeus-...`, while machine names and folder paths stay lowercase `evozeus-*`.
+- Changes to scenario skills are governance-risk instruction changes.
 - Governance RFCs live under `rfcs/`.
 - Candidate lifecycle files live under `../candidates/` and must pass schema validation.

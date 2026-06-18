@@ -3,7 +3,7 @@ name: evozeus-skill-proposal
 description: Use when proposing, changing, promoting, rejecting, or reviewing EvoZeus skills, scenario skills, prompts, or agent-facing instructions.
 ---
 
-# EvoZeus Skill Proposal
+# EvoZeus-Skill Proposal
 
 Skill changes alter agent behavior. Treat them as governance-risk work, not normal docs polish.
 
