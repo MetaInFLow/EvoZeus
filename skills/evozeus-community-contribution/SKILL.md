@@ -14,7 +14,7 @@ Community contribution is evidence contribution first. It does not grant broad p
 | Session-derived Case | Issue or Candidate PR with redacted evidence |
 | Candidate Pattern, Habit, Factor, or Environment Rule | Candidate PR |
 | Small docs fix | Docs PR |
-| Runtime or infra change | Maintainer-discussed code PR |
+| Runtime or infra change | Maintainer-discussed PR in `evozeus-runtime` |
 | Governance, ontology, PR rule, or skill instruction change | Maintainer-discussed governance PR |
 
 External contributors should keep at most 3 open Candidate PRs and at most 1 open code PR.
@@ -30,6 +30,8 @@ A Candidate PR may touch candidate assets and supporting redacted examples. It m
 - `docs/reference/ontology.md`
 - `docs/reference/evidence-grading.md`
 - runtime, upload, redaction, or extraction code
+
+If a contribution includes CLI, TUI, companion, scanner execution, local registry, `.evozeus` state, lockfile, SQLite ledger, or report execution, route it to `evozeus-runtime`. Do not expand `EvoZeus/__infra__` as a normal contribution path.
 
 If those files need changes, split a separate governance or code PR.
 

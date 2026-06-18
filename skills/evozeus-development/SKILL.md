@@ -1,11 +1,13 @@
 ---
 name: evozeus-development
-description: Use when developing EvoZeus itself, changing repository files, branch structure, PR templates, docs, scripts, runtime code, governance, or agent-facing instructions.
+description: Use when developing EvoZeus protocol/governance itself, changing repository files, branch structure, PR templates, docs, scripts, governance, or agent-facing instructions.
 ---
 
 # EvoZeus-Development
 
 Development work must keep EvoZeus small, reviewable, and evidence-backed. One PR should have one primary purpose, one primary layer, and one validation story.
+
+The `EvoZeus` main repo is Protocol-only. Runtime implementation, scanner execution, CLI/TUI, companion, `.evozeus` local state, lockfile, SQLite ledger, and report execution belong in `evozeus-runtime`, not this repo. Existing `__infra__` content is migration source / prototype material, not a target responsibility to expand.
 
 ## Branch Rule
 
@@ -19,14 +21,14 @@ Allowed `type`:
 
 | Type | Use for |
 | --- | --- |
-| `dev` | New runtime, CLI, script, or product behavior |
+| `dev` | New protocol-supporting script or product behavior in this repo; runtime implementation belongs in `evozeus-runtime` |
 | `bug` | Defect fix with reproduction or evidence |
 | `refactor` | Behavior-preserving restructuring tied to an issue or maintainer request |
 | `docs` | Documentation, templates, governance text, or skill docs |
 | `test` | Test coverage tied to a behavior, Case, or bug |
 | `chore` | Maintenance that does not change user-visible behavior |
 
-Allowed `component` should match the touched surface where possible: `runtime`, `factor`, `verdict-card`, `doctor`, `tui`, `companion`, `workspace`, `docs`, `governance`, `skill`, `infra`, or `template`.
+Allowed `component` should match the touched surface where possible: `factor`, `verdict-card`, `docs`, `governance`, `skill`, `registry`, or `template`. Use `runtime`, `doctor`, `tui`, `companion`, `workspace`, or `infra` only for migration coordination or protocol/trust-policy text; implementation PRs go to `evozeus-runtime`.
 
 Examples:
 
@@ -43,10 +45,10 @@ Pick one primary layer:
 | Layer | Typical files |
 | --- | --- |
 | Semantic | `docs/reference/`, terminology, ontology, evidence grading |
-| Execution | `src/`, `tests/`, runtime scripts, CLI behavior |
+| Execution | Runtime implementation belongs in `evozeus-runtime`; this repo should only contain protocol-supporting scripts or migration notes |
 | Governance | `SKILL.md`, `skills/`, `.github/`, `CONTRIBUTING.md`, `docs/governance/`, PR checks |
 
-Do not mix Candidate content, runtime code, and governance changes in one PR unless it is a maintainer-approved migration and the PR states why a cross-layer change is necessary.
+Do not mix Candidate content, runtime code, and governance changes in one PR unless it is a maintainer-approved migration and the PR states why a cross-layer change is necessary. New runtime code should be opened against `evozeus-runtime`.
 
 ## Naming Rule
 
@@ -72,6 +74,7 @@ These require explicit evidence and maintainer-level attention:
 - `docs/reference/ontology.md`
 - `docs/reference/evidence-grading.md`
 - future schema, redaction, upload, session ingestion, or candidate extraction code
+- any change that expands `__infra__` instead of migrating execution responsibility to `evozeus-runtime`
 
 ## Pre-Submit Gate
 
@@ -100,6 +103,7 @@ Use the closest template:
 | --- | --- |
 | Default or mixed docs/governance | `../../.github/PULL_REQUEST_TEMPLATE.md` |
 | Candidate, Case, Pattern, Factor, or Artifact | `../../.github/PULL_REQUEST_TEMPLATE/candidate_submission.md` |
-| Runtime, CLI, script, or behavior | `../../.github/PULL_REQUEST_TEMPLATE/code_change.md` |
+| Protocol-supporting script or behavior in this repo | `../../.github/PULL_REQUEST_TEMPLATE/code_change.md` |
+| Runtime, CLI, TUI, companion, scanner execution, local state, or report execution | Open PR in `evozeus-runtime` |
 | Ontology, schema, protocol, compatibility | `../../.github/PULL_REQUEST_TEMPLATE/schema_change.md` |
 | `SKILL.md`, `skills/`, prompts, or agent instructions | `../../.github/PULL_REQUEST_TEMPLATE/skill_instruction_change.md` |

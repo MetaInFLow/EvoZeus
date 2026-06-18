@@ -37,6 +37,8 @@ Copy this into your agent:
 Read this repository's SKILL.md and judge the current Agent Session with EvoZeus. First output only a Session Verdict Card. Do not write local files or submit to GitHub.
 ```
 
+If you arrived from `evozeus-community/#register`, this is the skeleton step. Runtime, default official factors, local scans, report files, and GitHub contribution happen only after explicit user approval.
+
 ## <img src="assets/icons/evozeus-gold-128.png" alt="" width="24" align="absmiddle"> What EvoZeus Manages
 
 Software development manages `code -> issue -> PR -> review -> merge`.
@@ -86,6 +88,7 @@ EvoZeus is currently an **agent-readable protocol repository**, not a stable CLI
 The default EvoZeus path is low-permission, reviewable, and reversible.
 
 - **Zero-install entry**: reading `SKILL.md` should not install packages.
+- **Skeleton first**: the first pass outputs a Session Verdict Card in the response and does not write `.evozeus/` state.
 - **Local-first evidence**: raw sessions stay local by default and do not go into public PRs.
 - **Redacted public artifacts**: public Cases, Candidates, and Reports must be redacted first.
 - **Markdown/JSON first**: base reports and schemas do not depend on dashboards, scanners, or cloud services.
