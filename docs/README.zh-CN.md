@@ -75,8 +75,8 @@ EvoZeus 现在首先是一个 **agent-readable protocol repo**，不是稳定 CL
 | Goal | Start here | Output |
 | --- | --- | --- |
 | 审判一次 Agent Session | [SKILL.md](../SKILL.md) | Session Verdict Card |
-| 选择具体工作场景 | [EvoZeus-Skill Index](../skills/index/SKILL.md) | `EvoZeus-Development` / `EvoZeus-Community Contribution` / `EvoZeus-Reporting` / `EvoZeus-Redaction` |
-| 开发 EvoZeus 本身 | [EvoZeus-Development](../skills/evozeus-development/SKILL.md) | 小范围 issue/branch/PR |
+| 选择具体工作场景 | [skills/index/SKILL.md](../skills/index/SKILL.md) | development / contribution / reporting / redaction skill |
+| 开发 EvoZeus 本身 | [skills/evozeus-development/SKILL.md](../skills/evozeus-development/SKILL.md) | 小范围 issue/branch/PR |
 | 贡献 Case 或 Candidate | [CONTRIBUTING.md](../CONTRIBUTING.md) | redacted Case / Candidate PR |
 | 审查 PR 规范 | [docs/governance/pr-guidelines.md](governance/pr-guidelines.md) | proof-backed PR |
 | 理解核心语义 | [docs/reference/ontology.md](reference/ontology.md) | Candidate / Evidence / Verdict 边界 |
@@ -133,8 +133,6 @@ GitHub automation is dry-run by default: labeler、proof gate、privacy scan、d
 | Candidate Schema | [schemas/candidate.schema.json](../schemas/candidate.schema.json) |
 | 隐私与脱敏 | [docs/governance/privacy-and-redaction.md](governance/privacy-and-redaction.md) |
 | PR 分流状态机 | [docs/governance/pr-routing-policy.md](governance/pr-routing-policy.md) |
-| Factor registry 治理 | [docs/governance/factor-registry-governance.md](governance/factor-registry-governance.md) |
-| 上线评判标准 | [docs/governance/launch-readiness-criteria.md](governance/launch-readiness-criteria.md) |
 | Labels 与 protected paths | [docs/governance/labels.md](governance/labels.md), [docs/governance/protected-paths.md](governance/protected-paths.md) |
 
 ## <img src="../assets/icons/evozeus-silver-128.png" alt="" width="24" align="absmiddle"> What Exists Today

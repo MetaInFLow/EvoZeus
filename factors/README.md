@@ -18,8 +18,6 @@ Factor submissions.
 
 A Factor is a reusable judgment rule that produces tags or supports verdicts.
 
-EvoZeus 的主仓库不承载完整 Factor library。主仓库只保留协议、最小 builtin Factors、registry 入口和治理规则。大型 Factor pack、社区 Candidate 和 scanner module 应通过外部 lab / official pack repo 按需发布和安装。
-
 A Factor should define:
 
 - trigger condition
@@ -32,40 +30,3 @@ A Factor should define:
 Factors are not prompts by default. They can be simple checks, heuristics, scripts,
 or model-assisted reviewers. Executable code must be reviewed through the Factor lab
 and official release flow before it is referenced by the main registry.
-
-## Registry Model
-
-Factor 分发采用 manifest-driven selective install：
-
-```text
-main registry
-  -> versioned release manifest
-  -> selected factor / bundle / pack
-  -> checksum verification
-  -> local lockfile
-```
-
-主 registry 只收录经过 review 的 release manifest 引用，不直接从 lab repo 的 moving branch 抓取内容。
-
-See:
-
-- [ADR-0002: Factor Pack Registry and Community Promotion](../docs/decisions/ADR-0002-factor-pack-registry-and-community-promotion.md)
-- [Factor Registry Governance](../docs/governance/factor-registry-governance.md)
-
-## Contribution Boundary
-
-Community submissions should start in a Factor lab repository, not as a large direct addition to this directory.
-
-Default route:
-
-```text
-lab submission
--> automated gates
--> Factor / security review
--> reviewed candidate
--> official promotion
--> GitHub Release
--> main registry PR
-```
-
-`factor.yaml` and executable scanner modules are reviewed differently. Scanner modules are high-risk executable plugins and must declare permissions, dependencies, entrypoint, fixture tests, and sandbox expectations before promotion.
