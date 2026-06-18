@@ -19,6 +19,9 @@ build/
 .venv/
 venv/
 
+# Local runtime output
+.evozeus/
+
 # Node / frontend experiments
 node_modules/
 .next/
