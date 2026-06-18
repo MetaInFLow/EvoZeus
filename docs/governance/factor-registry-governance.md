@@ -24,7 +24,7 @@ lab repo 负责：
 - Candidate 孵化
 - 自动校验
 - rejected / reviewed 记录
-- reviewed release manifest
+- reviewed metadata and promotion packets
 
 official Factor pack repo 负责：
 
@@ -120,7 +120,7 @@ flowchart LR
 
   U --> V["User search / list"]
   V --> W["Selective install<br/>factor, bundle, or pack"]
-  W --> X["Local lockfile<br/>.evozeus/factor-lock.json"]
+  W --> X["Local lockfile<br/>.evozeus/infra/lockfile.json"]
   X --> Y["Runtime executes by manifest permissions"]
 ```
 
@@ -299,7 +299,7 @@ fetch registry entry
 -> resolve dependencies
 -> download selected files only
 -> verify checksums
--> write .evozeus/factor-lock.json
+-> write .evozeus/infra/lockfile.json
 ```
 
 The lockfile should record:

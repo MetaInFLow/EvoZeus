@@ -60,7 +60,7 @@ community /skill
   -> route to the right repo
 ```
 
-If local execution, default official factors, scanner behavior, report generation, or `.evozeus/runtime/` state are needed, route through `skills/index/SKILL.md` to `skills/evozeus-runtime-routing/SKILL.md` and require user approval before installing or enabling anything.
+If local execution, default official factors, scanner behavior, report generation, or `.evozeus/infra/` state are needed, route through `skills/index/SKILL.md` to `skills/evozeus-runtime-routing/SKILL.md` and require user approval before installing or enabling anything.
 
 If the user wants to preserve a judgment, read `skills/evozeus-artifact-preservation/SKILL.md` before choosing the repo route.
 

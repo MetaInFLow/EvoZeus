@@ -42,7 +42,7 @@ evozeus-factors-official/packs/<pack-id>/
 用户下载的 scanner pack 放在：
 
 ```text
-.evozeus/runtime/scanners/installed/<scanner_id>/<version>/
+.evozeus/infra/scanners/installed/<scanner_id>/<version>/
 ```
 
 每个 scanner pack 至少包含：

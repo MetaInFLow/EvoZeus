@@ -85,7 +85,7 @@ sequenceDiagram
     Runtime->>Official: Resolve official release manifest
     Official-->>Runtime: Manifest, checksum, attestation, compatibility
     Runtime->>Runtime: Verify metadata and selected Factors
-    Runtime->>Local: Write .evozeus/runtime/lockfile.json
+    Runtime->>Local: Write .evozeus/infra/lockfile.json
     Runtime->>Local: Scan approved session evidence
     Runtime->>Local: Run selected Factors and write local report
     Runtime-->>Installer: Evidence Report / local judgment output
@@ -102,7 +102,7 @@ sequenceDiagram
 | Runtime approval | Required before scanning, installing, networking, or writing `.evozeus/` |
 | Runtime implementation | Lives in `evozeus-runtime`; scanner / runner prototype is not a default user command |
 | Official Factors | Must come through registry pointer + manifest + checksum + attestation |
-| Local output | Only after approval: `.evozeus/runtime/lockfile.json`, local evidence index, Markdown / JSON / HTML report |
+| Local output | Only after approval: `.evozeus/infra/lockfile.json`, local evidence index, Markdown / JSON / HTML report |
 
 ## <img src="assets/icons/evozeus-gold-128.png" alt="" width="24" align="absmiddle"> What EvoZeus Manages
 
