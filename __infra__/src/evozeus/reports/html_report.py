@@ -512,17 +512,42 @@ def _dashboard_script() -> str:
         return groups;
       }
 
-      function EventTagStrip({ tags }) {
-        return h("div", { className: "event-tag-strip", "data-component": "event_tag_strip" },
-          tags.length ? tags.map((tag) =>
-            h(Tooltip, { key: `${tag.factor_id}:${tag.type}:${tag.value}`, title: tag.reason || "" },
-              h(Tag, { color: "blue" }, `${tag.type}:${tag.value}`)
-            )
-          ) : h(Text, { type: "secondary" }, "")
-        );
+      function signalInitial(tag) {
+        const value = String(tag.type || tag.factor_id || "signal").trim();
+        return value ? value.slice(0, 1).toUpperCase() : "S";
       }
 
-      function ChatEvent({ event, onOpen }) {
+      function signalTooltip(tag) {
+        const label = `${tag.factor_id} · ${tag.type}:${tag.value}`;
+        return tag.reason ? `${label}\n${tag.reason}` : label;
+      }
+
+      function EventSignalRail({ event, session }) {
+        const tags = event.tags || [];
+        if (tags.length) {
+          return h("div", { className: "event-signal-rail has-signals", "data-component": "event_signal_rail" },
+            h("div", { className: "event-signal-count" }, tags.length),
+            tags.slice(0, 5).map((tag) =>
+              h(Tooltip, { key: `${tag.factor_id}:${tag.type}:${tag.value}`, title: signalTooltip(tag), placement: "left" },
+                h("span", { className: "event-signal-icon", "data-component": "event_signal_icon" }, signalInitial(tag))
+              )
+            ),
+            tags.length > 5 ? h(Tooltip, { title: `${tags.length - 5} more signals`, placement: "left" },
+              h("span", { className: "event-signal-more" }, `+${tags.length - 5}`)
+            ) : null
+          );
+        }
+        if (session && session.pending_factor_count > 0) {
+          return h("div", { className: "event-signal-rail pending-event-result-hint", "data-component": "event_signal_rail" },
+            h(Tooltip, { title: `${session.pending_factor_count} factor runs pending for this session`, placement: "left" },
+              h("span", { className: "event-signal-icon pending", "data-component": "event_signal_icon" }, "P")
+            )
+          );
+        }
+        return h("div", { className: "event-signal-rail empty", "data-component": "event_signal_rail" });
+      }
+
+      function ChatEvent({ event, session, onOpen }) {
         const isAssistant = event.role === "assistant";
         const isUser = event.role === "user";
         const isComplete = event.role === "task_complete";
@@ -541,7 +566,7 @@ def _dashboard_script() -> str:
             ),
             h("div", { className: "chat-event-content" }, body || "Empty event")
           ),
-          h(EventTagStrip, { tags: event.tags || [] })
+          h(EventSignalRail, { event, session })
         );
       }
 
@@ -575,7 +600,7 @@ def _dashboard_script() -> str:
             )
           ),
           events.length
-            ? h("div", { className: "chat-timeline" }, events.map((event) => h(ChatEvent, { key: event.key, event, onOpen: setDrawerEvent })))
+            ? h("div", { className: "chat-timeline" }, events.map((event) => h(ChatEvent, { key: event.key, event, session, onOpen: setDrawerEvent })))
             : h(Empty, { description: "No events" }),
           h(Drawer, {
             title: drawerEvent ? `${drawerEvent.role} · ${drawerEvent.event_id}` : "Event",
@@ -772,7 +797,7 @@ def _style() -> str:
     .conversation-header { display: flex; gap: 14px; align-items: flex-start; border-bottom: 1px solid #edf0f5; padding-bottom: 14px; }
     .conversation-header h3 { margin: 0 0 8px; }
     .chat-timeline { display: grid; gap: 10px; }
-    .chat-event { width: 100%; display: grid; grid-template-columns: minmax(0, 1fr) minmax(180px, 260px); gap: 16px; align-items: start; text-align: left; background: #fff; border: 1px solid #edf0f5; border-radius: 8px; padding: 12px 14px; cursor: pointer; font: inherit; color: inherit; }
+    .chat-event { width: 100%; display: grid; grid-template-columns: minmax(0, 1fr) 104px; gap: 16px; align-items: start; text-align: left; background: #fff; border: 1px solid #edf0f5; border-radius: 8px; padding: 12px 14px; cursor: pointer; font: inherit; color: inherit; }
     .chat-event:hover { border-color: #91caff; background: #fbfdff; }
     .chat-event.role-user { border-left: 3px solid #1677ff; }
     .chat-event.role-assistant { border-left: 3px solid #52c41a; }
@@ -780,8 +805,13 @@ def _style() -> str:
     .chat-event-main { min-width: 0; display: grid; gap: 8px; }
     .chat-event-meta { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
     .chat-event-content { line-height: 1.58; white-space: pre-wrap; overflow-wrap: anywhere; }
-    .event-tag-strip { display: flex; justify-content: flex-end; align-items: flex-start; flex-wrap: wrap; gap: 6px; min-height: 24px; }
-    .event-tag-strip .ant-tag { margin-inline-end: 0; }
+    .event-signal-rail { display: flex; justify-content: flex-end; align-items: flex-start; flex-wrap: wrap; gap: 6px; min-height: 28px; }
+    .event-signal-rail.empty { opacity: 0; pointer-events: none; }
+    .event-signal-rail.pending-event-result-hint { opacity: 0.72; }
+    .event-signal-count { min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px; background: #f0f5ff; color: #0958d9; border: 1px solid #adc6ff; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; line-height: 1; }
+    .event-signal-icon { width: 24px; height: 24px; border-radius: 50%; background: #e6f4ff; color: #0958d9; border: 1px solid #91caff; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; line-height: 1; box-shadow: 0 1px 2px rgba(5, 57, 128, 0.08); }
+    .event-signal-icon.pending { background: #fffbe6; color: #ad6800; border-color: #ffe58f; }
+    .event-signal-more { min-width: 24px; height: 24px; padding: 0 5px; border-radius: 999px; background: #f5f5f5; color: #595959; border: 1px solid #d9d9d9; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; line-height: 1; }
     .event-detail { display: grid; gap: 8px; }
     .fallback { display: block; }
     @media (max-width: 760px) {
@@ -791,6 +821,6 @@ def _style() -> str:
       .result-grid { grid-template-columns: 1fr; }
       .conversation-header { flex-direction: column; }
       .chat-event { grid-template-columns: 1fr; }
-      .event-tag-strip { justify-content: flex-start; }
+      .event-signal-rail { justify-content: flex-start; }
     }
     """.strip()

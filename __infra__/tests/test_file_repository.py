@@ -7,7 +7,7 @@ from evozeus.models import SessionEvent, Verdict
 from evozeus.reports.html_report import render_factor_results_html
 from evozeus.runtime.paths import RuntimePaths
 from evozeus.storage.file_repository import FileSessionRepository
-from evozeus.storage.sqlite_result_store import SessionAnalysisStatus
+from evozeus.storage.sqlite_result_store import SessionAnalysisStatus, SessionEventRecord, SessionEventTag
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -101,7 +101,9 @@ def test_file_repository_writes_html_report_for_selected_factor_results(tmp_path
     assert "Factor Packs" in html
     assert 'data-component="workspace_coverage"' in html
     assert "session_conversation" in html
-    assert "event_tag_strip" in html
+    assert "event_signal_rail" in html
+    assert "event-signal-icon" in html
+    assert "pending-event-result-hint" in html
     assert "visibleEventsForSession" in html
     assert "dedupeVisibleEvents" in html
     assert "setDrawerResult" in html
@@ -152,6 +154,56 @@ def test_html_report_renders_summary_statuses_and_formatted_scores():
     assert "Skipped" in html
     assert "0.333" in html
     assert "0.3333333333333333" not in html
+
+
+def test_html_report_exposes_sentence_level_factor_tags_as_event_signal_icons():
+    packs = FactorPackRepository(PACK_ROOT).discover()
+    status = SessionAnalysisStatus(
+        session_id="session-tagged",
+        provider="codex",
+        source_ref="session-tagged.jsonl",
+        event_count=1,
+        discovered_at="2026-06-18T09:00:00Z",
+        last_analyzed_at="2026-06-18T09:05:00Z",
+        analyzed_factor_count=1,
+        pending_factor_count=0,
+    )
+    event = SessionEventRecord(
+        session_id="session-tagged",
+        event_id="u1",
+        event_index=1,
+        role="user",
+        content="这个具体句子需要被打上 open loop 标签",
+        tool_name="",
+        tool_result_preview="",
+        source_ref="session-tagged.jsonl",
+        source_line=7,
+        tags=[
+            SessionEventTag(
+                factor_id="default.open_loop",
+                tag_type="open_loop",
+                tag_value="follow_up_required",
+                reason="",
+                result_run_id="frun_1",
+                analysis_run_id="arun_1",
+                last_run_at="2026-06-18T09:05:00Z",
+            )
+        ],
+    )
+
+    html = render_factor_results_html(
+        "session-tagged",
+        [],
+        packs,
+        session_statuses=[status],
+        session_events=[event],
+    )
+
+    assert "EventSignalRail" in html
+    assert '"factor_id":"default.open_loop"' in html
+    assert '"value":"follow_up_required"' in html
+    assert "event-signal-icon" in html
+    assert "event-signal-count" in html
 
 
 def test_html_report_exposes_session_folder_groups_for_sessions_tab():
