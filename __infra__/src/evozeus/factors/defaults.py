@@ -8,6 +8,7 @@ from evozeus.models import SessionEvent, Verdict
 
 FRAMEWORK_ID = "agent_session_review.v0"
 NEGATIVE_TERMS = ("不对", "失败", "报错", "卡住", "不行", "没改到", "偏离预期", "还是")
+REWORK_TERMS = NEGATIVE_TERMS + ("继续", "重新", "重做", "改一下", "调整", "推翻", "重写")
 TOOL_FAILURE_TERMS = ("error", "failed", "traceback", "exception", "timeout", "permission denied")
 STOP_TERMS = {"这个", "那个", "继续", "重新", "之前", "需要", "可以", "进行", "一下", "修复"}
 TOKEN_RE = re.compile(r"[A-Za-z][A-Za-z0-9_+#.-]{1,}|[\u4e00-\u9fff]{2,}")
@@ -59,6 +60,10 @@ def _same_target_rework_result(session_id: str, events: list[SessionEvent]) -> F
     pair_refs: list[dict[str, str]] = []
     for left_index, left_tokens in enumerate(token_sets):
         for right_index in range(left_index + 1, len(token_sets)):
+            if user_events[left_index].content.strip() == user_events[right_index].content.strip():
+                continue
+            if not any(term in user_events[right_index].content for term in REWORK_TERMS):
+                continue
             overlap = left_tokens & token_sets[right_index]
             if overlap:
                 pair_refs = [

@@ -77,6 +77,8 @@ class CodexScanner:
                     event_index=len(events) + 1,
                     session_id=session_id,
                 )
+                if events and _is_mirrored_message_event(events[-1], event):
+                    continue
                 events.append(event)
 
         return SessionEnvelope(
@@ -403,6 +405,58 @@ def _artifact_locator(*, session_id: str, event_id: str, event_index: int) -> di
             "event_id": event_id,
         },
     }
+
+
+def _is_mirrored_message_event(previous: SessionEvent, current: SessionEvent) -> bool:
+    if previous.role != current.role or previous.role not in {"user", "assistant"}:
+        return False
+    if _message_body_for_dedupe(previous.content) != _message_body_for_dedupe(current.content):
+        return False
+
+    previous_payload = _locator_payload(previous)
+    current_payload = _locator_payload(current)
+    if previous_payload.get("source_path") != current_payload.get("source_path"):
+        return False
+    if _line_start(current_payload) != _line_start(previous_payload) + 1:
+        return False
+
+    return (
+        _is_response_message_record(previous_payload) and _is_event_message_record(current_payload)
+    ) or (
+        _is_event_message_record(previous_payload) and _is_response_message_record(current_payload)
+    )
+
+
+def _locator_payload(event: SessionEvent) -> dict[str, Any]:
+    locator = event.metadata.get("event_locator_json")
+    if isinstance(locator, dict):
+        payload = locator.get("payload")
+        return payload if isinstance(payload, dict) else {}
+    return {}
+
+
+def _line_start(locator_payload: dict[str, Any]) -> int:
+    try:
+        return int(locator_payload.get("line_start") or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+def _is_response_message_record(locator_payload: dict[str, Any]) -> bool:
+    return locator_payload.get("record_type") == "response_item" and locator_payload.get("payload_type") == "message"
+
+
+def _is_event_message_record(locator_payload: dict[str, Any]) -> bool:
+    return locator_payload.get("record_type") == "event_msg" and locator_payload.get("payload_type") in {
+        "agent_message",
+        "assistant_message",
+        "user_message",
+        "user",
+    }
+
+
+def _message_body_for_dedupe(content: str) -> str:
+    return content.strip()
 
 
 def _source_metadata(path: Path) -> dict[str, str]:

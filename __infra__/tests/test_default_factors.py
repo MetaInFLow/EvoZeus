@@ -26,3 +26,15 @@ def test_default_factors_extract_rework_negative_and_tool_failure_tags():
     assert {result.session_id for result in results} == {"s1"}
     assert "Promote to Skill" in verdict_signals
     assert "Fix Environment" in verdict_signals
+
+
+def test_default_factors_do_not_treat_exact_duplicate_user_messages_as_rework():
+    duplicate_content = "结合当前的workspace，里面有一个S4 skill，执行S4 skill，生成公司报告出来"
+    events = [
+        SessionEvent(event_id="u1", role="user", content=duplicate_content),
+        SessionEvent(event_id="u2", role="user", content=duplicate_content),
+    ]
+
+    results = run_default_factors(session_id="s1", events=events)
+
+    assert "default.same_target_rework" not in {result.factor_id for result in results}

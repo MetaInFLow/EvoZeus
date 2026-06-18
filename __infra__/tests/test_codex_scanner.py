@@ -206,6 +206,33 @@ def test_codex_scanner_keeps_wrapped_records_that_share_timestamp(tmp_path: Path
     assert all(timestamp in event.event_id for event in envelope.events)
 
 
+def test_codex_scanner_dedupes_mirrored_user_message_records(tmp_path: Path):
+    session_path = tmp_path / "session-mirrored-user.jsonl"
+    timestamp = "2026-05-26T07:36:06.499Z"
+    user_text = "结合当前的workspace，里面有一个S4 skill，执行S4 skill，生成公司报告出来\n"
+    session_path.write_text(
+        "\n".join(
+            [
+                json.dumps({"type": "session_meta", "payload": {"id": "mirrored-user-session"}}),
+                json.dumps({"timestamp": timestamp, "type": "response_item", "payload": {"type": "message", "role": "user", "content": [{"type": "input_text", "text": user_text}]}}),
+                json.dumps({"timestamp": timestamp, "type": "event_msg", "payload": {"type": "user_message", "message": user_text}}),
+                json.dumps({"timestamp": "2026-05-26T07:36:18.545Z", "type": "event_msg", "payload": {"type": "agent_message", "message": "我会执行。"}}),
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    scanner = CodexScanner()
+    envelope = scanner.load(scanner.discover(ScanRequest(provider="codex", source_dir=tmp_path))[0])
+
+    assert [(event.role, event.content) for event in envelope.events] == [
+        ("user", user_text),
+        ("assistant", "我会执行。"),
+    ]
+    assert envelope.events[0].metadata["event_locator_json"]["payload"]["line_start"] == 2
+
+
 def test_codex_scanner_bridges_source_id_manifest_to_local_codex_source(tmp_path: Path, monkeypatch):
     source_id = "rollout-test-bridge"
     session_id = "bridge-session"
