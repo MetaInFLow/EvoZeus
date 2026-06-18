@@ -31,7 +31,7 @@ A Candidate PR may touch candidate assets and supporting redacted examples. It m
 - `docs/reference/evidence-grading.md`
 - runtime, upload, redaction, or extraction code
 
-If a contribution includes CLI, TUI, companion, scanner execution, local registry, `.evozeus` state, lockfile, SQLite ledger, or report execution, route it to `evozeus-runtime`. Do not expand `EvoZeus/__infra__` as a normal contribution path.
+If a contribution includes CLI, TUI, companion, scanner execution, local registry, `.evozeus` state, lockfile, SQLite ledger, or report execution, route it to `evozeus-runtime`. Do not add runtime implementation back into the `EvoZeus` main repo as a normal contribution path.
 
 If those files need changes, split a separate governance or code PR.
 

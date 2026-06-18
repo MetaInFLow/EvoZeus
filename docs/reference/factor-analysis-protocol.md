@@ -116,13 +116,13 @@ agent_session_review.v0
 
 可视化机制属于 report layer。P0 HTML renderer 会把指定的 `FactorResult` 拼进一个 Ant Design dashboard，并基于这些结果生成聚合可视化。例如词云读取 `tags.type`、`tags.value` 和 `verdict_signals`，同时用 `factor_id` 生成 `terms.source_factor_ids`，用于追溯某个词来自哪些 factor。
 
-Python contracts 位于：
+Executable contracts belong to the runtime and Factor lifecycle repos:
 
-- `__infra__/src/evozeus/factors/protocol.py`
-- `__infra__/src/evozeus/factors/manifest.py`
-- `__infra__/src/evozeus/factors/base.py`
-- `__infra__/src/evozeus/factors/registry.py`
-- `__infra__/src/evozeus/factors/runner.py`
+- `evozeus-runtime` owns factor execution, local registry, lockfile, report generation, and runtime verification.
+- `evozeus-factor-lab` owns draft pack and scanner review before official release.
+- `evozeus-factors-official` owns promoted pack artifacts, release manifests, checksums, and attestations.
+
+The `EvoZeus` main repo keeps this protocol and future registry pointer semantics only. It does not store runnable Factor pack bodies or runtime implementation code.
 
 P0 结构化结果写入本地 SQLite index：
 

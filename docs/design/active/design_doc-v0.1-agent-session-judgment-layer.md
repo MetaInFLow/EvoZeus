@@ -139,7 +139,7 @@ Verdict 是裁决，按证据和下一步动作表达。
 用户复制一句话：
 
 ```text
-请读取 https://evozeus-metainflow.vercel.app/skill.md，并按 EvoZeus 审判当前 Agent Session。
+Read this repository's SKILL.md and judge the current Agent Session with EvoZeus. First output only a Session Verdict Card. Do not write local files or submit to GitHub.
 ```
 
 Agent 读取 `SKILL.md` 后理解：

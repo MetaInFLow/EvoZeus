@@ -9,21 +9,21 @@ EvoZeus puts real Agent Sessions on trial. It uses evidence to decide what shoul
 
 ## Trigger
 
-Use this skill when the user says:
+Use this skill when the user asks for protocol-only EvoZeus judgment, evidence review, Case submission, Evidence Report, or preservation after registration/install is complete.
 
 ```text
-请读取 https://evozeus-metainflow.vercel.app/skill.md，并按 EvoZeus 审判当前 Agent Session。
+Read this repository's SKILL.md and judge the current Agent Session with EvoZeus. First output only a Session Verdict Card. Do not write local files or submit to GitHub.
 ```
 
-or starts from `https://evozeus-community.vercel.app/#register`, copies Start Here, asks to review a session, submit a Case, generate an Evidence Report, or contribute a session-derived pattern.
+If the user starts from `https://evozeus-community.vercel.app/skill`, first read `skills/evozeus-install-registration/SKILL.md`; `/skill` is registration and install guidance, not judgment or runtime execution.
 
 ## Scenario Skill Routing
 
-This root skill is the stable zero-install entry. If the user starts from community registration, read `skills/evozeus-start-here-onboarding/SKILL.md`. If the user asks for repository development, community contribution, runtime work, redaction, report writing, Factor authoring, debugging, or skill proposal work, read `skills/index/SKILL.md` and then the matching scenario skill before acting.
+This root skill is the stable zero-install protocol entry. If the user starts from community `/skill`, use `skills/evozeus-install-registration/SKILL.md` first. If registration and install are complete and this is first judgment, read `skills/evozeus-start-here-onboarding/SKILL.md`. If the user asks for repository development, community contribution, runtime routing, redaction, report writing, Factor authoring, debugging, or skill proposal work, read `skills/index/SKILL.md` and then the matching scenario skill before acting.
 
 User-facing local scenario skill names must start with `EvoZeus-`. Keep the frontmatter `name` and folder paths lowercase `evozeus-*` so Codex skill validation and routing continue to work.
 
-Development requests such as changing docs, scripts, templates, PR rules, branch rules, `SKILL.md`, or `skills/` must read `EvoZeus-Development` at `skills/evozeus-development/SKILL.md` first.
+Development requests such as changing docs, scripts, templates, PR rules, branch rules, `SKILL.md`, or `skills/` must read `EvoZeus-Development` at `skills/evozeus-development/SKILL.md` first. Changes to `SKILL.md`, `skills/`, prompts, or agent-facing instructions must also read `EvoZeus-Skill Proposal` at `skills/evozeus-skill-proposal/SKILL.md`.
 
 ## Core Rule
 
@@ -41,25 +41,26 @@ Session -> Evidence -> Case -> Verdict -> Artifact -> Library
 4. Assign a proposed Verdict.
 5. Convert valuable Verdicts into concrete Artifacts: Skill, Factor, Habit, Environment Rule, Accepted Case, Pending Case, or Rejected Pattern.
 6. Ask the user before creating local files, `.evozeus/` state, GitHub issue, branch, commit, PR, runtime scan, install, network access, or external upload.
-7. If the user approves runtime, local report generation, or official factors, route to `skills/evozeus-runtime/SKILL.md`.
+7. If the user approves runtime, local report generation, scanner execution, factor execution, or default official factors consumption, route to `skills/evozeus-runtime-routing/SKILL.md`.
 
 ## User Journey
 
-EvoZeus starts as a skeleton, not a silent installer:
+EvoZeus starts with explicit registration and install, then protocol-only judgment:
 
 ```text
-community/#register
-  -> copy Start Here
+community /skill
+  -> check .evozeus registration
+  -> install EvoZeus skeleton
+  -> install EvoZeus skills
+  -> ask before running protocol-only judgment
   -> read this SKILL.md
-  -> activate EvoZeus protocol skeleton
-  -> ask before enabling runtime
+  -> Session Verdict Card
+  -> ask before enabling runtime or preservation
   -> runtime uses registry pointer and default official factors
-  -> local judgment
-  -> user-approved preservation
   -> route to the right repo
 ```
 
-If local execution, default official factors, scanner behavior, report generation, or `.evozeus/` state are needed, route through `skills/index/SKILL.md` to `skills/evozeus-runtime/SKILL.md` and require user approval before installing or enabling anything.
+If local execution, default official factors, scanner behavior, report generation, or `.evozeus/runtime/` state are needed, route through `skills/index/SKILL.md` to `skills/evozeus-runtime-routing/SKILL.md` and require user approval before installing or enabling anything.
 
 If the user wants to preserve a judgment, read `skills/evozeus-artifact-preservation/SKILL.md` before choosing the repo route.
 
