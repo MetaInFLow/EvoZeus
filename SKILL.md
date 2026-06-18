@@ -15,11 +15,11 @@ Use this skill when the user says:
 请读取 https://evozeus-metainflow.vercel.app/skill.md，并按 EvoZeus 审判当前 Agent Session。
 ```
 
-or asks to review a session, submit a Case, generate an Evidence Report, or contribute a session-derived pattern.
+or starts from `https://evozeus-community.vercel.app/#register`, copies Start Here, asks to review a session, submit a Case, generate an Evidence Report, or contribute a session-derived pattern.
 
 ## Scenario Skill Routing
 
-This root skill is the stable zero-install entry. If the user asks for repository development, community contribution, runtime work, redaction, report writing, Factor authoring, debugging, or skill proposal work, read `skills/index/SKILL.md` and then the matching scenario skill before acting.
+This root skill is the stable zero-install entry. If the user starts from community registration, read `skills/evozeus-start-here-onboarding/SKILL.md`. If the user asks for repository development, community contribution, runtime work, redaction, report writing, Factor authoring, debugging, or skill proposal work, read `skills/index/SKILL.md` and then the matching scenario skill before acting.
 
 User-facing local scenario skill names must start with `EvoZeus-`. Keep the frontmatter `name` and folder paths lowercase `evozeus-*` so Codex skill validation and routing continue to work.
 
@@ -35,13 +35,43 @@ Do not score sessions. Produce evidence-backed tags, cases, verdicts, artifacts,
 Session -> Evidence -> Case -> Verdict -> Artifact -> Library
 ```
 
-1. Register the session locally and create a stable `session_id`.
+1. First pass: do not write files. Produce a Session Verdict Card in the response.
 2. Collect evidence from conversation, tool calls, errors, files, diffs, commands, and final output.
-3. Generate an Evidence Report in Markdown or HTML.
-4. Identify possible Cases.
-5. Assign a proposed Verdict.
-6. Convert valuable Verdicts into concrete Artifacts: Skill, Factor, Habit, Environment Rule, Accepted Case, Pending Case, or Rejected Pattern.
-7. Ask the user before creating any GitHub issue, branch, commit, PR, or external upload.
+3. Identify possible Cases.
+4. Assign a proposed Verdict.
+5. Convert valuable Verdicts into concrete Artifacts: Skill, Factor, Habit, Environment Rule, Accepted Case, Pending Case, or Rejected Pattern.
+6. Ask the user before creating local files, `.evozeus/` state, GitHub issue, branch, commit, PR, runtime scan, install, network access, or external upload.
+7. If the user approves runtime, local report generation, or official factors, route to `skills/evozeus-runtime/SKILL.md`.
+
+## User Journey
+
+EvoZeus starts as a skeleton, not a silent installer:
+
+```text
+community/#register
+  -> copy Start Here
+  -> read this SKILL.md
+  -> activate EvoZeus protocol skeleton
+  -> ask before enabling runtime
+  -> runtime uses registry pointer and default official factors
+  -> local judgment
+  -> user-approved preservation
+  -> route to the right repo
+```
+
+If local execution, default official factors, scanner behavior, report generation, or `.evozeus/` state are needed, route through `skills/index/SKILL.md` to `skills/evozeus-runtime/SKILL.md` and require user approval before installing or enabling anything.
+
+If the user wants to preserve a judgment, read `skills/evozeus-artifact-preservation/SKILL.md` before choosing the repo route.
+
+Preservation routes:
+
+| Artifact | Route |
+| --- | --- |
+| Case, Evidence Report, judgment summary | `EvoZeus` issue or Candidate PR |
+| Semantic Factor proposal | `EvoZeus` Candidate / Factor proposal first |
+| Executable Factor pack or scanner module | `evozeus-factor-lab` |
+| Promoted official pack | `evozeus-factors-official` |
+| Runtime, infra, CLI, scanner execution, local state | `evozeus-runtime` |
 
 ## Verdicts
 

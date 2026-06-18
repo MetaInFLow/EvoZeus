@@ -1,9 +1,17 @@
 # __infra__
 
-- Status: active
+- Status: migration-source prototype
 - Last updated: 2026-06-16
 
-`__infra__/` 是 EvoZeus 的 Skill as Software 业务逻辑层，存放 Python runtime、业务模型、scanner framework、factor framework、TUI、companion 和自动化测试。
+`__infra__/` 是 EvoZeus 早期 Skill as Software runtime prototype，存放 Python runtime、业务模型、scanner framework、factor framework、TUI、companion 和自动化测试。
+
+## Migration Notice
+
+`EvoZeus` 主 repo 当前采用 Protocol-only 目标职责。`__infra__/` 只作为待迁移 prototype / reference material，不是默认用户入口、安装源或 official runtime contract。
+
+后续执行层应迁到 `evozeus-runtime`；installable Factor pack、scanner pack 和 resolver 资产应走 `evozeus-factor-lab` -> `evozeus-factors-official` -> `EvoZeus` registry pointer 生命周期。
+
+不要在主 repo 中继续扩展 `__infra__` 作为新的 runtime 产品面。任何需要读取本地文件、写 `.evozeus/` state、维护 SQLite ledger、运行 scanner、安装 pack、生成 report 或暴露 local API 的新增工作，都应路由到 `evozeus-runtime` 或 Factor lifecycle repo。
 
 ## Scope
 
