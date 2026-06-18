@@ -5,6 +5,12 @@ labels:
   - factor
   - needs-review
 body:
+  - type: markdown
+    attributes:
+      value: |
+        This issue proposes a Factor Candidate for the public `EvoZeus` intake.
+        Do not upload raw session logs, private code, secrets, customer data, or executable scanner code here.
+        Maintainers may route pack or scanner work to `evozeus-factor-lab`; official releases come from `evozeus-factors-official`.
   - type: input
     id: name
     attributes:
