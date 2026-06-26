@@ -1,7 +1,7 @@
 # Verdicts
 
 - Status: active
-- Last updated: 2026-06-18
+- Last updated: 2026-06-26
 
 A Verdict（裁决）is the outcome of judging a Case.
 
@@ -31,6 +31,25 @@ Evidence:
 Action:
   Add network/proxy diagnosis before asking user to re-authenticate GitHub.
 ```
+
+## Rating Interaction
+
+Rubric rating is a gate for confidence and next-step scope. Verdict is the operational action.
+
+| Rating | Allowed verdict behavior |
+| --- | --- |
+| Strong | May propose `Preserve`, `Promote to Skill`, `Extract Factor`, `Keep as Habit`, `Fix Environment`, or `Reject Pattern` if evidence and artifact route match |
+| Medium | Prefer `Preserve` or `Open Case`; promotion requires reviewer note explaining missing boundary |
+| Weak | Prefer `Open Case`; do not promote to Skill or Factor |
+| Blocked | No public verdict beyond `Open Case`; fix evidence locator, privacy, or claim mismatch first |
+
+Verdict selection order:
+
+1. Identify the claim and minimum supporting evidence.
+2. Choose the smallest Artifact Route that solves the next-use problem.
+3. Promote to Skill only when the behavior must become agent-readable instruction.
+4. Use `Fix Environment` when the root cause is path、version、auth、network、permission or setup.
+5. Keep counterexamples visible when a pattern looks useful but may not transfer.
 
 ## What a Verdict Is Not
 

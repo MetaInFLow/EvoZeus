@@ -24,7 +24,7 @@ lab repo 负责：
 - Candidate 孵化
 - 自动校验
 - rejected / reviewed 记录
-- reviewed release manifest
+- reviewed metadata and promotion packets
 
 official Factor pack repo 负责：
 
@@ -62,7 +62,7 @@ evozeus-factor-lab
   rejected/
   releases/
 
-evozeus-factors-official
+evozeus-session-signal-skill
   packs/
   dist/
   releases/
@@ -76,9 +76,9 @@ Example registry entry:
 {
   "id": "evozeus-core",
   "source": "github-release",
-  "repo": "MetaInFLow/evozeus-factors-official",
+  "repo": "MetaInFLow/evozeus-session-signal-skill",
   "tag": "core-v0.2.0",
-  "manifest": "https://raw.githubusercontent.com/MetaInFLow/evozeus-factors-official/core-v0.2.0/dist/factor-index.json",
+  "manifest": "https://raw.githubusercontent.com/MetaInFLow/evozeus-session-signal-skill/core-v0.2.0/dist/factor-index.json",
   "checksum": "sha256:...",
   "channel": "stable",
   "review_state": "approved",
@@ -120,7 +120,7 @@ flowchart LR
 
   U --> V["User search / list"]
   V --> W["Selective install<br/>factor, bundle, or pack"]
-  W --> X["Local lockfile<br/>.evozeus/factor-lock.json"]
+  W --> X["Local lockfile<br/>.evozeus/infra/lockfile.json"]
   X --> Y["Runtime executes by manifest permissions"]
 ```
 
@@ -231,7 +231,7 @@ Promotion is separate from submission.
 ```text
 lab PR merge
   -> reviewed candidate
-  -> promotion PR to official pack repo
+  -> promotion PR to future official release repo
   -> official release
   -> registry PR to main repo
   -> stable channel
@@ -299,7 +299,7 @@ fetch registry entry
 -> resolve dependencies
 -> download selected files only
 -> verify checksums
--> write .evozeus/factor-lock.json
+-> write .evozeus/infra/lockfile.json
 ```
 
 The lockfile should record:
@@ -308,7 +308,7 @@ The lockfile should record:
 {
   "factors": {
     "evozeus-core/privacy-risk": {
-      "repo": "MetaInFLow/evozeus-factors-official",
+      "repo": "MetaInFLow/evozeus-session-signal-skill",
       "tag": "core-v0.2.0",
       "commit": "abc123",
       "path": "factors/privacy-risk/factor.yaml",

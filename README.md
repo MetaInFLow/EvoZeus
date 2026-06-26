@@ -48,13 +48,13 @@ The community `/skill` page should guide registration and installation. It is no
 sequenceDiagram
   autonumber
   participant User
-  participant Community as evozeus-community /skill
+  participant Community as evozeus-web /skill
   participant Installer as Agent / installer
   participant Local as Local workspace
   participant Main as EvoZeus repo
   participant Skills as EvoZeus skills
   participant Runtime as evozeus-runtime
-  participant Official as evozeus-factors-official
+  participant Official as evozeus-session-signal-skill
 
   User->>Community: Open /skill
   Community-->>User: Registration and install guide
@@ -85,7 +85,7 @@ sequenceDiagram
     Runtime->>Official: Resolve official release manifest
     Official-->>Runtime: Manifest, checksum, attestation, compatibility
     Runtime->>Runtime: Verify metadata and selected Factors
-    Runtime->>Local: Write .evozeus/runtime/lockfile.json
+    Runtime->>Local: Write .evozeus/infra/lockfile.json
     Runtime->>Local: Scan approved session evidence
     Runtime->>Local: Run selected Factors and write local report
     Runtime-->>Installer: Evidence Report / local judgment output
@@ -95,14 +95,14 @@ sequenceDiagram
 
 | Step | Current state |
 | --- | --- |
-| Community `/skill` | Should route users to registration and install |
+| Web `/skill` | Should route users to registration and install |
 | `.evozeus` registration | Install path must check existing registration before creating or updating state |
 | EvoZeus install | Should install the protocol skeleton and EvoZeus skills |
 | Protocol-only judgment | Can still produce a response-only Session Verdict Card |
 | Runtime approval | Required before scanning, installing, networking, or writing `.evozeus/` |
 | Runtime implementation | Lives in `evozeus-runtime`; scanner / runner prototype is not a default user command |
 | Official Factors | Must come through registry pointer + manifest + checksum + attestation |
-| Local output | Only after approval: `.evozeus/runtime/lockfile.json`, local evidence index, Markdown / JSON / HTML report |
+| Local output | Only after approval: `.evozeus/infra/lockfile.json`, local evidence index, Markdown / JSON / HTML report |
 
 ## <img src="assets/icons/evozeus-gold-128.png" alt="" width="24" align="absmiddle"> What EvoZeus Manages
 

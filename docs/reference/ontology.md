@@ -48,7 +48,7 @@ session-derived finding + evidence + proposed artifact kind + review target
 | Kind | 中文名 | Use when | Final Artifact |
 | --- | --- | --- | --- |
 | `skill` | Skill 候选 | 行为模式需要变成 agent instruction | `skills/<name>/SKILL.md` |
-| `factor` | Factor 候选 | 判断规则需要可重复触发 | main registry reference、`evozeus-factor-lab` submission 或 `evozeus-factors-official` release manifest |
+| `factor` | Factor 候选 | 判断规则需要可重复触发 | main registry reference、`evozeus-factor-lab` submission 或 `evozeus-session-signal-skill` release manifest |
 | `pattern` | Pattern 候选 | 行为模式值得保留或推广 | `patterns/` |
 | `habit` | Habit 候选 | 轻量实践足够，不需要完整 Skill | checklist 或 docs |
 | `environment_rule` | 环境规则候选 | 根因在路径、网络、权限、版本、认证 | governance 或 diagnostics |
@@ -63,7 +63,7 @@ session-derived finding + evidence + proposed artifact kind + review target
 | --- | --- | --- |
 | Proposal | `EvoZeus` issue / Candidate PR | 只提交脱敏 evidence、trigger、applicability、counterexample 和 review target |
 | Incubation | `evozeus-factor-lab` | 承接 Factor pack、scanner module、reviewed/rejected 记录和实验性模板 |
-| Official release | `evozeus-factors-official` | 只接 maintainer-promoted pack，必须有 tag、manifest、checksum 和 attestation |
+| Official release | `evozeus-session-signal-skill` | 只接 maintainer-promoted pack，必须有 tag、manifest、checksum 和 attestation |
 | Registry publication | `EvoZeus` | 只引用稳定 release manifest 或公共语义定义，不追踪 lab moving branch |
 
 ## What Is Not A Candidate

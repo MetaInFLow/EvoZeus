@@ -60,7 +60,7 @@ community /skill
   -> route to the right repo
 ```
 
-If local execution, default official factors, scanner behavior, report generation, or `.evozeus/runtime/` state are needed, route through `skills/index/SKILL.md` to `skills/evozeus-runtime-routing/SKILL.md` and require user approval before installing or enabling anything.
+If local execution, default official factors, scanner behavior, report generation, or `.evozeus/infra/` state are needed, route through `skills/index/SKILL.md` to `skills/evozeus-runtime-routing/SKILL.md` and require user approval before installing or enabling anything.
 
 If the user wants to preserve a judgment, read `skills/evozeus-artifact-preservation/SKILL.md` before choosing the repo route.
 
@@ -71,7 +71,7 @@ Preservation routes:
 | Case, Evidence Report, judgment summary | `EvoZeus` issue or Candidate PR |
 | Semantic Factor proposal | `EvoZeus` Candidate / Factor proposal first |
 | Executable Factor pack or scanner module | `evozeus-factor-lab` |
-| Promoted official pack | `evozeus-factors-official` |
+| Promoted official pack | `evozeus-session-signal-skill` |
 | Runtime, infra, CLI, scanner execution, local state | `evozeus-runtime` |
 
 ## Verdicts

@@ -8,7 +8,7 @@ Factor 必须绑定到一个 analysis framework stage，并产出稳定的 Facto
 P0 的 factor pack 是本地 runtime asset，下载后进入：
 
 ```text
-.evozeus/runtime/factors/installed/<factor_id>/<version>/
+.evozeus/infra/factors/installed/<factor_id>/<version>/
 ```
 
 主代码只保留 framework、manifest contract、abstract class、runner 和 storage。
@@ -120,14 +120,14 @@ Executable contracts belong to the runtime and Factor lifecycle repos:
 
 - `evozeus-runtime` owns factor execution, local registry, lockfile, report generation, and runtime verification.
 - `evozeus-factor-lab` owns draft pack and scanner review before official release.
-- `evozeus-factors-official` owns promoted pack artifacts, release manifests, checksums, and attestations.
+- `evozeus-session-signal-skill` owns promoted pack artifacts, release manifests, checksums, and attestations.
 
 The `EvoZeus` main repo keeps this protocol and future registry pointer semantics only. It does not store runnable Factor pack bodies or runtime implementation code.
 
 P0 结构化结果写入本地 SQLite index：
 
 ```text
-.evozeus/runtime/index/results.sqlite3
+.evozeus/infra/index/results.sqlite3
 ```
 
 核心表：

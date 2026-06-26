@@ -11,14 +11,15 @@ Factor submissions.
 | Factor proposal / Candidate | GitHub issue or Candidate PR in `EvoZeus` |
 | Draft Factor pack or scanner module | `evozeus-factor-lab` |
 | Reviewed but unreleased Factor asset | `evozeus-factor-lab/reviewed/` |
-| Official released Factor pack | `evozeus-factors-official` |
+| Session signal review method / official review factor tools | `evozeus-session-signal-skill` |
+| Official released Factor pack | future official Factor release mechanism |
 | Stable public registry pointer | `EvoZeus` main registry / docs |
 
 ## Factor Contract
 
 A Factor is a reusable judgment rule that produces tags or supports verdicts.
 
-EvoZeus 的主仓库不承载完整 Factor library，也不保存可执行 builtin Factor pack body。主仓库只保留协议、semantic Factor proposal、registry 入口和治理规则。Factor pack、社区 Candidate 和 scanner module 应通过外部 lab / official pack repo 按需发布和安装。
+EvoZeus 的主仓库不承载完整 Factor library，也不保存可执行 builtin Factor pack body。主仓库只保留协议、semantic Factor proposal、registry 入口和治理规则。Factor pack、社区 Candidate 和 scanner module 应通过外部 lab / future official release mechanism 按需发布和安装。
 
 A Factor should define:
 
