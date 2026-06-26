@@ -21,7 +21,7 @@ Runtime routing preserves local-first behavior and user approval gates. `EvoZeus
 Runtime is optional component assembly after registration, skeleton install, and skills install:
 
 ```text
-Community /skill
+Web /skill
   -> EvoZeus-Install Registration
   -> EvoZeus skeleton + skills installed
   -> user approves runtime

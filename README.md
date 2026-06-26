@@ -48,13 +48,13 @@ The community `/skill` page should guide registration and installation. It is no
 sequenceDiagram
   autonumber
   participant User
-  participant Community as evozeus-community /skill
+  participant Community as evozeus-web /skill
   participant Installer as Agent / installer
   participant Local as Local workspace
   participant Main as EvoZeus repo
   participant Skills as EvoZeus skills
   participant Runtime as evozeus-runtime
-  participant Official as evozeus-factors-official
+  participant Official as evozeus-session-signal-skill
 
   User->>Community: Open /skill
   Community-->>User: Registration and install guide
@@ -95,7 +95,7 @@ sequenceDiagram
 
 | Step | Current state |
 | --- | --- |
-| Community `/skill` | Should route users to registration and install |
+| Web `/skill` | Should route users to registration and install |
 | `.evozeus` registration | Install path must check existing registration before creating or updating state |
 | EvoZeus install | Should install the protocol skeleton and EvoZeus skills |
 | Protocol-only judgment | Can still produce a response-only Session Verdict Card |

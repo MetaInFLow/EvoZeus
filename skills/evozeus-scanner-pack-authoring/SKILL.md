@@ -27,7 +27,7 @@ EvoZeus Case / Candidate
   -> evozeus-factor-lab submission
   -> evidence + privacy + scanner permission gates
   -> reviewed / rejected
-  -> optional promotion to evozeus-factors-official
+  -> optional promotion to evozeus-session-signal-skill
 ```
 
 ## Required Packet

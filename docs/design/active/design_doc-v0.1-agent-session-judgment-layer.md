@@ -283,7 +283,7 @@ EvoZeus/
 
 这个结构采用“协议 + schema + scripts + output”的工程组织方式，核心资产是 Agent Session 判例。
 
-`factors/` 在主 repo 中只保留公共语义、registry pointer 和贡献路由，不承载可执行 Factor pack 或 scanner module。Factor pack / scanner module 的孵化进入 `evozeus-factor-lab`；maintainer-promoted official pack 进入 `evozeus-factors-official`，再由主 repo registry 引用稳定 release manifest。
+`factors/` 在主 repo 中只保留公共语义、registry pointer 和贡献路由，不承载可执行 Factor pack 或 scanner module。Factor pack / scanner module 的孵化进入 `evozeus-factor-lab`；maintainer-promoted official pack 进入 `evozeus-session-signal-skill`，再由主 repo registry 引用稳定 release manifest。
 
 ---
 

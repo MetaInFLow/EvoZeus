@@ -65,7 +65,7 @@ If the doctor verdict is `ready_for_protocol_judgment`, show a short capability 
 | Health doctor diagnostics | Available now through `scripts/evozeus-doctor.mjs` |
 | Component and release checks | Available now for EvoZeus, scanner/runner infra, and official factors |
 | Fixture-only scanner/runner infra smoke | Available now if `evozeus-runtime` is downloaded and smoke passed |
-| Fixture-only official factor runner smoke | Available now if `evozeus-factors-official` is downloaded and smoke passed |
+| Fixture-only official factor runner smoke | Available now if `evozeus-session-signal-skill` is downloaded and smoke passed |
 | Workspace scan, runtime execution, factor execution on user data, report files, artifact preservation, GitHub issue/PR/public artifact | Not enabled yet; ask for explicit user approval and route to the matching scenario skill first |
 
 The next command should be protocol-only:

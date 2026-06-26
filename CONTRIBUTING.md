@@ -33,7 +33,7 @@ Do not submit raw sessions, private code, customer data, secrets, tokens, privat
 3. The Case receives a verdict.
 4. Accepted Cases move into the relevant library area: `cases/`, `patterns/`, docs, or a Candidate lifecycle path.
 5. Factor Candidates stay in the public main repo intake until maintainers route heavier pack or scanner work to `evozeus-factor-lab`.
-6. Official Factor packs are released from `evozeus-factors-official` and referenced by the main registry; the main repo does not host executable Factor packs.
+6. Official Factor packs are released from `evozeus-session-signal-skill` and referenced by the main registry; the main repo does not host executable Factor packs.
 7. Rejected Cases can still be valuable if they document token-wasting or quality-lowering behavior.
 
 ## Verdict Review Gates

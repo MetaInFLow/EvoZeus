@@ -27,7 +27,7 @@ Verdict
 | Habit, Pattern, Environment Rule | `EvoZeus` Candidate PR |
 | Executable Factor pack | `evozeus-factor-lab` |
 | Scanner module, resolver, scanner pack | `evozeus-factor-lab` |
-| Promoted official Factor pack | `evozeus-factors-official` |
+| Promoted official Factor pack | `evozeus-session-signal-skill` |
 | Runtime, CLI, TUI, companion, local registry, lockfile, report execution | `evozeus-runtime` |
 
 ## Required Gates

@@ -71,7 +71,7 @@ Preservation routes:
 | Case, Evidence Report, judgment summary | `EvoZeus` issue or Candidate PR |
 | Semantic Factor proposal | `EvoZeus` Candidate / Factor proposal first |
 | Executable Factor pack or scanner module | `evozeus-factor-lab` |
-| Promoted official pack | `evozeus-factors-official` |
+| Promoted official pack | `evozeus-session-signal-skill` |
 | Runtime, infra, CLI, scanner execution, local state | `evozeus-runtime` |
 
 ## Verdicts

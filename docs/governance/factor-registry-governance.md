@@ -62,7 +62,7 @@ evozeus-factor-lab
   rejected/
   releases/
 
-evozeus-factors-official
+evozeus-session-signal-skill
   packs/
   dist/
   releases/
@@ -76,9 +76,9 @@ Example registry entry:
 {
   "id": "evozeus-core",
   "source": "github-release",
-  "repo": "MetaInFLow/evozeus-factors-official",
+  "repo": "MetaInFLow/evozeus-session-signal-skill",
   "tag": "core-v0.2.0",
-  "manifest": "https://raw.githubusercontent.com/MetaInFLow/evozeus-factors-official/core-v0.2.0/dist/factor-index.json",
+  "manifest": "https://raw.githubusercontent.com/MetaInFLow/evozeus-session-signal-skill/core-v0.2.0/dist/factor-index.json",
   "checksum": "sha256:...",
   "channel": "stable",
   "review_state": "approved",
@@ -231,7 +231,7 @@ Promotion is separate from submission.
 ```text
 lab PR merge
   -> reviewed candidate
-  -> promotion PR to official pack repo
+  -> promotion PR to future official release repo
   -> official release
   -> registry PR to main repo
   -> stable channel
@@ -308,7 +308,7 @@ The lockfile should record:
 {
   "factors": {
     "evozeus-core/privacy-risk": {
-      "repo": "MetaInFLow/evozeus-factors-official",
+      "repo": "MetaInFLow/evozeus-session-signal-skill",
       "tag": "core-v0.2.0",
       "commit": "abc123",
       "path": "factors/privacy-risk/factor.yaml",

@@ -44,7 +44,7 @@ Route heavier assets as follows:
 | Draft Factor pack | `evozeus-factor-lab` |
 | Scanner module | `evozeus-factor-lab` |
 | Reviewed/rejected lab record | `evozeus-factor-lab` |
-| Official released Factor pack | `evozeus-factors-official` |
+| Official released Factor pack | `evozeus-session-signal-skill` |
 | Stable registry pointer | `EvoZeus` |
 
 Do not place executable scanner code, unreviewed pack assets, or raw private session evidence in the main repo.
