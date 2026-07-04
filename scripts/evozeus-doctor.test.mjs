@@ -97,6 +97,7 @@ describe("evozeus-doctor", () => {
         "SKILL.md",
         "skills/index/SKILL.md",
         "skills/evozeus-install-registration/SKILL.md",
+        "scripts/evozeus-install.mjs",
         "scripts/evozeus-doctor.mjs"
       ],
       (cwd) =>
@@ -128,17 +129,18 @@ describe("evozeus-doctor", () => {
 
     assert.equal(result.status, 0, result.stderr);
     assert.match(result.stdout, /components_status: incomplete/);
-    assert.match(result.stdout, /missing_components: skills\/index\/SKILL\.md, skills\/evozeus-install-registration\/SKILL\.md/);
+    assert.match(result.stdout, /missing_components: skills\/index\/SKILL\.md, skills\/evozeus-install-registration\/SKILL\.md, scripts\/evozeus-install\.mjs/);
     assert.match(result.stdout, /doctor_verdict: install_or_update/);
     assert.doesNotMatch(result.stdout, /ready_for_protocol_judgment/);
   });
 
-  it("collects runtime evidence before protocol judgment when infra and factor checks are missing", () => {
+  it("allows protocol judgment when optional infra and factor checks are missing", () => {
     const result = withTempWorkspace(
       [
         "SKILL.md",
         "skills/index/SKILL.md",
         "skills/evozeus-install-registration/SKILL.md",
+        "scripts/evozeus-install.mjs",
         "scripts/evozeus-doctor.mjs"
       ],
       (cwd) =>
@@ -154,9 +156,9 @@ describe("evozeus-doctor", () => {
     assert.equal(result.status, 0, result.stderr);
     assert.match(result.stdout, /infra_release_status: unknown/);
     assert.match(result.stdout, /factor_release_status: unknown/);
-    assert.match(result.stdout, /doctor_verdict: collect_runtime_evidence/);
-    assert.match(result.stdout, /scanner\/runner infra and official factor checks/);
-    assert.doesNotMatch(result.stdout, /ready_for_protocol_judgment/);
+    assert.match(result.stdout, /doctor_verdict: ready_for_protocol_judgment/);
+    assert.match(result.stdout, /optional_component_warnings: .*infra optional path needs evidence or repair/);
+    assert.match(result.stdout, /optional_component_warnings: .*official factors optional path needs evidence or repair/);
   });
 
   it("asks for update when scanner and runner infra is behind the resolved source", () => {
@@ -165,6 +167,7 @@ describe("evozeus-doctor", () => {
         "SKILL.md",
         "skills/index/SKILL.md",
         "skills/evozeus-install-registration/SKILL.md",
+        "scripts/evozeus-install.mjs",
         "scripts/evozeus-doctor.mjs"
       ],
       (cwd) =>
@@ -177,7 +180,7 @@ describe("evozeus-doctor", () => {
               smoke: { status: "passed", command: "npm run test:infra-components" }
             },
             factors: READY_CHECKS.factors,
-            next_action: { requires_user_approval: true, reason: "run_judgment" }
+            next_action: { requires_user_approval: true, reason: "runtime" }
           },
           { cwd }
         )
@@ -195,6 +198,7 @@ describe("evozeus-doctor", () => {
         "SKILL.md",
         "skills/index/SKILL.md",
         "skills/evozeus-install-registration/SKILL.md",
+        "scripts/evozeus-install.mjs",
         "scripts/evozeus-doctor.mjs"
       ],
       (cwd) =>
@@ -207,7 +211,7 @@ describe("evozeus-doctor", () => {
               download: { status: "missing" },
               smoke: { status: "skipped", command: "npm run test:official-factor-runner" }
             },
-            next_action: { requires_user_approval: true, reason: "run_judgment" }
+            next_action: { requires_user_approval: true, reason: "runtime" }
           },
           { cwd }
         )
@@ -220,12 +224,13 @@ describe("evozeus-doctor", () => {
     assert.match(result.stdout, /Ask the user before downloading official factors from main/);
   });
 
-  it("blocks on infra smoke failures before protocol judgment", () => {
+  it("blocks on infra smoke failures before runtime use", () => {
     const result = withTempWorkspace(
       [
         "SKILL.md",
         "skills/index/SKILL.md",
         "skills/evozeus-install-registration/SKILL.md",
+        "scripts/evozeus-install.mjs",
         "scripts/evozeus-doctor.mjs"
       ],
       (cwd) =>
@@ -238,7 +243,7 @@ describe("evozeus-doctor", () => {
               smoke: { status: "failed", command: "npm run test:infra-components", summary: "factor-runner failed" }
             },
             factors: READY_CHECKS.factors,
-            next_action: { requires_user_approval: true, reason: "run_judgment" }
+            next_action: { requires_user_approval: true, reason: "runtime" }
           },
           { cwd }
         )
@@ -250,12 +255,13 @@ describe("evozeus-doctor", () => {
     assert.match(result.stdout, /Fix scanner\/runner infra smoke failure: factor-runner failed/);
   });
 
-  it("blocks on downloaded factor smoke failures before protocol judgment", () => {
+  it("blocks on downloaded factor smoke failures before factor use", () => {
     const result = withTempWorkspace(
       [
         "SKILL.md",
         "skills/index/SKILL.md",
         "skills/evozeus-install-registration/SKILL.md",
+        "scripts/evozeus-install.mjs",
         "scripts/evozeus-doctor.mjs"
       ],
       (cwd) =>
@@ -268,7 +274,7 @@ describe("evozeus-doctor", () => {
               download: { status: "complete" },
               smoke: { status: "failed", command: "npm run test:official-factor-runner", summary: "missing factor id" }
             },
-            next_action: { requires_user_approval: true, reason: "run_judgment" }
+            next_action: { requires_user_approval: true, reason: "runtime" }
           },
           { cwd }
         )

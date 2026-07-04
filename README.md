@@ -37,12 +37,12 @@ Copy this into your agent:
 Read this repository's SKILL.md and judge the current Agent Session with EvoZeus. First output only a Session Verdict Card. Do not write local files or submit to GitHub.
 ```
 
-If you arrived from `https://evozeus-community.vercel.app/skill`, this is the guided registration / install step. Runtime, default official factors, local scans, report files, and GitHub contribution happen only after explicit user approval.
+If you arrived from `https://evozeus-community.vercel.app/skill`, this is the agent-readable install skill handoff. The user copies the install skill to a local agent; the agent asks before local writes, then installs or reconciles `.evozeus/skeleton`. Runtime, default official factors, local scans, report files, and GitHub contribution happen only after explicit user approval.
 In that path, read [EvoZeus-Install Registration](skills/evozeus-install-registration/SKILL.md) before running any judgment.
 
 ## <img src="assets/icons/evozeus-gold-128.png" alt="" width="24" align="absmiddle"> Registration / Install Sequence
 
-The community `/skill` page should guide registration and installation. It is not the runtime judgment itself. A local install must register the workspace, install the EvoZeus skeleton, and install the EvoZeus skills before optional runtime scanning or Factor execution.
+The community `/skill` page should return an install skill, not a normal installer download. It is not the runtime judgment itself. A local install must register the workspace, install `.evozeus/skeleton`, and install the EvoZeus skills before optional runtime scanning, Factor execution, or static Skill wrapping. EvoZeus stays the installed root protocol and orchestration layer; component repos are capabilities it routes to after user approval.
 
 ```mermaid
 sequenceDiagram
@@ -53,12 +53,12 @@ sequenceDiagram
   participant Local as Local workspace
   participant Main as EvoZeus repo
   participant Skills as EvoZeus skills
-  participant Runtime as evozeus-runtime
+  participant Runtime as evozeus-infra
   participant Official as evozeus-session-signal-skill
 
   User->>Community: Open /skill
-  Community-->>User: Registration and install guide
-  User->>Installer: Start install / setup
+  Community-->>User: Agent-readable install skill
+  User->>Installer: Copy install skill and choose workspace
   Installer->>Local: Check .evozeus registration state
 
   alt .evozeus exists and registered
@@ -68,7 +68,8 @@ sequenceDiagram
     Installer-->>User: Report current install / update plan
   else no .evozeus or not registered
     Installer->>Local: Create .evozeus registration state
-    Installer->>Main: Install EvoZeus skeleton
+    Installer->>Main: Run scripts/evozeus-install.mjs
+    Main->>Local: Install .evozeus/skeleton
     Installer->>Skills: Install EvoZeus skills
     Installer-->>User: Report installed skeleton and skills
   end
@@ -95,12 +96,12 @@ sequenceDiagram
 
 | Step | Current state |
 | --- | --- |
-| Web `/skill` | Should route users to registration and install |
+| Web `/skill` | Should return agent-readable install skill |
 | `.evozeus` registration | Install path must check existing registration before creating or updating state |
-| EvoZeus install | Should install the protocol skeleton and EvoZeus skills |
+| EvoZeus install | Should install `.evozeus/skeleton` and EvoZeus skills |
 | Protocol-only judgment | Can still produce a response-only Session Verdict Card |
 | Runtime approval | Required before scanning, installing, networking, or writing `.evozeus/` |
-| Runtime implementation | Lives in `evozeus-runtime`; scanner / runner prototype is not a default user command |
+| Runtime implementation | Lives in `evozeus-infra`; scanner / runner prototype is not a default user command |
 | Official Factors | Must come through registry pointer + manifest + checksum + attestation |
 | Local output | Only after approval: `.evozeus/infra/lockfile.json`, local evidence index, Markdown / JSON / HTML report |
 

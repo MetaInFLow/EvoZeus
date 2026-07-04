@@ -6,6 +6,7 @@ const REQUIRED_COMPONENTS = [
   "SKILL.md",
   "skills/index/SKILL.md",
   "skills/evozeus-install-registration/SKILL.md",
+  "scripts/evozeus-install.mjs",
   "scripts/evozeus-doctor.mjs"
 ];
 
@@ -88,6 +89,34 @@ function runtimeEvidenceIsIncomplete(diagnosis) {
   ].some((status) => status === "unknown" || status === "skipped" || status === "not_run");
 }
 
+function optionalComponentWarnings(diagnosis) {
+  const warnings = [];
+  const incompleteStatuses = ["unknown", "skipped", "not_run"];
+  const unavailableStatuses = ["missing", "outdated", "not_installed", "failed"];
+
+  if (
+    [
+      diagnosis.infra_release_status,
+      diagnosis.infra_download_status,
+      diagnosis.infra_smoke_status
+    ].some((status) => incompleteStatuses.includes(status) || unavailableStatuses.includes(status))
+  ) {
+    warnings.push("infra optional path needs evidence or repair before runtime use");
+  }
+
+  if (
+    [
+      diagnosis.factor_release_status,
+      diagnosis.factor_download_status,
+      diagnosis.factor_smoke_status
+    ].some((status) => incompleteStatuses.includes(status) || unavailableStatuses.includes(status))
+  ) {
+    warnings.push("official factors optional path needs evidence or repair before factor use");
+  }
+
+  return warnings.length > 0 ? warnings.join("; ") : "none";
+}
+
 function diagnose(report) {
   const release = report.release ?? {};
   const nextAction = report.next_action ?? {};
@@ -116,7 +145,9 @@ function diagnose(report) {
     };
   }
 
-  if (hasStatus(diagnosis.infra_release_status, ["outdated", "not_installed"])) {
+  const runtimeRequested = reason === "runtime";
+
+  if (runtimeRequested && hasStatus(diagnosis.infra_release_status, ["outdated", "not_installed"])) {
     return {
       ...diagnosis,
       doctor_verdict: "install_or_update",
@@ -125,7 +156,7 @@ function diagnose(report) {
     };
   }
 
-  if (hasStatus(diagnosis.infra_download_status, ["missing", "outdated", "not_installed"])) {
+  if (runtimeRequested && hasStatus(diagnosis.infra_download_status, ["missing", "outdated", "not_installed"])) {
     return {
       ...diagnosis,
       doctor_verdict: "install_or_update",
@@ -134,7 +165,7 @@ function diagnose(report) {
     };
   }
 
-  if (hasStatus(diagnosis.factor_release_status, ["outdated", "not_installed"])) {
+  if (runtimeRequested && hasStatus(diagnosis.factor_release_status, ["outdated", "not_installed"])) {
     return {
       ...diagnosis,
       doctor_verdict: "install_or_update",
@@ -143,7 +174,7 @@ function diagnose(report) {
     };
   }
 
-  if (hasStatus(diagnosis.factor_download_status, ["missing", "outdated", "not_installed"])) {
+  if (runtimeRequested && hasStatus(diagnosis.factor_download_status, ["missing", "outdated", "not_installed"])) {
     return {
       ...diagnosis,
       doctor_verdict: "install_or_update",
@@ -152,25 +183,25 @@ function diagnose(report) {
     };
   }
 
-  if (diagnosis.infra_smoke_status === "failed") {
+  if (runtimeRequested && diagnosis.infra_smoke_status === "failed") {
     return {
       ...diagnosis,
       doctor_verdict: "fix_environment",
       requires_user_approval: true,
-      next_step: `Fix scanner/runner infra smoke failure: ${summaryOf(infra.smoke)}. Rerun doctor before protocol judgment.`
+      next_step: `Fix scanner/runner infra smoke failure: ${summaryOf(infra.smoke)}. Rerun doctor before runtime use.`
     };
   }
 
-  if (diagnosis.factor_smoke_status === "failed") {
+  if (runtimeRequested && diagnosis.factor_smoke_status === "failed") {
     return {
       ...diagnosis,
       doctor_verdict: "fix_environment",
       requires_user_approval: true,
-      next_step: `Fix downloaded official factor smoke failure: ${summaryOf(factors.smoke)}. Rerun doctor before protocol judgment.`
+      next_step: `Fix downloaded official factor smoke failure: ${summaryOf(factors.smoke)}. Rerun doctor before factor use.`
     };
   }
 
-  if (runtimeEvidenceIsIncomplete(diagnosis)) {
+  if (runtimeRequested && runtimeEvidenceIsIncomplete(diagnosis)) {
     return {
       ...diagnosis,
       doctor_verdict: "collect_runtime_evidence",
@@ -185,6 +216,7 @@ function diagnose(report) {
       ...diagnosis,
       available_capabilities: READY_CAPABILITIES.join("; "),
       approval_required_capabilities: APPROVAL_REQUIRED_CAPABILITIES.join("; "),
+      optional_component_warnings: optionalComponentWarnings(diagnosis),
       doctor_verdict: "ready_for_protocol_judgment",
       requires_user_approval: true,
       next_step:

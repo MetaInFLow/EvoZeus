@@ -3,6 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "test:install": "node --test scripts/evozeus-install.test.mjs",
+    "test:doctor": "node --test scripts/evozeus-doctor.test.mjs",
     "test:github-gates": "node scripts/github/gate-tests.mjs"
   },
   "devDependencies": {

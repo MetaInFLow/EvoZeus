@@ -37,11 +37,11 @@ EvoZeus 也定义一种新的软件范式：**Skill Driven Software（SDS）**�
 请读取本仓库的 SKILL.md，并按 EvoZeus 审判当前 Agent Session。先只输出 Session Verdict Card，不写本地文件，不提交 GitHub。
 ```
 
-如果你来自 `https://evozeus-community.vercel.app/skill`，那一步只负责注册和安装：先读 [EvoZeus-Install Registration](../skills/evozeus-install-registration/SKILL.md)，检查 `.evozeus` 是否已注册，安装 EvoZeus skeleton 和 EvoZeus skills。runtime、默认 official factors、本地扫描、报告文件和 GitHub 贡献都必须等用户明确批准。
+如果你来自 `https://evozeus-community.vercel.app/skill`，那一步是 agent-readable install skill handoff：用户把 install skill 复制给本地 agent；agent 先读 [EvoZeus-Install Registration](../skills/evozeus-install-registration/SKILL.md)，询问本地写入批准后，安装或修复 `.evozeus/skeleton` 和 EvoZeus skills。runtime、默认 official factors、本地扫描、报告文件和 GitHub 贡献都必须等用户明确批准。
 
 ## <img src="../assets/icons/evozeus-gold-128.png" alt="" width="24" align="absmiddle"> Registration / Install Sequence
 
-Web `/skill` 只指导注册和安装，不直接运行 judgment 或 runtime。安装必须同时安装协议 skeleton 和 EvoZeus skills。
+Web `/skill` 返回 install skill，不直接运行 judgment、runtime 或 static Skill wrapping。安装必须同时安装协议 skeleton 和 EvoZeus skills。EvoZeus 是用户安装后的母体和调度层；component repo 是它在用户批准后调用的能力。
 
 ```mermaid
 sequenceDiagram
@@ -52,11 +52,11 @@ sequenceDiagram
   participant Local as Local workspace
   participant Main as EvoZeus repo
   participant Skills as EvoZeus skills
-  participant Runtime as evozeus-runtime
+  participant Runtime as evozeus-infra
 
   User->>Community: Open /skill
-  Community-->>User: Registration and install guide
-  User->>Installer: Start install / setup
+  Community-->>User: Agent-readable install skill
+  User->>Installer: Copy install skill and choose workspace
   Installer->>Local: Check .evozeus registration state
 
   alt .evozeus exists and registered
@@ -65,7 +65,8 @@ sequenceDiagram
     Installer-->>User: Report current install / update plan
   else no .evozeus or not registered
     Installer->>Local: Create .evozeus registration state
-    Installer->>Main: Install EvoZeus skeleton
+    Installer->>Main: Run scripts/evozeus-install.mjs
+    Main->>Local: Install .evozeus/skeleton
     Installer->>Skills: Install EvoZeus skills
     Installer-->>User: Report installed skeleton and skills
   end
@@ -82,7 +83,7 @@ sequenceDiagram
 
 | Step | 当前状态 |
 | --- | --- |
-| Web `/skill` | 只路由到注册和安装 |
+| Web `/skill` | 返回 agent-readable install skill |
 | `.evozeus` registration | 已存在时先检查是否已注册 |
 | EvoZeus install | 安装 protocol skeleton 和 EvoZeus skills |
 | Protocol-only judgment | 安装后、用户确认后输出 Session Verdict Card |

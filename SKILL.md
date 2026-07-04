@@ -15,7 +15,7 @@ Use this skill when the user asks for protocol-only EvoZeus judgment, evidence r
 Read this repository's SKILL.md and judge the current Agent Session with EvoZeus. First output only a Session Verdict Card. Do not write local files or submit to GitHub.
 ```
 
-If the user starts from `https://evozeus-community.vercel.app/skill`, first read `skills/evozeus-install-registration/SKILL.md`; `/skill` is registration and install guidance, not judgment or runtime execution.
+If the user starts from `https://evozeus-community.vercel.app/skill`, first read `skills/evozeus-install-registration/SKILL.md`; `/skill` is the agent-readable install skill handoff, not judgment or runtime execution.
 
 ## Scenario Skill Routing
 
@@ -49,9 +49,11 @@ EvoZeus starts with explicit registration and install, then protocol-only judgme
 
 ```text
 community /skill
+  -> user copies install skill to local agent
   -> check .evozeus registration
-  -> install EvoZeus skeleton
-  -> install EvoZeus skills
+  -> ask before local writes
+  -> run scripts/evozeus-install.mjs
+  -> install .evozeus/skeleton and EvoZeus skills
   -> ask before running protocol-only judgment
   -> read this SKILL.md
   -> Session Verdict Card

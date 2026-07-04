@@ -5,7 +5,7 @@ description: Use when registering a local EvoZeus workspace, installing the EvoZ
 
 # EvoZeus-Install Registration
 
-This skill owns the install-first path from `https://evozeus-community.vercel.app/skill`. It registers or restores the local workspace, installs the EvoZeus skeleton, installs EvoZeus scenario skills, and stops before judgment or runtime execution.
+This skill owns the install-first path from `https://evozeus-community.vercel.app/skill`. It is the agent-readable install skill handoff: the user copies it to a local agent, the agent asks before local writes, then runs the local installer to register or restore the workspace, install the EvoZeus skeleton, install EvoZeus scenario skills, and stop before judgment or runtime execution.
 
 ## Trigger
 
@@ -22,8 +22,9 @@ Use this skill when the user:
 community /skill
   -> read this skill
   -> check .evozeus registration state
-  -> install or update EvoZeus skeleton
-  -> install or update EvoZeus skills
+  -> ask before local writes
+  -> run node scripts/evozeus-install.mjs --workspace <workspace> --approve-write
+  -> install or update .evozeus/skeleton
   -> output install report
   -> ask whether to run protocol-only judgment
 ```
@@ -46,8 +47,25 @@ Only after user approval, the install path may write:
 | --- | --- |
 | `.evozeus/registration.json` | workspace registration status, registration id, agent identity pointer |
 | `.evozeus/install-manifest.json` | skeleton source, resolved commit, installed skills inventory, last checked time |
+| `.evozeus/skeleton/` | local copy of the EvoZeus root `SKILL.md`, scenario skills, reference docs, and install / doctor scripts |
 
 Do not create `.evozeus/runtime/`, runtime lockfiles, local scan outputs, factor results, report files, GitHub issues, or PRs during install.
+
+## Local Installer
+
+After the user approves local writes, run the installer from the resolved EvoZeus repo:
+
+```bash
+node scripts/evozeus-install.mjs --workspace "<target-workspace>" --approve-write
+```
+
+Without approval, run a dry-run first:
+
+```bash
+node scripts/evozeus-install.mjs --workspace "<target-workspace>"
+```
+
+The dry-run must not write `.evozeus/`; it only reports planned files and the approval needed.
 
 ## Install Report
 
@@ -57,6 +75,8 @@ After install or reconciliation, output:
 Registration status -> Skeleton source -> Skills inventory -> Files written -> Next command -> Approval needed
 ```
 
+The installer emits this report as JSON so the agent can summarize it without guessing.
+
 If the doctor verdict is `ready_for_protocol_judgment`, show a short capability summary before asking for the next approval:
 
 | Capability | Status after health OK |
@@ -64,14 +84,14 @@ If the doctor verdict is `ready_for_protocol_judgment`, show a short capability 
 | Protocol-only judgment | Available now; read root `SKILL.md` and output only a Session Verdict Card |
 | Health doctor diagnostics | Available now through `scripts/evozeus-doctor.mjs` |
 | Component and release checks | Available now for EvoZeus, scanner/runner infra, and official factors |
-| Fixture-only scanner/runner infra smoke | Available now if `evozeus-runtime` is downloaded and smoke passed |
+| Fixture-only scanner/runner infra smoke | Available now if `evozeus-infra` is downloaded and smoke passed |
 | Fixture-only official factor runner smoke | Available now if `evozeus-session-signal-skill` is downloaded and smoke passed |
 | Workspace scan, runtime execution, factor execution on user data, report files, artifact preservation, GitHub issue/PR/public artifact | Not enabled yet; ask for explicit user approval and route to the matching scenario skill first |
 
 The next command should be protocol-only:
 
 ```text
-Read this repository's SKILL.md and judge the current Agent Session with EvoZeus. First output only a Session Verdict Card. Do not write local files or submit to GitHub.
+Read .evozeus/skeleton/SKILL.md and judge the current Agent Session with EvoZeus. First output only a Session Verdict Card. Do not write local files or submit to GitHub.
 ```
 
 ## Boundaries
