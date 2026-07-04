@@ -16,8 +16,9 @@ User-facing local scenario skill names must start with `EvoZeus-`. Machine IDs a
 | User intent | Local skill | Read next |
 | --- | --- | --- |
 | Judge the current Agent Session | `EvoZeus` | root `../../SKILL.md` |
-| Register, install, restore, check `.evozeus`, install skeleton, or install skills | `EvoZeus-Install Registration` | `../evozeus-install-registration/SKILL.md` |
-| Start first protocol-only judgment after install | `EvoZeus-Start Here Onboarding` | `../evozeus-start-here-onboarding/SKILL.md` |
+| Register, install, restore, check `.evozeus`, install skeleton, install CLI, or install skills | `EvoZeus-Install Registration` | `../evozeus-install-registration/SKILL.md` |
+| Choose installed EvoZeus capability after install | local CLI capability router | run `./.evozeus/bin/evozeus capabilities --json` |
+| Start first protocol-only judgment after the user chooses session analysis | `EvoZeus-Start Here Onboarding` | `../evozeus-start-here-onboarding/SKILL.md` |
 | Develop this repository, change docs, scripts, templates, or infra | `EvoZeus-Development` | `../evozeus-development/SKILL.md` |
 | Submit a Case, Candidate, Factor, Pattern, or community contribution | `EvoZeus-Community Contribution` | `../evozeus-community-contribution/SKILL.md` |
 | Preserve a Verdict as a Case, Candidate, Factor, Pattern, Habit, or PR | `EvoZeus-Artifact Preservation` | `../evozeus-artifact-preservation/SKILL.md` |

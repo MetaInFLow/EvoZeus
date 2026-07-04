@@ -20,6 +20,15 @@ const READY_CHECKS = {
   }
 };
 
+const COMPLETE_COMPONENTS = [
+  "SKILL.md",
+  "skills/index/SKILL.md",
+  "skills/evozeus-install-registration/SKILL.md",
+  "scripts/evozeus-cli.mjs",
+  "scripts/evozeus-install.mjs",
+  "scripts/evozeus-doctor.mjs"
+];
+
 function runDoctor(report, options = {}) {
   return spawnSync(process.execPath, [SCRIPT.pathname], {
     cwd: options.cwd,
@@ -82,24 +91,21 @@ describe("evozeus-doctor", () => {
 
     assert.equal(result.status, 0, result.stderr);
     assert.match(result.stdout, /doctor_verdict: ready_for_protocol_judgment/);
+    assert.match(result.stdout, /available_capabilities: .*CLI capability router/);
+    assert.match(result.stdout, /available_capabilities: .*explicit-input session analysis/);
+    assert.match(result.stdout, /available_capabilities: .*co-evolution harness handoff plan/);
     assert.match(result.stdout, /available_capabilities: .*protocol-only judgment/);
     assert.match(result.stdout, /available_capabilities: .*health doctor diagnostics/);
     assert.match(result.stdout, /available_capabilities: .*fixture-only scanner\/runner infra smoke/);
     assert.match(result.stdout, /available_capabilities: .*fixture-only official factor runner smoke/);
     assert.match(result.stdout, /approval_required_capabilities: .*workspace scan/);
     assert.match(result.stdout, /approval_required_capabilities: .*factor execution on user data/);
-    assert.match(result.stdout, /Session Verdict Card/);
+    assert.match(result.stdout, /evozeus capabilities --json/);
   });
 
   it("reports complete component downloads before protocol judgment", () => {
     const result = withTempWorkspace(
-      [
-        "SKILL.md",
-        "skills/index/SKILL.md",
-        "skills/evozeus-install-registration/SKILL.md",
-        "scripts/evozeus-install.mjs",
-        "scripts/evozeus-doctor.mjs"
-      ],
+      COMPLETE_COMPONENTS,
       (cwd) =>
         runDoctor(
           {
@@ -129,20 +135,14 @@ describe("evozeus-doctor", () => {
 
     assert.equal(result.status, 0, result.stderr);
     assert.match(result.stdout, /components_status: incomplete/);
-    assert.match(result.stdout, /missing_components: skills\/index\/SKILL\.md, skills\/evozeus-install-registration\/SKILL\.md, scripts\/evozeus-install\.mjs/);
+    assert.match(result.stdout, /missing_components: skills\/index\/SKILL\.md, skills\/evozeus-install-registration\/SKILL\.md, scripts\/evozeus-cli\.mjs, scripts\/evozeus-install\.mjs/);
     assert.match(result.stdout, /doctor_verdict: install_or_update/);
     assert.doesNotMatch(result.stdout, /ready_for_protocol_judgment/);
   });
 
   it("allows protocol judgment when optional infra and factor checks are missing", () => {
     const result = withTempWorkspace(
-      [
-        "SKILL.md",
-        "skills/index/SKILL.md",
-        "skills/evozeus-install-registration/SKILL.md",
-        "scripts/evozeus-install.mjs",
-        "scripts/evozeus-doctor.mjs"
-      ],
+      COMPLETE_COMPONENTS,
       (cwd) =>
         runDoctor(
           {
@@ -163,13 +163,7 @@ describe("evozeus-doctor", () => {
 
   it("asks for update when scanner and runner infra is behind the resolved source", () => {
     const result = withTempWorkspace(
-      [
-        "SKILL.md",
-        "skills/index/SKILL.md",
-        "skills/evozeus-install-registration/SKILL.md",
-        "scripts/evozeus-install.mjs",
-        "scripts/evozeus-doctor.mjs"
-      ],
+      COMPLETE_COMPONENTS,
       (cwd) =>
         runDoctor(
           {
@@ -194,13 +188,7 @@ describe("evozeus-doctor", () => {
 
   it("asks for official factor download when the resolved factor release is missing locally", () => {
     const result = withTempWorkspace(
-      [
-        "SKILL.md",
-        "skills/index/SKILL.md",
-        "skills/evozeus-install-registration/SKILL.md",
-        "scripts/evozeus-install.mjs",
-        "scripts/evozeus-doctor.mjs"
-      ],
+      COMPLETE_COMPONENTS,
       (cwd) =>
         runDoctor(
           {
@@ -226,13 +214,7 @@ describe("evozeus-doctor", () => {
 
   it("blocks on infra smoke failures before runtime use", () => {
     const result = withTempWorkspace(
-      [
-        "SKILL.md",
-        "skills/index/SKILL.md",
-        "skills/evozeus-install-registration/SKILL.md",
-        "scripts/evozeus-install.mjs",
-        "scripts/evozeus-doctor.mjs"
-      ],
+      COMPLETE_COMPONENTS,
       (cwd) =>
         runDoctor(
           {
@@ -257,13 +239,7 @@ describe("evozeus-doctor", () => {
 
   it("blocks on downloaded factor smoke failures before factor use", () => {
     const result = withTempWorkspace(
-      [
-        "SKILL.md",
-        "skills/index/SKILL.md",
-        "skills/evozeus-install-registration/SKILL.md",
-        "scripts/evozeus-install.mjs",
-        "scripts/evozeus-doctor.mjs"
-      ],
+      COMPLETE_COMPONENTS,
       (cwd) =>
         runDoctor(
           {

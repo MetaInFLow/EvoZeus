@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "test:cli": "node --test scripts/evozeus-cli.test.mjs",
     "test:install": "node --test scripts/evozeus-install.test.mjs",
     "test:doctor": "node --test scripts/evozeus-doctor.test.mjs",
     "test:github-gates": "node scripts/github/gate-tests.mjs"

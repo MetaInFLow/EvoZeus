@@ -49,6 +49,7 @@ describe("evozeus-install", () => {
       assert.equal(report.registration_status, "would_create");
       assert.equal(report.workspace_state, "no_evozeus");
       assert.ok(report.files_planned.includes(".evozeus/registration.json"));
+      assert.ok(report.files_planned.includes(".evozeus/bin/evozeus"));
       assert.equal(existsSync(join(workspace, ".evozeus")), false);
     }));
 
@@ -66,12 +67,34 @@ describe("evozeus-install", () => {
       assert.equal(typeof registration.workspace_hash, "string");
       assert.equal(manifest.status, "installed");
       assert.equal(manifest.source.repository, "MetaInFLow/EvoZeus");
+      assert.equal(manifest.cli.command, ".evozeus/bin/evozeus");
+      assert.equal(manifest.cli.script, "scripts/evozeus-cli.mjs");
+      assert.equal(typeof manifest.cli.capabilities_hash, "string");
       assert.ok(manifest.skills_inventory.some((skill) => skill.name === "evozeus-install-registration"));
       assert.ok(existsSync(join(workspace, ".evozeus/skeleton/SKILL.md")));
       assert.ok(existsSync(join(workspace, ".evozeus/skeleton/skills/index/SKILL.md")));
+      assert.ok(existsSync(join(workspace, ".evozeus/skeleton/scripts/evozeus-cli.mjs")));
+      assert.ok(existsSync(join(workspace, ".evozeus/bin/evozeus")));
       assert.ok(report.files_written.includes(".evozeus/registration.json"));
+      assert.ok(report.files_written.includes(".evozeus/bin/evozeus"));
       assert.ok(report.files_written.includes(".evozeus/install-manifest.json"));
-      assert.match(report.approval_needed, /Ask before protocol-only judgment/);
+      assert.match(report.approval_needed, /Ask before session analysis/);
+      assert.match(report.next_command, /evozeus capabilities --json/);
+    }));
+
+  it("installs a local CLI shim that can describe capabilities", () =>
+    withTempWorkspace((workspace) => {
+      parseStdout(runInstall(workspace, ["--approve-write"]));
+
+      const result = spawnSync(join(workspace, ".evozeus/bin/evozeus"), ["capabilities", "--json"], {
+        cwd: workspace,
+        encoding: "utf8"
+      });
+      const report = parseStdout(result);
+
+      assert.equal(report.operation, "capabilities.describe");
+      assert.ok(report.data.capabilities.some((capability) => capability.name === "session.analyze"));
+      assert.ok(report.data.capabilities.some((capability) => capability.name === "harness.attachPlan"));
     }));
 
   it("reconciles an existing registration without changing the registration id", () =>

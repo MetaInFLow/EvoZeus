@@ -34,14 +34,14 @@ EvoZeus 也定义一种新的软件范式：**Skill Driven Software（SDS）**�
 把这句话复制给你的 Agent：
 
 ```text
-请读取本仓库的 SKILL.md，并按 EvoZeus 审判当前 Agent Session。先只输出 Session Verdict Card，不写本地文件，不提交 GitHub。
+运行 ./.evozeus/bin/evozeus capabilities --json，展示当前可用的 EvoZeus 功能，然后询问用户要走哪条路径。除非用户明确批准具体动作，否则不要扫描本地 session、写本地文件或提交 GitHub。
 ```
 
-如果你来自 `https://evozeus-community.vercel.app/skill`，那一步是 agent-readable install skill handoff：用户把 install skill 复制给本地 agent；agent 先读 [EvoZeus-Install Registration](../skills/evozeus-install-registration/SKILL.md)，询问本地写入批准后，安装或修复 `.evozeus/skeleton` 和 EvoZeus skills。runtime、默认 official factors、本地扫描、报告文件和 GitHub 贡献都必须等用户明确批准。
+如果你来自 `https://evozeus-community.vercel.app/skill`，那一步是 agent-readable install skill handoff：用户把 install skill 复制给本地 agent；agent 先读 [EvoZeus-Install Registration](../skills/evozeus-install-registration/SKILL.md)，询问本地写入批准后，安装或修复 `.evozeus/skeleton`、`.evozeus/bin/evozeus` 和 EvoZeus skills。runtime、默认 official factors、本地扫描、报告文件、wrapper 写入和 GitHub 贡献都必须等用户明确批准。
 
 ## <img src="../assets/icons/evozeus-gold-128.png" alt="" width="24" align="absmiddle"> Registration / Install Sequence
 
-Web `/skill` 返回 install skill，不直接运行 judgment、runtime 或 static Skill wrapping。安装必须同时安装协议 skeleton 和 EvoZeus skills。EvoZeus 是用户安装后的母体和调度层；component repo 是它在用户批准后调用的能力。
+Web `/skill` 返回 install skill，不直接运行 judgment、runtime 或 static Skill wrapping。安装必须同时安装协议 skeleton、本地 CLI 和 EvoZeus skills。EvoZeus 是用户安装后的母体和调度层；component repo 是它在用户批准后调用的能力。
 
 ```mermaid
 sequenceDiagram
@@ -66,15 +66,18 @@ sequenceDiagram
   else no .evozeus or not registered
     Installer->>Local: Create .evozeus registration state
     Installer->>Main: Run scripts/evozeus-install.mjs
-    Main->>Local: Install .evozeus/skeleton
+    Main->>Local: Install .evozeus/skeleton and .evozeus/bin/evozeus
     Installer->>Skills: Install EvoZeus skills
-    Installer-->>User: Report installed skeleton and skills
+    Installer-->>User: Report installed skeleton, CLI, and skills
   end
 
-  Installer-->>User: Ready for protocol-only judgment
-  User->>Installer: Run EvoZeus judgment
-  Installer->>Main: Read SKILL.md
-  Installer-->>User: Session Verdict Card
+  Installer->>Local: Run ./.evozeus/bin/evozeus capabilities --json
+  Local-->>Installer: Capability manifest and approval gates
+  Installer-->>User: Choose session analysis, harness attach, update, or uninstall
+  User->>Installer: Choose explicit-input session analysis
+  Installer->>Local: Run evozeus session analyze --input <path|-> --json
+  Local-->>Installer: Session Verdict Card envelope
+  Installer-->>User: Explain Verdict Card and next approval gates
 
   opt User approves local runtime
     Installer->>Runtime: Handoff through EvoZeus-Runtime Routing
@@ -85,8 +88,9 @@ sequenceDiagram
 | --- | --- |
 | Web `/skill` | 返回 agent-readable install skill |
 | `.evozeus` registration | 已存在时先检查是否已注册 |
-| EvoZeus install | 安装 protocol skeleton 和 EvoZeus skills |
-| Protocol-only judgment | 安装后、用户确认后输出 Session Verdict Card |
+| EvoZeus install | 安装 protocol skeleton、本地 CLI 和 EvoZeus skills |
+| Capability router | 安装后先用 `capabilities --json` 展示功能和审批边界 |
+| Explicit-input session analysis | 只分析用户显式传入的 session，不默认扫描本地 runtime |
 | Runtime approval | 本地扫描、runner、report execution 都必须另行批准 |
 
 ## <img src="../assets/icons/evozeus-gold-128.png" alt="" width="24" align="absmiddle"> What EvoZeus Manages
@@ -122,12 +126,14 @@ Verdict（裁决）需要落成 Artifact：
 
 ## <img src="../assets/icons/evozeus-silver-128.png" alt="" width="24" align="absmiddle"> Use Paths
 
-EvoZeus 现在首先是一个 **agent-readable protocol repo**，不是稳定 CLI 产品。README 只给最短路径；完整规则在 docs 和 skills 里。
+EvoZeus 现在首先是一个 **install skill + local CLI-first agent surface**。README 只给最短路径；完整规则在 docs 和 skills 里。
 
 | Goal | Start here | Output |
 | --- | --- | --- |
-| 注册并安装 EvoZeus | [EvoZeus-Install Registration](../skills/evozeus-install-registration/SKILL.md) | `.evozeus` 注册状态、skeleton、skills inventory |
-| 审判一次 Agent Session | [SKILL.md](../SKILL.md) | Session Verdict Card |
+| 注册并安装 EvoZeus | [EvoZeus-Install Registration](../skills/evozeus-install-registration/SKILL.md) | `.evozeus` 注册状态、skeleton、CLI、skills inventory |
+| 选择 EvoZeus 功能 | `./.evozeus/bin/evozeus capabilities --json` | capability manifest 和 approval gates |
+| 分析一次 Agent Session | `./.evozeus/bin/evozeus session analyze --input <path|-> --json` | Session Verdict Card envelope |
+| 给对象接协同进化 harness | `./.evozeus/bin/evozeus harness attach --target <path|url> --json` | wrapper handoff plan |
 | 选择具体工作场景 | [EvoZeus-Skill Index](../skills/index/SKILL.md) | `EvoZeus-Development` / `EvoZeus-Community Contribution` / `EvoZeus-Reporting` / `EvoZeus-Runtime Routing` |
 | 开发 EvoZeus 本身 | [EvoZeus-Development](../skills/evozeus-development/SKILL.md) | 小范围 issue/branch/PR |
 | 贡献 Case 或 Candidate | [CONTRIBUTING.md](../CONTRIBUTING.md) | redacted Case / Candidate PR |
@@ -139,7 +145,7 @@ EvoZeus 现在首先是一个 **agent-readable protocol repo**，不是稳定 CL
 EvoZeus 的默认路径是低权限、可审查、可撤回的。
 
 - **Zero-install entry**：读取 `SKILL.md` 不应安装任何包。
-- **Skeleton first**：第一轮 judgment 只在回复里输出 Session Verdict Card，不写 `.evozeus/` runtime state。
+- **Capability first**：安装后的第一步是 `capabilities --json`，不是静默扫描或写入。
 - **Local-first evidence**：raw session 默认只留在本地，不进入公共 PR。
 - **Redacted public artifacts**：公开 Case、Candidate、Report 必须先脱敏。
 - **Markdown/JSON first**：基础报告和 schema 不依赖 dashboard、scanner 或云服务。

@@ -6,11 +6,15 @@ const REQUIRED_COMPONENTS = [
   "SKILL.md",
   "skills/index/SKILL.md",
   "skills/evozeus-install-registration/SKILL.md",
+  "scripts/evozeus-cli.mjs",
   "scripts/evozeus-install.mjs",
   "scripts/evozeus-doctor.mjs"
 ];
 
 const READY_CAPABILITIES = [
+  "CLI capability router",
+  "explicit-input session analysis",
+  "co-evolution harness handoff plan",
   "protocol-only judgment",
   "health doctor diagnostics",
   "component and release checks",
@@ -220,7 +224,7 @@ function diagnose(report) {
       doctor_verdict: "ready_for_protocol_judgment",
       requires_user_approval: true,
       next_step:
-        "Show available_capabilities and approval_required_capabilities, then ask whether to run protocol-only judgment: read this repository's SKILL.md and output only a Session Verdict Card."
+        "Show available_capabilities and approval_required_capabilities, then run ./.evozeus/bin/evozeus capabilities --json if installed. Ask the user whether to analyze an explicit session, attach a harness, or run maintenance. Do not scan local sessions or write files without approval."
     };
   }
 

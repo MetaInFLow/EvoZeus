@@ -2,6 +2,7 @@
 
 import { createHash } from "node:crypto";
 import {
+  chmodSync,
   cpSync,
   existsSync,
   mkdirSync,
@@ -24,6 +25,7 @@ const DEFAULT_SKELETON_ENTRIES = [
   "docs/reference",
   "docs/governance/privacy-and-redaction.md",
   "docs/governance/terminology-glossary.md",
+  "scripts/evozeus-cli.mjs",
   "scripts/evozeus-doctor.mjs",
   "scripts/evozeus-install.mjs"
 ];
@@ -140,6 +142,7 @@ function plannedFiles(workspaceRoot) {
   return [
     join(workspaceRoot, ".evozeus/registration.json"),
     join(workspaceRoot, ".evozeus/install-manifest.json"),
+    join(workspaceRoot, ".evozeus/bin/evozeus"),
     join(workspaceRoot, ".evozeus/skeleton")
   ];
 }
@@ -160,6 +163,8 @@ function buildRegistration(existingRegistration, workspaceRoot, now) {
 }
 
 function buildManifest(sourceRoot, skillInventory, now, existingManifest) {
+  const cliPath = join(sourceRoot, "scripts/evozeus-cli.mjs");
+
   return {
     schema_version: REGISTRATION_VERSION,
     status: "installed",
@@ -167,6 +172,11 @@ function buildManifest(sourceRoot, skillInventory, now, existingManifest) {
       repository: "MetaInFLow/EvoZeus",
       local_source: true,
       git_commit: gitCommit(sourceRoot)
+    },
+    cli: {
+      command: ".evozeus/bin/evozeus",
+      script: "scripts/evozeus-cli.mjs",
+      capabilities_hash: existsSync(cliPath) ? sha256File(cliPath) : "missing"
     },
     skeleton_entries: DEFAULT_SKELETON_ENTRIES.filter((entry) => existsSync(join(sourceRoot, entry))),
     skills_inventory: skillInventory,
@@ -177,9 +187,25 @@ function buildManifest(sourceRoot, skillInventory, now, existingManifest) {
       "FactorRunner",
       "workspace scan",
       "cloud sync",
-      "GitHub issue/PR/public artifact"
+      "GitHub issue/PR/public artifact",
+      "EvoZeus-wrapper repo writes"
     ]
   };
+}
+
+function writeCliShim(evozeusRoot, filesWritten) {
+  const binRoot = join(evozeusRoot, "bin");
+  const shimPath = join(binRoot, "evozeus");
+  mkdirSync(binRoot, { recursive: true });
+  writeFileSync(
+    shimPath,
+    `#!/bin/sh
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
+exec node "$SCRIPT_DIR/../skeleton/scripts/evozeus-cli.mjs" "$@"
+`
+  );
+  chmodSync(shimPath, 0o755);
+  filesWritten.push(".evozeus/bin/evozeus");
 }
 
 function install(options) {
@@ -209,6 +235,8 @@ function install(options) {
       copyEntry(sourceRoot, skeletonRoot, entry, filesWritten);
     }
 
+    writeCliShim(evozeusRoot, filesWritten);
+
     writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
     filesWritten.push(".evozeus/install-manifest.json");
   }
@@ -227,13 +255,14 @@ function install(options) {
       repository: "MetaInFLow/EvoZeus",
       git_commit: manifest.source.git_commit
     },
+    cli: manifest.cli,
     skills_inventory: skillInventory.map(({ name, path }) => ({ name, path })),
     files_written: filesWritten,
     files_planned: options.approveWrite ? [] : plannedFiles(workspaceRoot).map((path) => relative(workspaceRoot, path)),
     next_command:
-      "Read .evozeus/skeleton/SKILL.md and judge the current Agent Session with EvoZeus. First output only a Session Verdict Card. Do not write local files or submit to GitHub.",
+      "Run ./.evozeus/bin/evozeus capabilities --json, show the available EvoZeus capabilities, then ask the user which path to take. Do not scan local sessions, write files, or submit to GitHub unless the user explicitly approves the specific action.",
     approval_needed: options.approveWrite
-      ? "Ask before protocol-only judgment, runtime, scanner, factor execution, report file generation, GitHub issue/PR/public artifact, or uninstall."
+      ? "Ask before session analysis, runtime, scanner, factor execution, report file generation, wrapper handoff writes, GitHub issue/PR/public artifact, update, or uninstall."
       : "Ask the user before writing .evozeus, then rerun with --approve-write.",
     not_enabled: manifest.not_enabled
   };
