@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-07-05
+
+- Tightened the install handoff boundary: identity writes, network registration, source writes, and workspace writes now require explicit approval before action.
+- Clarified that the installer copies EvoZeus from a resolved source tree; latest release tags resolve source, and no binary release artifact is downloaded by the current install path.
+- Added install report source metadata: `install_material`, `resolved_ref`, `resolved_commit`, `local_source_path`, and `release_artifact_downloaded`.
+
 ## 2026-06-16
 
 - Added dry-run governance automation: labels, CODEOWNERS, PR routing docs, proof/privacy/dirty/queue gates, Candidate schema validation, lifecycle directories, and maintainer playbook.

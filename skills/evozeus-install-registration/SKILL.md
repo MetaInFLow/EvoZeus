@@ -21,8 +21,9 @@ Use this skill when the user:
 ```text
 community /skill
   -> read this skill
+  -> resolve EvoZeus source tree from latest release tag or main fallback
   -> check .evozeus registration state
-  -> ask before local writes
+  -> ask before identity writes, network registration, source writes, or workspace writes
   -> run node scripts/evozeus-install.mjs --workspace <workspace> --approve-write
   -> install or update .evozeus/skeleton and .evozeus/bin/evozeus
   -> output install report
@@ -40,6 +41,18 @@ community /skill
 | Registration exists but skills are missing | Install or update `skills/` inventory |
 | Registration, skeleton, and skills exist | Report current state and optional update plan |
 
+## Source Material
+
+The installer installs from a resolved EvoZeus source tree. The latest release tag selects the source ref; it does not imply a binary release artifact or package installer.
+
+Report the install material explicitly:
+
+- `local_source_checkout`: use an existing local `MetaInFLow/EvoZeus` checkout that is aligned to the resolved ref.
+- `git_checkout`: clone or checkout the resolved ref after user approval.
+- `github_source_archive`: download the GitHub source archive after user approval.
+
+If a local checkout is aligned to a release tag, report both the tag and commit. Do not say a release artifact was installed unless an actual release asset was downloaded.
+
 ## Allowed Local Files
 
 Only after user approval, the install path may write:
@@ -50,6 +63,8 @@ Only after user approval, the install path may write:
 | `.evozeus/install-manifest.json` | skeleton source, resolved commit, installed skills inventory, last checked time |
 | `.evozeus/skeleton/` | local copy of the EvoZeus root `SKILL.md`, scenario skills, reference docs, and install / doctor scripts |
 | `.evozeus/bin/evozeus` | local CLI shim for capability discovery and approved P0 operations |
+
+Only after user approval, the install path may also create or reuse `~/.evozeus/agent-identity.json` and call the EvoZeus Web registration API. Registration is hash-only and must not upload raw session, private paths, tokens, workspace contents, customer data, or unreleased code.
 
 Do not create `.evozeus/runtime/`, runtime lockfiles, local scan outputs, factor results, report files, GitHub issues, or PRs during install.
 

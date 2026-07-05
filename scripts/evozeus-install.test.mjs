@@ -48,6 +48,10 @@ describe("evozeus-install", () => {
       assert.equal(report.write_mode, "dry_run");
       assert.equal(report.registration_status, "would_create");
       assert.equal(report.workspace_state, "no_evozeus");
+      assert.equal(report.skeleton_source.install_material, "local_source_checkout");
+      assert.equal(report.skeleton_source.release_artifact_downloaded, false);
+      assert.equal(typeof report.skeleton_source.resolved_ref, "string");
+      assert.equal(typeof report.skeleton_source.resolved_commit, "string");
       assert.ok(report.files_planned.includes(".evozeus/registration.json"));
       assert.ok(report.files_planned.includes(".evozeus/bin/evozeus"));
       assert.equal(existsSync(join(workspace, ".evozeus")), false);
@@ -67,6 +71,15 @@ describe("evozeus-install", () => {
       assert.equal(typeof registration.workspace_hash, "string");
       assert.equal(manifest.status, "installed");
       assert.equal(manifest.source.repository, "MetaInFLow/EvoZeus");
+      assert.equal(manifest.source.install_material, "local_source_checkout");
+      assert.equal(manifest.source.local_source, true);
+      assert.equal(typeof manifest.source.local_source_path, "string");
+      assert.equal(manifest.source.release_artifact_downloaded, false);
+      assert.equal(typeof manifest.source.resolved_ref, "string");
+      assert.equal(typeof manifest.source.resolved_commit, "string");
+      assert.equal(manifest.source.git_commit, manifest.source.resolved_commit);
+      assert.equal(report.skeleton_source.install_material, "local_source_checkout");
+      assert.equal(report.skeleton_source.release_artifact_downloaded, false);
       assert.equal(manifest.cli.command, ".evozeus/bin/evozeus");
       assert.equal(manifest.cli.script, "scripts/evozeus-cli.mjs");
       assert.equal(typeof manifest.cli.capabilities_hash, "string");

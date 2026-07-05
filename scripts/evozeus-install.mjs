@@ -90,6 +90,33 @@ function gitCommit(sourceRoot) {
   return result.stdout.trim() || "unknown";
 }
 
+function gitExactTag(sourceRoot) {
+  const result = spawnSync("git", ["-C", sourceRoot, "describe", "--tags", "--exact-match", "HEAD"], {
+    encoding: "utf8"
+  });
+  if (result.status !== 0) {
+    return null;
+  }
+  return result.stdout.trim() || null;
+}
+
+function buildSourceInfo(sourceRoot) {
+  const commit = gitCommit(sourceRoot);
+  const exactTag = gitExactTag(sourceRoot);
+
+  return {
+    repository: "MetaInFLow/EvoZeus",
+    install_material: "local_source_checkout",
+    local_source: true,
+    local_source_path: sourceRoot,
+    resolved_ref: exactTag ?? commit,
+    resolved_commit: commit,
+    git_commit: commit,
+    exact_tag: exactTag,
+    release_artifact_downloaded: false
+  };
+}
+
 function listSkillInventory(sourceRoot) {
   const skillsRoot = join(sourceRoot, "skills");
   if (!existsSync(skillsRoot)) {
@@ -164,15 +191,12 @@ function buildRegistration(existingRegistration, workspaceRoot, now) {
 
 function buildManifest(sourceRoot, skillInventory, now, existingManifest) {
   const cliPath = join(sourceRoot, "scripts/evozeus-cli.mjs");
+  const source = buildSourceInfo(sourceRoot);
 
   return {
     schema_version: REGISTRATION_VERSION,
     status: "installed",
-    source: {
-      repository: "MetaInFLow/EvoZeus",
-      local_source: true,
-      git_commit: gitCommit(sourceRoot)
-    },
+    source,
     cli: {
       command: ".evozeus/bin/evozeus",
       script: "scripts/evozeus-cli.mjs",
@@ -252,8 +276,13 @@ function install(options) {
     write_mode: options.approveWrite ? "approved_write" : "dry_run",
     workspace_state: hadEvozeus ? "existing_evozeus" : "no_evozeus",
     skeleton_source: {
-      repository: "MetaInFLow/EvoZeus",
-      git_commit: manifest.source.git_commit
+      repository: manifest.source.repository,
+      install_material: manifest.source.install_material,
+      local_source_path: manifest.source.local_source_path,
+      resolved_ref: manifest.source.resolved_ref,
+      resolved_commit: manifest.source.resolved_commit,
+      exact_tag: manifest.source.exact_tag,
+      release_artifact_downloaded: manifest.source.release_artifact_downloaded
     },
     cli: manifest.cli,
     skills_inventory: skillInventory.map(({ name, path }) => ({ name, path })),
