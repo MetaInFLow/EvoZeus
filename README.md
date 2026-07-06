@@ -34,15 +34,15 @@ EvoZeus also defines a software pattern: **Skill Driven Software (SDS)**. In SDS
 Copy this into your agent:
 
 ```text
-Run ./.evozeus/bin/evozeus capabilities --json, show the available EvoZeus capabilities, then ask the user which path to take. Do not scan local sessions, write files, or submit to GitHub unless the user explicitly approves the specific action.
+Run ~/.evozeus/bin/evozeus capabilities --json, show the available EvoZeus capabilities, then ask the user which path to take. Do not scan local sessions, write files, or submit to GitHub unless the user explicitly approves the specific action.
 ```
 
-If you arrived from `https://evozeus-community.vercel.app/skill`, this is the agent-readable install skill handoff. The user copies the install skill to a local agent; the agent asks before local writes, then installs or reconciles `.evozeus/skeleton`, `.evozeus/bin/evozeus`, and EvoZeus skills. Runtime, default official factors, local scans, report files, wrapper writes, and GitHub contribution happen only after explicit user approval.
+If you arrived from `https://evozeus-community.vercel.app/skill`, this is the agent-readable install skill handoff. The user copies the install skill to a local agent; the agent asks before local writes, then installs or reconciles `~/.evozeus/skeleton`, `~/.evozeus/bin/evozeus`, and EvoZeus skills. Runtime, default official factors, local scans, report files, wrapper writes, and GitHub contribution happen only after explicit user approval.
 In that path, read [EvoZeus-Install Registration](skills/evozeus-install-registration/SKILL.md) before running any judgment, harness attach, update, or uninstall action.
 
 ## <img src="assets/icons/evozeus-gold-128.png" alt="" width="24" align="absmiddle"> Registration / Install Sequence
 
-The community `/skill` page should return an install skill, not a normal installer download. It is not the runtime judgment itself. A local install must register the workspace, install `.evozeus/skeleton`, install `.evozeus/bin/evozeus`, and install the EvoZeus skills before optional runtime scanning, Factor execution, or static Skill wrapping. EvoZeus stays the installed root protocol and orchestration layer; component repos are capabilities it routes to after user approval.
+The community `/skill` page should return an install skill, not a normal installer download. It is not the runtime judgment itself. A local install must register the user-level EvoZeus home, install `~/.evozeus/skeleton`, install `~/.evozeus/bin/evozeus`, and install the EvoZeus skills before optional runtime scanning, Factor execution, or static Skill wrapping. EvoZeus stays the installed root protocol and orchestration layer; component repos are capabilities it routes to after user approval.
 
 ```mermaid
 sequenceDiagram
@@ -50,7 +50,7 @@ sequenceDiagram
   participant User
   participant Community as evozeus-web /skill
   participant Installer as Agent / installer
-  participant Local as Local workspace
+  participant Local as User home
   participant Main as EvoZeus repo
   participant Skills as EvoZeus skills
   participant Runtime as evozeus-infra
@@ -59,22 +59,22 @@ sequenceDiagram
   User->>Community: Open /skill
   Community-->>User: Agent-readable install skill
   User->>Installer: Copy install skill and choose workspace
-  Installer->>Local: Check .evozeus registration state
+  Installer->>Local: Check ~/.evozeus registration state
 
-  alt .evozeus exists and registered
+  alt ~/.evozeus exists and registered
     Local-->>Installer: Existing registration, workspace id, installed skills
     Installer->>Main: Check EvoZeus skeleton version
     Installer->>Skills: Check installed EvoZeus skills
     Installer-->>User: Report current install / update plan
-  else no .evozeus or not registered
-    Installer->>Local: Create .evozeus registration state
+  else no ~/.evozeus or not registered
+    Installer->>Local: Create ~/.evozeus registration state
     Installer->>Main: Run scripts/evozeus-install.mjs
-    Main->>Local: Install .evozeus/skeleton and .evozeus/bin/evozeus
+    Main->>Local: Install ~/.evozeus/skeleton and ~/.evozeus/bin/evozeus
     Installer->>Skills: Install EvoZeus skills
     Installer-->>User: Report installed skeleton, CLI, and skills
   end
 
-  Installer->>Local: Run ./.evozeus/bin/evozeus capabilities --json
+  Installer->>Local: Run ~/.evozeus/bin/evozeus capabilities --json
   Local-->>Installer: Capability manifest and approval gates
   Installer-->>User: Choose session analysis, harness attach, update, or uninstall
   User->>Installer: Choose explicit-input session analysis
@@ -88,7 +88,7 @@ sequenceDiagram
     Runtime->>Official: Resolve official release manifest
     Official-->>Runtime: Manifest, checksum, attestation, compatibility
     Runtime->>Runtime: Verify metadata and selected Factors
-    Runtime->>Local: Write .evozeus/infra/lockfile.json
+    Runtime->>Local: Write ~/.evozeus/infra/lockfile.json
     Runtime->>Local: Scan approved session evidence
     Runtime->>Local: Run selected Factors and write local report
     Runtime-->>Installer: Evidence Report / local judgment output
@@ -99,14 +99,14 @@ sequenceDiagram
 | Step | Current state |
 | --- | --- |
 | Web `/skill` | Should return agent-readable install skill |
-| `.evozeus` registration | Install path must check existing registration before creating or updating state |
-| EvoZeus install | Should install `.evozeus/skeleton`, `.evozeus/bin/evozeus`, and EvoZeus skills |
+| `~/.evozeus` registration | Install path must check existing registration before creating or updating state |
+| EvoZeus install | Should install `~/.evozeus/skeleton`, `~/.evozeus/bin/evozeus`, and EvoZeus skills |
 | Capability router | Should expose `capabilities --json` before judgment, harness, update, or uninstall |
 | Explicit-input session analysis | Can produce a Session Verdict Card envelope without scanning local stores |
-| Runtime approval | Required before scanning, installing, networking, or writing `.evozeus/` |
+| Runtime approval | Required before scanning, installing, networking, or writing `~/.evozeus/` |
 | Runtime implementation | Lives in `evozeus-infra`; scanner / runner prototype is not a default user command |
 | Official Factors | Must come through registry pointer + manifest + checksum + attestation |
-| Local output | Only after approval: `.evozeus/infra/lockfile.json`, local evidence index, Markdown / JSON / HTML report |
+| Local output | Only after approval: `~/.evozeus/infra/lockfile.json`, local evidence index, Markdown / JSON / HTML report |
 
 ## <img src="assets/icons/evozeus-gold-128.png" alt="" width="24" align="absmiddle"> What EvoZeus Manages
 
@@ -145,10 +145,10 @@ EvoZeus is currently an **install-skill + local CLI-first agent surface**. This 
 
 | Goal | Start here | Output |
 | --- | --- | --- |
-| Register and install EvoZeus | [EvoZeus-Install Registration](skills/evozeus-install-registration/SKILL.md) | `.evozeus` registration state, skeleton, CLI, skills inventory |
-| Choose EvoZeus capability | `./.evozeus/bin/evozeus capabilities --json` | capability manifest and approval gates |
-| Analyze one Agent Session | `./.evozeus/bin/evozeus session analyze --input <path|-> --json` | Session Verdict Card envelope |
-| Attach co-evolution harness | `./.evozeus/bin/evozeus harness attach --target <path|url> --json` | wrapper handoff plan |
+| Register and install EvoZeus | [EvoZeus-Install Registration](skills/evozeus-install-registration/SKILL.md) | `~/.evozeus` registration state, skeleton, CLI, skills inventory |
+| Choose EvoZeus capability | `~/.evozeus/bin/evozeus capabilities --json` | capability manifest and approval gates |
+| Analyze one Agent Session | `~/.evozeus/bin/evozeus session analyze --input <path|-> --json` | Session Verdict Card envelope |
+| Attach co-evolution harness | `~/.evozeus/bin/evozeus harness attach --target <path|url> --json` | wrapper handoff plan |
 | Choose the right work scenario | [EvoZeus-Skill Index](skills/index/SKILL.md) | `EvoZeus-Development` / `EvoZeus-Community Contribution` / `EvoZeus-Reporting` / `EvoZeus-Runtime Routing` |
 | Develop EvoZeus itself | [EvoZeus-Development](skills/evozeus-development/SKILL.md) | small issue/branch/PR |
 | Contribute a Case or Candidate | [CONTRIBUTING.md](CONTRIBUTING.md) | redacted Case / Candidate PR |
@@ -224,7 +224,7 @@ GitHub automation is dry-run by default: labeler, proof gate, privacy scan, dirt
 
 Planned but not stable yet:
 
-- Local Runtime: `.evozeus/` local state, SQLite registry, Markdown/JSON report
+- Local Runtime: `~/.evozeus/` local state, SQLite registry, Markdown/JSON report
 - Community Library: Cases, Factor references, Habits, Environment Rules, Rejected Patterns
 - CLI / TUI / browser companion
 

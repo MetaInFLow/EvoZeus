@@ -56,7 +56,7 @@ EvoZeus CLI 是 install skill 落地后的本地 Agent Surface。它用结构化
 
 | 目标 | 说明 | 验收 |
 | --- | --- | --- |
-| 本地 CLI 入口 | 安装后生成 `.evozeus/bin/evozeus` | fresh workspace 可执行 `./.evozeus/bin/evozeus capabilities --json` |
+| 本地 CLI 入口 | 安装后生成 `~/.evozeus/bin/evozeus` | fresh user home 可执行 `~/.evozeus/bin/evozeus capabilities --json` |
 | Capability manifest | 列出可用能力、风险、权限、输入输出 | agent 能基于 JSON 选择下一步 |
 | Session 分析入口 | 支持用户显式提供 session 文本或文件 | 输出 Session Verdict Card JSON/Markdown，不默认扫描 runtime |
 | Harness attach 入口 | 支持指定 Skill / plugin / repo 进入协同进化 handoff | 输出 wrapper handoff plan，不默认发 issue/PR |
@@ -383,12 +383,12 @@ handoff plan 至少包含：
 `scripts/evozeus-install.mjs` 需要从“复制 skeleton + 输出下一句 judgment command”改成：
 
 1. 复制 CLI 所需文件。
-2. 创建 `.evozeus/bin/evozeus` shim。
+2. 创建 `~/.evozeus/bin/evozeus` shim。
 3. 写入 install manifest 中的 CLI 版本和 capabilities hash。
 4. `next_command` 改为：
 
 ```text
-Run ./.evozeus/bin/evozeus capabilities --json, show the available EvoZeus capabilities, then ask the user which path to take. Do not scan local sessions, write files, or submit to GitHub unless the user explicitly approves the specific action.
+Run ~/.evozeus/bin/evozeus capabilities --json, show the available EvoZeus capabilities, then ask the user which path to take. Do not scan local sessions, write files, or submit to GitHub unless the user explicitly approves the specific action.
 ```
 
 ## 13. 与组件的关系

@@ -7,7 +7,7 @@ description: Use when developing EvoZeus protocol/governance itself, changing re
 
 Development work must keep EvoZeus small, reviewable, and evidence-backed. One PR should have one primary purpose, one primary layer, and one validation story.
 
-The `EvoZeus` main repo is Protocol-only. Runtime implementation, scanner execution, CLI/TUI, companion, `.evozeus` local state, lockfile, SQLite ledger, and report execution belong in `evozeus-runtime`, not this repo. The old main-repo runtime prototype has been removed from this repo; use the runtime repo for implementation work and the main repo only for protocol, governance, registry pointer, or routing changes.
+The `EvoZeus` main repo is Protocol-only. Runtime implementation, scanner execution, CLI/TUI, companion, `~/.evozeus` local state, lockfile, SQLite ledger, and report execution belong in `evozeus-runtime`, not this repo. The old main-repo runtime prototype has been removed from this repo; use the runtime repo for implementation work and the main repo only for protocol, governance, registry pointer, or routing changes.
 
 ## Branch Rule
 

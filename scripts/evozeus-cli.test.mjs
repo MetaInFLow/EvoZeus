@@ -18,10 +18,15 @@ function withTempWorkspace(callback) {
 }
 
 function runCli(args, options = {}) {
+  const evozeusHome = options.evozeusHome ?? (options.cwd ? join(options.cwd, "home", ".evozeus") : join(tmpdir(), "evozeus-cli-test-missing-home"));
   return spawnSync(process.execPath, [SCRIPT, ...args], {
     cwd: options.cwd,
     input: options.input,
-    encoding: "utf8"
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      EVOZEUS_HOME: evozeusHome
+    }
   });
 }
 
@@ -54,6 +59,7 @@ describe("evozeus-cli", () => {
     assert.equal(result.status, 0, result.stderr);
     assert.match(result.stdout, /Usage: evozeus/);
     assert.match(result.stdout, /session analyze/);
+    assert.match(result.stdout, /approve-feedback/);
   });
 
   it("rejects session analysis without explicit input", () => {
@@ -82,6 +88,37 @@ describe("evozeus-cli", () => {
       assert.equal(report.data.privacy.raw_session_stored, false);
       assert.equal(report.data.privacy.scanned_local_store, false);
       assert.equal(existsSync(join(workspace, ".evozeus/reports")), false);
+    }));
+
+  it("includes a privacy-preserving activity payload when a runtime identity exists", () =>
+    withTempWorkspace((workspace) => {
+      const evozeusHome = join(workspace, "home", ".evozeus");
+      mkdirSync(evozeusHome, { recursive: true });
+      writeFileSync(
+        join(evozeusHome, "registration.json"),
+        JSON.stringify(
+          {
+            status: "registered",
+            agent_handle: "codex-test",
+            identity: {
+              runtime_instance_hash: "a".repeat(64)
+            }
+          },
+          null,
+          2
+        )
+      );
+      writeFileSync(join(workspace, "session.md"), "A private session with a failed skill wrapper.\n");
+
+      const result = runCli(["session", "analyze", "--input", "session.md", "--json"], { cwd: workspace, evozeusHome });
+      const report = parseJson(result);
+
+      assert.equal(report.activity.feedback_status, "pending_approval");
+      assert.equal(report.activity.payload.runtime_instance_hash, "a".repeat(64));
+      assert.equal(report.activity.payload.agent_handle, "codex-test");
+      assert.equal(report.activity.payload.event_kind, "session.analyzed");
+      assert.equal(report.activity.payload.target.label, "Private session");
+      assert.doesNotMatch(JSON.stringify(report.activity.payload), /session\.md/);
     }));
 
   it("analyzes stdin when explicitly requested", () => {
@@ -141,6 +178,34 @@ describe("evozeus-cli", () => {
       assert.equal(report.data.handoff_plan.target.kind, "skill");
       assert.equal(report.data.handoff_plan.writes_now, false);
       assert.equal(existsSync(join(skillRoot, ".evozeus-wrapper")), false);
+    }));
+
+  it("marks public GitHub wrapper targets only when explicitly requested", () =>
+    withTempWorkspace((workspace) => {
+      const evozeusHome = join(workspace, "home", ".evozeus");
+      mkdirSync(evozeusHome, { recursive: true });
+      writeFileSync(
+        join(evozeusHome, "registration.json"),
+        JSON.stringify({ identity: { runtime_instance_hash: "b".repeat(64) } }, null, 2)
+      );
+
+      const result = runCli(
+        [
+          "harness",
+          "attach",
+          "--target",
+          "https://github.com/MetaInFLow/EvoZeus",
+          "--target-visibility",
+          "public",
+          "--json"
+        ],
+        { cwd: workspace, evozeusHome }
+      );
+      const report = parseJson(result);
+
+      assert.equal(report.activity.payload.privacy, "public");
+      assert.equal(report.activity.payload.target.label, "MetaInFLow/EvoZeus");
+      assert.equal(report.activity.payload.target.url, "https://github.com/MetaInFLow/EvoZeus");
     }));
 
   it("returns update and uninstall dry-run plans without writing", () =>

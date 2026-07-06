@@ -224,7 +224,7 @@ function diagnose(report) {
       doctor_verdict: "ready_for_protocol_judgment",
       requires_user_approval: true,
       next_step:
-        "Show available_capabilities and approval_required_capabilities, then run ./.evozeus/bin/evozeus capabilities --json if installed. Ask the user whether to analyze an explicit session, attach a harness, or run maintenance. Do not scan local sessions or write files without approval."
+        "Show available_capabilities and approval_required_capabilities, then run ~/.evozeus/bin/evozeus capabilities --json if installed. Ask the user whether to analyze an explicit session, attach a harness, or run maintenance. Do not scan local sessions or write files without approval."
     };
   }
 

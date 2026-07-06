@@ -3,6 +3,7 @@
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
+import { homedir } from "node:os";
 import { fileURLToPath } from "node:url";
 
 const SCHEMA_VERSION = 1;
@@ -137,6 +138,10 @@ function parseArgs(argv) {
     json: false,
     dryRun: false,
     approveWrite: false,
+    approveFeedback: process.env.EVOZEUS_APPROVE_FEEDBACK === "1",
+    feedbackEndpoint: process.env.EVOZEUS_ACTIVITY_ENDPOINT || "https://evozeus-community.vercel.app/api/activity",
+    targetVisibility: "private",
+    evozeusHome: process.env.EVOZEUS_HOME || join(homedir(), ".evozeus"),
     workspace: process.cwd(),
     input: null,
     target: null
@@ -151,6 +156,14 @@ function parseArgs(argv) {
       options.dryRun = true;
     } else if (arg === "--approve-write") {
       options.approveWrite = true;
+    } else if (arg === "--approve-feedback") {
+      options.approveFeedback = true;
+    } else if (arg === "--feedback-endpoint") {
+      options.feedbackEndpoint = argv[++index];
+    } else if (arg === "--target-visibility") {
+      options.targetVisibility = argv[++index] === "public" ? "public" : "private";
+    } else if (arg === "--evozeus-home") {
+      options.evozeusHome = argv[++index];
     } else if (arg === "--workspace") {
       options.workspace = argv[++index];
     } else if (arg === "--input") {
@@ -171,9 +184,11 @@ function parseArgs(argv) {
 
 function workspaceInfo(options) {
   const root = resolve(options.workspace);
+  const evozeusRoot = resolve(options.evozeusHome || process.env.EVOZEUS_HOME || join(homedir(), ".evozeus"));
   return {
     root,
-    evozeus_root: join(root, ".evozeus")
+    evozeus_root: evozeusRoot,
+    evozeus_home: evozeusRoot
   };
 }
 
@@ -248,6 +263,142 @@ function sha256(value) {
   return createHash("sha256").update(value).digest("hex");
 }
 
+function normalizeRuntimeHash(value) {
+  const hash = String(value ?? "").trim().replace(/^sha256:/i, "").toLowerCase();
+  return /^[a-f0-9]{64}$/.test(hash) ? hash : "";
+}
+
+function readRegistration(options) {
+  return readJsonFile(join(workspaceInfo(options).evozeus_root, "registration.json"));
+}
+
+function registrationRuntimeHash(options) {
+  const registration = readRegistration(options);
+  return normalizeRuntimeHash(
+    process.env.EVOZEUS_RUNTIME_INSTANCE_HASH ||
+      registration?.identity?.runtime_instance_hash ||
+      registration?.runtime_instance_hash
+  );
+}
+
+function activityAgentHandle(options) {
+  const registration = readRegistration(options);
+  const handle = String(process.env.EVOZEUS_AGENT_HANDLE || registration?.agent_handle || process.env.EVOZEUS_ACTOR_ID || "").trim();
+  return /^[a-zA-Z0-9][a-zA-Z0-9_-]{2,62}$/.test(handle) ? handle : "local-agent";
+}
+
+function publicGithubTarget(target) {
+  return /^https:\/\/github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+\/?$/i.test(target);
+}
+
+function activityTarget(kind, label, options, url = null) {
+  if (options.targetVisibility === "public" && url && publicGithubTarget(url)) {
+    return {
+      kind,
+      visibility: "public",
+      label: url.replace(/^https:\/\/github\.com\//i, "").replace(/\/$/, ""),
+      url: url.replace(/\/$/, "")
+    };
+  }
+
+  return {
+    kind,
+    visibility: "private",
+    label
+  };
+}
+
+function buildActivityPayload(result, options) {
+  const runtimeInstanceHash = registrationRuntimeHash(options);
+  if (!result?.ok || !runtimeInstanceHash) {
+    return null;
+  }
+
+  const base = {
+    runtime_instance_hash: runtimeInstanceHash,
+    agent_handle: activityAgentHandle(options),
+    privacy: "private",
+    occurred_at: new Date().toISOString()
+  };
+
+  if (result.operation === "session.analyze") {
+    const input = result.data.verdict_card.input;
+    return {
+      ...base,
+      event_kind: "session.analyzed",
+      capability: "session.analyze",
+      target: activityTarget("session", "Private session", options),
+      summary: `Analyzed an explicit session with ${input.lines} line(s); raw content stayed local.`
+    };
+  }
+
+  if (result.operation === "harness.attachPlan") {
+    const target = result.data.handoff_plan.target;
+    const isPublic = options.targetVisibility === "public" && publicGithubTarget(String(target.ref));
+    return {
+      ...base,
+      privacy: isPublic ? "public" : "private",
+      event_kind: "harness.wrapper_planned",
+      capability: "harness.attachPlan",
+      target: activityTarget(target.kind === "github_repo" ? "github_repo" : target.kind, "Private target", options, String(target.ref)),
+      summary: "Planned a wrapper handoff for skillware evolution."
+    };
+  }
+
+  const eventByOperation = {
+    "capabilities.describe": ["capability.used", "capabilities.describe", "Checked available EvoZeus capabilities."],
+    "workspace.activate": ["workspace.activated", "workspace.activate", "Checked local EvoZeus workspace readiness."],
+    "session.scanPlan": ["capability.used", "session.scanPlan", "Prepared a local session scan plan without reading raw stores."],
+    "system.doctor": ["system.doctor", "system.doctor", "Ran an EvoZeus local health check."],
+    "system.updatePlan": ["system.update_planned", "system.updatePlan", "Prepared an EvoZeus update plan."],
+    "system.uninstallPlan": ["system.uninstall_planned", "system.uninstallPlan", "Prepared an EvoZeus uninstall/archive plan."]
+  };
+  const mapped = eventByOperation[result.operation];
+
+  if (!mapped) {
+    return null;
+  }
+
+  return {
+    ...base,
+    event_kind: mapped[0],
+    capability: mapped[1],
+    target: activityTarget("workspace", "Private workspace", options),
+    summary: mapped[2]
+  };
+}
+
+async function maybeSendActivity(result, options) {
+  const payload = buildActivityPayload(result, options);
+  if (!payload) {
+    return result;
+  }
+
+  result.activity = {
+    feedback_status: "pending_approval",
+    endpoint: options.feedbackEndpoint,
+    payload
+  };
+
+  if (!options.approveFeedback) {
+    return result;
+  }
+
+  try {
+    const response = await fetch(options.feedbackEndpoint, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    result.activity.feedback_status = response.ok ? "sent" : "failed";
+    result.activity.response_status = response.status;
+  } catch {
+    result.activity.feedback_status = "failed";
+  }
+
+  return result;
+}
+
 function buildCapabilities(options) {
   return envelope("capabilities.describe", options, {
     cli_version: CLI_VERSION,
@@ -269,7 +420,7 @@ function activate(options) {
       install_status: manifest?.status ?? "missing"
     },
     next_command:
-      "./.evozeus/bin/evozeus capabilities --json",
+      "~/.evozeus/bin/evozeus capabilities --json",
     next_action:
       "Show the EvoZeus capabilities to the user, then ask which path to take. Do not scan local sessions, write files, or submit to GitHub without explicit approval."
   });
@@ -514,7 +665,7 @@ function doctor(options) {
       infra_runtime: "approval_required",
       wrapper_github_write: "forbidden_in_p0"
     },
-    next_command: "./.evozeus/bin/evozeus capabilities --json"
+    next_command: "~/.evozeus/bin/evozeus capabilities --json"
   });
 }
 
@@ -541,9 +692,9 @@ function updatePlan(options) {
         writes_now: false,
         source_root: SOURCE_ROOT,
         planned_actions: [
-          "reconcile .evozeus/registration.json",
-          "refresh .evozeus/skeleton",
-          "refresh .evozeus/bin/evozeus shim",
+          "reconcile ~/.evozeus/registration.json",
+          "refresh ~/.evozeus/skeleton",
+          "refresh ~/.evozeus/bin/evozeus shim",
           "update install-manifest.json"
         ],
         apply_hint: "After user approval, run node scripts/evozeus-install.mjs --workspace <workspace> --approve-write."
@@ -551,7 +702,7 @@ function updatePlan(options) {
     },
     {
       required: true,
-      reason: "Updating local EvoZeus writes .evozeus and requires explicit approval."
+      reason: "Updating local EvoZeus writes ~/.evozeus and requires explicit approval."
     }
   );
 }
@@ -560,7 +711,7 @@ function uninstallPlan(options) {
   const workspace = workspaceInfo(options);
 
   if (options.approveWrite) {
-    const archivePath = join(workspace.root, `.evozeus-archive-${new Date().toISOString().replace(/[:.]/g, "-")}`);
+    const archivePath = join(dirname(workspace.evozeus_root), `.evozeus-archive-${new Date().toISOString().replace(/[:.]/g, "-")}`);
     if (existsSync(workspace.evozeus_root)) {
       mkdirSync(dirname(archivePath), { recursive: true });
       rmSync(archivePath, { recursive: true, force: true });
@@ -578,7 +729,7 @@ function uninstallPlan(options) {
           writes_now: existsSync(workspace.evozeus_root),
           deleted_now: false,
           archived_now: false,
-          note: "P0 writes only an uninstall report. Deleting or moving .evozeus remains a manual, user-confirmed action."
+          note: "P0 writes only an uninstall report. Deleting or moving ~/.evozeus remains a manual, user-confirmed action."
         }
       },
       { required: true, reason: "Destructive deletion is not automatic in P0." }
@@ -592,8 +743,8 @@ function uninstallPlan(options) {
       uninstall_plan: {
         dry_run: true,
         writes_now: false,
-        delete_candidates: [".evozeus/bin/evozeus", ".evozeus/skeleton", ".evozeus/registration.json", ".evozeus/install-manifest.json"],
-        preserve_candidates: [".evozeus/audit.ndjson", ".evozeus/handoffs", ".evozeus/reports"],
+        delete_candidates: ["~/.evozeus/bin/evozeus", "~/.evozeus/skeleton", "~/.evozeus/registration.json", "~/.evozeus/install-manifest.json"],
+        preserve_candidates: ["~/.evozeus/audit.ndjson", "~/.evozeus/handoffs", "~/.evozeus/reports"],
         required_before_execution: ["user approval", "archive/delete choice", "privacy review"]
       }
     },
@@ -619,7 +770,10 @@ Commands:
 
 Global options:
   --workspace <path>
+  --evozeus-home <path>
   --json
+  --approve-feedback
+  --target-visibility public|private
 `);
 }
 
@@ -667,13 +821,15 @@ function route(parsed) {
   throw new CliError("UNKNOWN_COMMAND", `Unknown EvoZeus command: ${positionals.join(" ") || command}`);
 }
 
-try {
+async function main() {
   const parsed = parseArgs(process.argv.slice(2));
   const result = route(parsed);
   if (result) {
-    printResult(result, parsed.options);
+    printResult(await maybeSendActivity(result, parsed.options), parsed.options);
   }
-} catch (error) {
+}
+
+main().catch((error) => {
   const wantsJson = process.argv.includes("--json");
   const fallbackOptions = { json: wantsJson, workspace: process.cwd() };
   const cliError =
@@ -682,4 +838,4 @@ try {
       : new CliError("CLI_ERROR", error.message || "Unexpected CLI error.", "unknown");
   printResult(errorEnvelope(cliError, fallbackOptions), fallbackOptions);
   process.exit(1);
-}
+});

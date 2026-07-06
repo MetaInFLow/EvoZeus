@@ -1,11 +1,11 @@
 ---
 name: evozeus-install-registration
-description: Use when registering a local EvoZeus workspace, installing the EvoZeus skeleton, installing EvoZeus skills, or reconciling existing .evozeus registration state.
+description: Use when registering the user-level EvoZeus home, installing the EvoZeus skeleton, installing EvoZeus skills, or reconciling existing ~/.evozeus registration state.
 ---
 
 # EvoZeus-Install Registration
 
-This skill owns the install-first path from `https://evozeus-community.vercel.app/skill`. It is the agent-readable install skill handoff: the user copies it to a local agent, the agent asks before local writes, then runs the local installer to register or restore the workspace, install the EvoZeus skeleton, install the local EvoZeus CLI, install EvoZeus scenario skills, and stop before judgment, runtime execution, wrapper writes, or GitHub publication.
+This skill owns the install-first path from `https://evozeus-community.vercel.app/skill`. It is the agent-readable install skill handoff: the user copies it to a local agent, the agent asks before local writes, then runs the local installer to register or restore the user-level EvoZeus home at `~/.evozeus`, install the EvoZeus skeleton, install the local EvoZeus CLI, install EvoZeus scenario skills, and stop before judgment, runtime execution, wrapper writes, or GitHub publication.
 
 ## Trigger
 
@@ -13,7 +13,7 @@ Use this skill when the user:
 
 - opens or copies the community `/skill` instruction
 - asks to join, install, register, restore, or check EvoZeus
-- already has `.evozeus` and wants to know whether the workspace is registered
+- already has `~/.evozeus` and wants to know whether EvoZeus is registered
 - needs EvoZeus skeleton and scenario skills installed before running judgment
 
 ## Install Flow
@@ -22,12 +22,12 @@ Use this skill when the user:
 community /skill
   -> read this skill
   -> resolve EvoZeus source tree from latest release tag or main fallback
-  -> check .evozeus registration state
-  -> ask before identity writes, network registration, source writes, or workspace writes
+  -> check ~/.evozeus registration state
+  -> ask before identity writes, network registration, source writes, or user-home writes
   -> run node scripts/evozeus-install.mjs --workspace <workspace> --approve-write
-  -> install or update .evozeus/skeleton and .evozeus/bin/evozeus
+  -> install or update ~/.evozeus/skeleton and ~/.evozeus/bin/evozeus
   -> output install report
-  -> run ./.evozeus/bin/evozeus capabilities --json
+  -> run ~/.evozeus/bin/evozeus capabilities --json
   -> ask which EvoZeus capability the user wants
 ```
 
@@ -35,8 +35,8 @@ community /skill
 
 | State | Action |
 | --- | --- |
-| No `.evozeus` | Ask before creating local registration and install manifest |
-| `.evozeus` exists but no registration | Try to restore by hash or ask before creating registration |
+| No `~/.evozeus` | Ask before creating user-level registration and install manifest |
+| `~/.evozeus` exists but no registration | Try to restore by hash or ask before creating registration |
 | Registration exists but skeleton is missing | Install or update root `SKILL.md` and protocol skeleton |
 | Registration exists but skills are missing | Install or update `skills/` inventory |
 | Registration, skeleton, and skills exist | Report current state and optional update plan |
@@ -59,14 +59,16 @@ Only after user approval, the install path may write:
 
 | File | Purpose |
 | --- | --- |
-| `.evozeus/registration.json` | workspace registration status, registration id, agent identity pointer |
-| `.evozeus/install-manifest.json` | skeleton source, resolved commit, installed skills inventory, last checked time |
-| `.evozeus/skeleton/` | local copy of the EvoZeus root `SKILL.md`, scenario skills, reference docs, and install / doctor scripts |
-| `.evozeus/bin/evozeus` | local CLI shim for capability discovery and approved P0 operations |
+| `~/.evozeus/registration.json` | user-level registration status, registration id, agent identity pointer |
+| `~/.evozeus/install-manifest.json` | skeleton source, resolved commit, installed skills inventory, last checked time |
+| `~/.evozeus/skeleton/` | local copy of the EvoZeus root `SKILL.md`, scenario skills, reference docs, and install / doctor scripts |
+| `~/.evozeus/bin/evozeus` | local CLI shim for capability discovery and approved P0 operations |
 
 Only after user approval, the install path may also create or reuse `~/.evozeus/agent-identity.json` and call the EvoZeus Web registration API. Registration is hash-only and must not upload raw session, private paths, tokens, workspace contents, customer data, or unreleased code.
 
-Do not create `.evozeus/runtime/`, runtime lockfiles, local scan outputs, factor results, report files, GitHub issues, or PRs during install.
+Only after separate user approval, local capabilities may send safe activity feedback to the EvoZeus Web activity API. Activity feedback may include runtime hash, agent handle, capability name, event kind, public GitHub target URL when explicitly marked public, and redacted summary. It must not upload raw session, private paths, tokens, workspace contents, customer data, or unreleased code.
+
+Do not create `~/.evozeus/runtime/`, runtime lockfiles, local scan outputs, factor results, report files, GitHub issues, or PRs during install.
 
 ## Local Installer
 
@@ -82,7 +84,7 @@ Without approval, run a dry-run first:
 node scripts/evozeus-install.mjs --workspace "<target-workspace>"
 ```
 
-The dry-run must not write `.evozeus/`; it only reports planned files and the approval needed.
+The dry-run must not write `~/.evozeus/`; it only reports planned files and the approval needed.
 
 ## Install Report
 
@@ -97,7 +99,7 @@ The installer emits this report as JSON so the agent can summarize it without gu
 After install, run the local capability router before asking for the next approval:
 
 ```bash
-./.evozeus/bin/evozeus capabilities --json
+~/.evozeus/bin/evozeus capabilities --json
 ```
 
 Show a short capability summary before asking the user what to do:
@@ -114,7 +116,7 @@ Show a short capability summary before asking the user what to do:
 The next command should be capability-first:
 
 ```text
-Run ./.evozeus/bin/evozeus capabilities --json, show the available EvoZeus capabilities, then ask the user which path to take. Do not scan local sessions, write files, or submit to GitHub unless the user explicitly approves the specific action.
+Run ~/.evozeus/bin/evozeus capabilities --json, show the available EvoZeus capabilities, then ask the user which path to take. Do not scan local sessions, write files, or submit to GitHub unless the user explicitly approves the specific action.
 ```
 
 ## Boundaries
