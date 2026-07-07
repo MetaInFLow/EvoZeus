@@ -313,9 +313,17 @@ handoff plan 至少包含：
     "ref": "/path/to/skill"
   },
   "recommended_route": "EvoZeus-wrapper",
+  "global_evozeus_home": "~/.evozeus",
+  "target_infra_dir": ".evozeus_evoinfra",
+  "legacy_target_infra_dir": ".evozeus",
+  "manifest_path": ".evozeus_evoinfra/wrapper.json",
+  "feedback_policy_path": ".evozeus_evoinfra/feedback-policy.json",
+  "audit_rule_path": ".evozeus_evoinfra/audit-rule.md",
   "next_actions": [
     "confirm target owner",
+    "route target repo-local harness files under .evozeus_evoinfra/",
     "redact private examples",
+    "run EvoZeus-wrapper harness upgrade-check",
     "generate feedback issue draft",
     "prepare design doc / PR plan"
   ],

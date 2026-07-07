@@ -177,6 +177,10 @@ describe("evozeus-cli", () => {
       assert.equal(report.operation, "harness.attachPlan");
       assert.equal(report.data.handoff_plan.target.kind, "skill");
       assert.equal(report.data.handoff_plan.writes_now, false);
+      assert.equal(report.data.handoff_plan.global_evozeus_home, "~/.evozeus");
+      assert.equal(report.data.handoff_plan.target_infra_dir, ".evozeus_evoinfra");
+      assert.equal(report.data.handoff_plan.legacy_target_infra_dir, ".evozeus");
+      assert.equal(report.data.handoff_plan.manifest_path, ".evozeus_evoinfra/wrapper.json");
       assert.equal(existsSync(join(skillRoot, ".evozeus-wrapper")), false);
     }));
 

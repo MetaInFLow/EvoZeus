@@ -7,7 +7,7 @@ import { homedir } from "node:os";
 import { fileURLToPath } from "node:url";
 
 const SCHEMA_VERSION = 1;
-const CLI_VERSION = "0.2.0";
+const CLI_VERSION = "0.2.1";
 const SOURCE_ROOT = resolve(fileURLToPath(new URL("..", import.meta.url)));
 
 const CAPABILITIES = [
@@ -621,10 +621,23 @@ function attachHarness(options) {
       handoff_plan: {
         target,
         recommended_route: "EvoZeus-wrapper",
+        global_evozeus_home: "~/.evozeus",
+        target_infra_dir: ".evozeus_evoinfra",
+        legacy_target_infra_dir: ".evozeus",
+        manifest_path: ".evozeus_evoinfra/wrapper.json",
+        feedback_policy_path: ".evozeus_evoinfra/feedback-policy.json",
+        audit_rule_path: ".evozeus_evoinfra/audit-rule.md",
+        source_contract: {
+          global_project_pointer: "~/.evozeus/.projects/OWNER/REPO",
+          runtime_install: "~/.codex/skills/<skill> or ~/.agents/skills/<skill>",
+          runtime_install_policy: "runtime installs should point to the canonical repo and must not become a second source of truth"
+        },
         writes_now: false,
         next_actions: [
           "confirm target owner",
+          "route target repo-local harness files under .evozeus_evoinfra/",
           "redact private examples",
+          "run EvoZeus-wrapper harness upgrade-check",
           "generate feedback issue draft",
           "prepare design doc / PR plan"
         ],
