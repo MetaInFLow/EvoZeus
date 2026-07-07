@@ -21,14 +21,18 @@ Use this skill when the user:
 ```text
 community /skill
   -> read this skill
+  -> read ../../docs/reference/install-onboarding-conversation.md
   -> resolve EvoZeus source tree from latest release tag or main fallback
   -> check ~/.evozeus registration state
+  -> explain registration value, privacy boundaries, and approval choices
   -> ask before identity writes, network registration, source writes, or user-home writes
   -> run node scripts/evozeus-install.mjs --workspace <workspace> --approve-write
   -> install or update ~/.evozeus/skeleton and ~/.evozeus/bin/evozeus
   -> output install report
+  -> run ~/.evozeus/bin/evozeus --help
   -> run ~/.evozeus/bin/evozeus capabilities --json
-  -> ask which EvoZeus capability the user wants
+  -> translate relevant capabilities into natural language for the user's goal
+  -> ask which concrete EvoZeus path the user wants next
 ```
 
 ## State Reconciliation
@@ -70,6 +74,32 @@ Only after separate user approval, local capabilities may send safe activity fee
 
 Do not create `~/.evozeus/runtime/`, runtime lockfiles, local scan outputs, factor results, report files, GitHub issues, or PRs during install.
 
+## Registration Conversation Reference
+
+Before asking for registration or install approval, read:
+
+```text
+../../docs/reference/install-onboarding-conversation.md
+```
+
+Use it to explain:
+
+- joining EvoZeus creates a local user-level identity and capability entry, not a raw session upload
+- registration is hash-only and safe metadata only
+- local writes go to `~/.evozeus/`
+- network registration, activity feedback, scans, reports, and GitHub actions each require explicit approval
+- the user can choose dry-run, approved install, or status check
+
+Do not dump internal capability names as the first user-facing explanation. Explain the business function first, then include the exact command when it matters.
+
+The public copy prompt must remain exactly one short handoff sentence:
+
+```text
+加入 EvoZeus: https://evozeus-community.vercel.app/skill
+```
+
+Do not ask users to copy approval lists, privacy lists, command lists, or capability descriptions. Those details belong in this skill and the conversation reference.
+
 ## Local Installer
 
 After the user approves local writes, run the installer from the resolved EvoZeus repo:
@@ -99,10 +129,16 @@ The installer emits this report as JSON so the agent can summarize it without gu
 After install, run the local capability router before asking for the next approval:
 
 ```bash
+~/.evozeus/bin/evozeus --help
+```
+
+Use CLI help as the installed command surface. Then run:
+
+```bash
 ~/.evozeus/bin/evozeus capabilities --json
 ```
 
-Show a short capability summary before asking the user what to do:
+Use `capabilities --json` as the source of write mode, risk level, approval, and examples. Show the natural-language capability summary with the fixed `Post-Install Capability Template` from `../../docs/reference/install-onboarding-conversation.md` before asking the user what to do:
 
 | Capability | Status after health OK |
 | --- | --- |
@@ -116,7 +152,7 @@ Show a short capability summary before asking the user what to do:
 The next command should be capability-first:
 
 ```text
-Run ~/.evozeus/bin/evozeus capabilities --json, show the available EvoZeus capabilities, then ask the user which path to take. Do not scan local sessions, write files, or submit to GitHub unless the user explicitly approves the specific action.
+Run ~/.evozeus/bin/evozeus --help, then run ~/.evozeus/bin/evozeus capabilities --json. Translate the available EvoZeus capabilities into the user's current business goal using the fixed template, recommend one safe next path, and ask the user to choose. Do not scan local sessions, write files, or submit to GitHub unless the user explicitly approves the specific action.
 ```
 
 ## Boundaries

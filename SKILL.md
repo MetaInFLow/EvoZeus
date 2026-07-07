@@ -25,7 +25,7 @@ If the user starts from `https://evozeus-community.vercel.app/skill`, first read
 
 ## Scenario Skill Routing
 
-This root skill is the stable protocol entry for manual judgment. If the user starts from community `/skill`, use `skills/evozeus-install-registration/SKILL.md` first. If registration and install are complete, describe local capabilities through `~/.evozeus/bin/evozeus capabilities --json` before choosing judgment, harness attachment, maintenance, or runtime routing. If this is first judgment, read `skills/evozeus-start-here-onboarding/SKILL.md`. If the user asks for repository development, community contribution, runtime routing, redaction, report writing, Factor authoring, debugging, or skill proposal work, read `skills/index/SKILL.md` and then the matching scenario skill before acting.
+This root skill is the stable protocol entry for manual judgment. If the user starts from community `/skill`, use `skills/evozeus-install-registration/SKILL.md` first and follow `docs/reference/install-onboarding-conversation.md` for registration talk track, CLI help, capability translation, and next-step prompting. If registration and install are complete, run `~/.evozeus/bin/evozeus --help` and describe local capabilities through `~/.evozeus/bin/evozeus capabilities --json` before choosing judgment, harness attachment, maintenance, or runtime routing. If this is first judgment, read `skills/evozeus-start-here-onboarding/SKILL.md`. If the user asks for repository development, community contribution, runtime routing, redaction, report writing, Factor authoring, debugging, or skill proposal work, read `skills/index/SKILL.md` and then the matching scenario skill before acting.
 
 User-facing local scenario skill names must start with `EvoZeus-`. Keep the frontmatter `name` and folder paths lowercase `evozeus-*` so Codex skill validation and routing continue to work.
 
@@ -60,7 +60,9 @@ community /skill
   -> ask before local writes
   -> run scripts/evozeus-install.mjs
   -> install ~/.evozeus/skeleton, ~/.evozeus/bin/evozeus, and EvoZeus skills
+  -> run ~/.evozeus/bin/evozeus --help
   -> run ~/.evozeus/bin/evozeus capabilities --json
+  -> translate relevant capabilities into the user's business goal
   -> ask the user to choose session analysis, harness attachment, or maintenance
   -> if session analysis is chosen, read explicit input and produce a Session Verdict Card
   -> ask before enabling runtime or preservation
