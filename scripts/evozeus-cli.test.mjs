@@ -25,6 +25,7 @@ function runCli(args, options = {}) {
     encoding: "utf8",
     env: {
       ...process.env,
+      ...options.env,
       EVOZEUS_HOME: evozeusHome
     }
   });
@@ -53,11 +54,47 @@ describe("evozeus-cli", () => {
     );
   });
 
+  it("describes product features by lifecycle as JSON", () => {
+    const result = runCli(["features", "--json"]);
+    const report = parseJson(result);
+    const features = new Map(report.data.features.map((feature) => [feature.id, feature]));
+
+    assert.equal(report.ok, true);
+    assert.equal(report.operation, "features.describe");
+    assert.ok(features.has("review.session"));
+    assert.ok(features.has("insights.sessions"));
+    assert.ok(features.has("preserve.artifact"));
+    assert.ok(features.has("coevolve.target"));
+    assert.equal(features.get("review.session").command, "evozeus review session --input <path|-> --json");
+    assert.equal(features.get("insights.sessions").backend_owner, "EvoZeus-infra");
+    assert.equal(features.get("insights.sessions").command, "evozeus insights plan --source codex --json");
+    assert.ok(features.get("insights.sessions").related_capabilities.includes("insights.plan"));
+    assert.equal(features.get("preserve.artifact").command, "evozeus preserve draft --from-report <path> --json");
+    assert.equal(features.get("coevolve.target").backend_owner, "EvoZeus-CoEvolve");
+    assert.ok(features.get("coevolve.target").related_capabilities.includes("harness.attachPlan"));
+  });
+
+  it("prints a human-readable product feature menu", () => {
+    const result = runCli(["features"]);
+
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /EvoZeus Features/);
+    assert.match(result.stdout, /Review one explicit session/);
+    assert.match(result.stdout, /Generate session insights report/);
+    assert.match(result.stdout, /Preserve a Verdict \/ report as an artifact draft/);
+    assert.match(result.stdout, /Co-evolve a Skill \/ plugin \/ repo/);
+  });
+
   it("prints help without crashing", () => {
     const result = runCli(["--help"]);
 
     assert.equal(result.status, 0, result.stderr);
     assert.match(result.stdout, /Usage: evozeus/);
+    assert.match(result.stdout, /features --json/);
+    assert.match(result.stdout, /review session/);
+    assert.match(result.stdout, /insights plan/);
+    assert.match(result.stdout, /preserve draft/);
+    assert.match(result.stdout, /coevolve attach/);
     assert.match(result.stdout, /session analyze/);
     assert.match(result.stdout, /approve-feedback/);
   });
@@ -131,6 +168,17 @@ describe("evozeus-cli", () => {
     assert.ok(report.data.verdict_card.signals.includes("retry_or_rework"));
   });
 
+  it("supports review session as the product alias for session analysis", () => {
+    const result = runCli(["review", "session", "--input", "-", "--json"], {
+      input: "Agent session from stdin with a retry.\n"
+    });
+    const report = parseJson(result);
+
+    assert.equal(report.operation, "session.analyze");
+    assert.equal(report.data.verdict_card.input.kind, "stdin");
+    assert.ok(report.data.verdict_card.signals.includes("retry_or_rework"));
+  });
+
   it("resolves relative session input from --workspace", () =>
     withTempWorkspace((workspace) => {
       writeFileSync(join(workspace, "relative-session.md"), "A session with a failed tool call.\n");
@@ -165,6 +213,64 @@ describe("evozeus-cli", () => {
     assert.ok(report.data.scan_plan.forbidden_in_this_command.includes("reading raw session files"));
   });
 
+  it("plans session insights through infra without reading raw stores", () => {
+    const result = runCli(["insights", "plan", "--source", "codex", "--json"]);
+    const report = parseJson(result);
+
+    assert.equal(report.operation, "insights.plan");
+    assert.equal(report.data.insights_plan.reads_raw_store_now, false);
+    assert.equal(report.data.insights_plan.source, "codex");
+    assert.equal(report.data.backend.owner, "EvoZeus-infra");
+    assert.equal(report.data.backend.available, true);
+    assert.ok(report.data.backend.command.argv.includes("session-insights"));
+    assert.ok(report.data.insights_plan.forbidden_in_this_command.includes("reading raw session files"));
+  });
+
+  it("reports missing infra readiness with a repair hint", () => {
+    const missingRoot = join(tmpdir(), "missing-evozeus-infra-for-test");
+    const result = runCli(["insights", "plan", "--source", "codex", "--json"], {
+      env: { EVOZEUS_INFRA_ROOT: missingRoot }
+    });
+    const report = parseJson(result);
+
+    assert.equal(report.data.backend.available, false);
+    assert.match(report.data.backend.repair_hint, /EVOZEUS_INFRA_ROOT/);
+  });
+
+  it("requires explicit approval before running session insights", () => {
+    const result = runCli(["insights", "sessions", "--source", "codex", "--reuse-factors", "--html", "--json"]);
+    const report = parseJson(result);
+
+    assert.equal(report.operation, "insights.sessions");
+    assert.equal(report.approval.required, true);
+    assert.equal(report.data.execution.writes_now, false);
+    assert.equal(report.data.execution.runs_backend_now, false);
+    assert.ok(report.data.backend.command.argv.includes("session-insights"));
+    assert.ok(report.data.approval_required_for.includes("reading raw session files"));
+  });
+
+  it("plans project-scoped insights with project parameters", () => {
+    const result = runCli(["insights", "sessions", "--source", "codex", "--project", "daxing", "--project-mode", "keyword", "--json"]);
+    const report = parseJson(result);
+
+    assert.equal(report.operation, "insights.projectSessions");
+    assert.equal(report.data.project.project_key, "daxing");
+    assert.equal(report.data.project.project_mode, "keyword");
+    assert.ok(report.data.backend.command.argv.includes("project-insights"));
+    assert.ok(report.data.backend.command.argv.includes("--contains"));
+  });
+
+  it("opens the integrated AI usage profile report by default", () =>
+    withTempWorkspace((workspace) => {
+      const result = runCli(["insights", "open", "--latest", "--json"], { cwd: workspace });
+      const report = parseJson(result);
+
+      assert.equal(report.operation, "insights.openReport");
+      assert.ok(report.data.report.html_path.endsWith(".evozeus/runtime/reports/ai-usage-profile/index.html"));
+      assert.equal(report.data.open_command[0], "open");
+      assert.ok(report.data.open_command[1].endsWith(".evozeus/runtime/reports/ai-usage-profile/index.html"));
+    }));
+
   it("creates a harness handoff plan without writing target repo files", () =>
     withTempWorkspace((workspace) => {
       const skillRoot = join(workspace, "skills/example");
@@ -181,6 +287,63 @@ describe("evozeus-cli", () => {
       assert.equal(report.data.handoff_plan.target_infra_dir, ".evozeus_evoinfra");
       assert.equal(report.data.handoff_plan.legacy_target_infra_dir, ".evozeus");
       assert.equal(report.data.handoff_plan.manifest_path, ".evozeus_evoinfra/wrapper.json");
+      assert.equal(existsSync(join(skillRoot, ".evozeus-wrapper")), false);
+    }));
+
+  it("reports coevolve status from the target wrapper manifest", () =>
+    withTempWorkspace((workspace) => {
+      const skillRoot = join(workspace, "skills/example");
+      const infraRoot = join(skillRoot, ".evozeus_evoinfra");
+      mkdirSync(infraRoot, { recursive: true });
+      writeFileSync(join(skillRoot, "SKILL.md"), "---\nname: example\n---\n");
+      writeFileSync(
+        join(infraRoot, "wrapper.json"),
+        JSON.stringify({ wrapper_version: "v0.7.0", integration: { mode: "prompt_runtime_check" } }, null, 2)
+      );
+
+      const result = runCli(["coevolve", "status", "--target", "skills/example", "--json"], { cwd: workspace });
+      const report = parseJson(result);
+
+      assert.equal(report.operation, "coevolve.status");
+      assert.equal(report.data.target.kind, "skill");
+      assert.equal(report.data.wrapper.manifest_exists, true);
+      assert.equal(report.data.wrapper.wrapper_version, "v0.7.0");
+      assert.equal(report.data.execution.writes_now, false);
+      assert.ok(report.data.backend.command.argv.includes("diagnose"));
+    }));
+
+  it("plans coevolve feedback audit without writing GitHub", () =>
+    withTempWorkspace((workspace) => {
+      const skillRoot = join(workspace, "skills/example");
+      mkdirSync(skillRoot, { recursive: true });
+      writeFileSync(join(skillRoot, "SKILL.md"), "---\nname: example\n---\n");
+
+      const result = runCli(
+        ["coevolve", "audit", "--target", "skills/example", "--user-input", "这个 skill 总是忽略我的项目上下文", "--json"],
+        { cwd: workspace }
+      );
+      const report = parseJson(result);
+
+      assert.equal(report.operation, "coevolve.auditFeedback");
+      assert.equal(report.data.execution.writes_now, false);
+      assert.equal(report.data.execution.github_writes_now, false);
+      assert.ok(report.data.backend.command.argv.includes("audit"));
+      assert.doesNotMatch(JSON.stringify(report.data), /忽略我的项目上下文/);
+    }));
+
+  it("supports coevolve attach as the product alias for wrapper handoff planning", () =>
+    withTempWorkspace((workspace) => {
+      const skillRoot = join(workspace, "skills/example");
+      mkdirSync(skillRoot, { recursive: true });
+      writeFileSync(join(skillRoot, "SKILL.md"), "---\nname: example\n---\n");
+
+      const result = runCli(["coevolve", "attach", "--target", "skills/example", "--json"], { cwd: workspace });
+      const report = parseJson(result);
+
+      assert.equal(report.operation, "harness.attachPlan");
+      assert.equal(report.data.handoff_plan.target.kind, "skill");
+      assert.equal(report.data.handoff_plan.recommended_route, "EvoZeus-CoEvolve");
+      assert.equal(report.data.handoff_plan.writes_now, false);
       assert.equal(existsSync(join(skillRoot, ".evozeus-wrapper")), false);
     }));
 
@@ -225,4 +388,93 @@ describe("evozeus-cli", () => {
       assert.equal(uninstall.data.uninstall_plan.writes_now, false);
       assert.equal(existsSync(join(workspace, ".evozeus")), false);
     }));
+
+  it("creates a privacy-preserving preserve draft from a report", () =>
+    withTempWorkspace((workspace) => {
+      const reportPath = join(workspace, "analysis.json");
+      writeFileSync(
+        reportPath,
+        JSON.stringify(
+          {
+            projects: [
+              {
+                project_key: "daxing",
+                source_sessions: 3,
+                user_repeated_phrases: [
+                  {
+                    text: "这是不应该原样出现在草稿里的用户原话",
+                    count: 7,
+                    occurrences: [{ session_id: "s1", turn_id: "u1", speaker: "user" }]
+                  }
+                ]
+              }
+            ]
+          },
+          null,
+          2
+        )
+      );
+
+      const result = runCli(["preserve", "draft", "--from-report", "analysis.json", "--json"], { cwd: workspace });
+      const report = parseJson(result);
+
+      assert.equal(report.operation, "preserve.draft");
+      assert.equal(report.data.execution.writes_now, false);
+      assert.equal(report.data.privacy.raw_report_embedded, false);
+      assert.equal(report.data.artifact_candidates.length > 0, true);
+      assert.doesNotMatch(JSON.stringify(report.data), /这是不应该原样/);
+    }));
+
+  it("creates preserve candidates from infra project-insights summary reports", () =>
+    withTempWorkspace((workspace) => {
+      const reportPath = join(workspace, "project-analysis-summary.json");
+      writeFileSync(
+        reportPath,
+        JSON.stringify(
+          {
+            reports: [
+              {
+                project_key: "daxing",
+                project_label: "大兴项目",
+                source_sessions: 2,
+                exact_phrases: [
+                  {
+                    text: "这句原话不能泄露到草稿",
+                    occurrence_count: 2,
+                    occurrences: [
+                      { session_id: "s1", turn_id: "u1", speaker: "user" },
+                      { session_id: "s2", turn_id: "u1", speaker: "user" }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          null,
+          2
+        )
+      );
+
+      const result = runCli(["preserve", "draft", "--from-report", "project-analysis-summary.json", "--json"], {
+        cwd: workspace
+      });
+      const report = parseJson(result);
+
+      assert.equal(report.operation, "preserve.draft");
+      assert.ok(report.data.artifact_candidates.some((candidate) => candidate.artifact_type === "Accepted Case"));
+      assert.ok(report.data.artifact_candidates.some((candidate) => candidate.artifact_type === "Habit or Factor Candidate"));
+      assert.equal(report.data.artifact_candidates[0].source_sessions, 2);
+      assert.doesNotMatch(JSON.stringify(report.data), /这句原话/);
+    }));
+
+  it("reports component readiness in doctor output", () => {
+    const result = runCli(["doctor", "--json"]);
+    const report = parseJson(result);
+
+    assert.equal(report.operation, "system.doctor");
+    assert.equal(report.data.component_readiness.evozeus.available, true);
+    assert.equal(report.data.component_readiness["EvoZeus-infra"].owner, "EvoZeus-infra");
+    assert.equal(report.data.component_readiness["EvoZeus-CoEvolve"].owner, "EvoZeus-CoEvolve");
+    assert.equal(report.data.component_readiness["EvoZeus-session-signal-skill"].owner, "EvoZeus-session-signal-skill");
+  });
 });

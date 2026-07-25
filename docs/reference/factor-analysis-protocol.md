@@ -119,8 +119,8 @@ agent_session_review.v0
 Executable contracts belong to the runtime and Factor lifecycle repos:
 
 - `evozeus-runtime` owns factor execution, local registry, lockfile, report generation, and runtime verification.
-- `evozeus-factor-lab` owns draft pack and scanner review before official release.
-- `evozeus-session-signal-skill` owns promoted pack artifacts, release manifests, checksums, and attestations.
+- `EvoZeus-factor-lab` owns draft pack and scanner review before official release.
+- `EvoZeus-session-signal-skill` owns promoted pack artifacts, release manifests, checksums, and attestations.
 
 The `EvoZeus` main repo keeps this protocol and future registry pointer semantics only. It does not store runnable Factor pack bodies or runtime implementation code.
 

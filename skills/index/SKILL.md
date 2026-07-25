@@ -17,7 +17,7 @@ User-facing local scenario skill names must start with `EvoZeus-`. Machine IDs a
 | --- | --- | --- |
 | Judge the current Agent Session | `EvoZeus` | root `../../SKILL.md` |
 | Register, install, restore, check `~/.evozeus`, install skeleton, install CLI, or install skills | `EvoZeus-Install Registration` | `../evozeus-install-registration/SKILL.md` |
-| Choose installed EvoZeus capability after install | local CLI capability router | run `~/.evozeus/bin/evozeus capabilities --json` |
+| Choose installed EvoZeus product feature after install | local CLI product feature router | run `~/.evozeus/bin/evozeus features --json`, then `~/.evozeus/bin/evozeus capabilities --json` for risk and permission facts |
 | Start first protocol-only judgment after the user chooses session analysis | `EvoZeus-Start Here Onboarding` | `../evozeus-start-here-onboarding/SKILL.md` |
 | Develop this repository, change docs, scripts, templates, or infra | `EvoZeus-Development` | `../evozeus-development/SKILL.md` |
 | Submit a Case, Candidate, Factor, Pattern, or community contribution | `EvoZeus-Community Contribution` | `../evozeus-community-contribution/SKILL.md` |

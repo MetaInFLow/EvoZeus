@@ -11,9 +11,10 @@ EvoZeus puts real Agent Sessions on trial. It uses evidence to decide what shoul
 
 Use this skill when the user asks for protocol-only EvoZeus judgment, evidence review, Case submission, Evidence Report, or preservation after registration/install is complete.
 
-After install, the preferred local entry is the CLI capability router:
+After install, the preferred local entry is the CLI product feature router, followed by the capability router for execution risk and permission facts:
 
 ```text
+~/.evozeus/bin/evozeus features --json
 ~/.evozeus/bin/evozeus capabilities --json
 ```
 
@@ -25,7 +26,7 @@ If the user starts from `https://evozeus-community.vercel.app/skill`, first read
 
 ## Scenario Skill Routing
 
-This root skill is the stable protocol entry for manual judgment. If the user starts from community `/skill`, use `skills/evozeus-install-registration/SKILL.md` first and follow `docs/reference/install-onboarding-conversation.md` for registration talk track, CLI help, capability translation, and next-step prompting. If registration and install are complete, run `~/.evozeus/bin/evozeus --help` and describe local capabilities through `~/.evozeus/bin/evozeus capabilities --json` before choosing judgment, harness attachment, maintenance, or runtime routing. If this is first judgment, read `skills/evozeus-start-here-onboarding/SKILL.md`. If the user asks for repository development, community contribution, runtime routing, redaction, report writing, Factor authoring, debugging, or skill proposal work, read `skills/index/SKILL.md` and then the matching scenario skill before acting.
+This root skill is the stable protocol entry for manual judgment. If the user starts from community `/skill`, use `skills/evozeus-install-registration/SKILL.md` first and follow `docs/reference/install-onboarding-conversation.md` for registration talk track, CLI help, feature translation, capability facts, and next-step prompting. If registration and install are complete, run `~/.evozeus/bin/evozeus --help`, describe product features through `~/.evozeus/bin/evozeus features --json`, and use `~/.evozeus/bin/evozeus capabilities --json` for risk and permission facts before choosing review, insights, co-evolution, maintenance, or runtime routing. If this is first judgment, read `skills/evozeus-start-here-onboarding/SKILL.md`. If the user asks for repository development, community contribution, runtime routing, redaction, report writing, Factor authoring, debugging, or skill proposal work, read `skills/index/SKILL.md` and then the matching scenario skill before acting.
 
 User-facing local scenario skill names must start with `EvoZeus-`. Keep the frontmatter `name` and folder paths lowercase `evozeus-*` so Codex skill validation and routing continue to work.
 
@@ -61,9 +62,10 @@ community /skill
   -> run scripts/evozeus-install.mjs
   -> install ~/.evozeus/skeleton, ~/.evozeus/bin/evozeus, and EvoZeus skills
   -> run ~/.evozeus/bin/evozeus --help
+  -> run ~/.evozeus/bin/evozeus features --json
   -> run ~/.evozeus/bin/evozeus capabilities --json
-  -> translate relevant capabilities into the user's business goal
-  -> ask the user to choose session analysis, harness attachment, or maintenance
+  -> translate relevant product features into the user's business goal
+  -> ask the user to choose review, insights, co-evolution, or maintenance
   -> if session analysis is chosen, read explicit input and produce a Session Verdict Card
   -> ask before enabling runtime or preservation
   -> runtime uses registry pointer and default official factors
@@ -80,8 +82,8 @@ Preservation routes:
 | --- | --- |
 | Case, Evidence Report, judgment summary | `EvoZeus` issue or Candidate PR |
 | Semantic Factor proposal | `EvoZeus` Candidate / Factor proposal first |
-| Executable Factor pack or scanner module | `evozeus-factor-lab` |
-| Promoted official pack | `evozeus-session-signal-skill` |
+| Executable Factor pack or scanner module | `EvoZeus-factor-lab` |
+| Promoted official pack | `EvoZeus-session-signal-skill` |
 | Runtime, infra, CLI, scanner execution, local state | `evozeus-runtime` |
 
 ## Verdicts

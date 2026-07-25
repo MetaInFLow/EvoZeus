@@ -5,7 +5,7 @@ description: Use when authoring, reviewing, routing, or submitting executable Fa
 
 # EvoZeus Scanner Pack Authoring
 
-Executable packs and scanner modules are components. They do not belong in the `EvoZeus` main repo; they start in `evozeus-factor-lab` and can become official only through release review.
+Executable packs and scanner modules are components. They do not belong in the `EvoZeus` main repo; they start in `EvoZeus-factor-lab` and can become official only through release review.
 
 ## When To Use
 
@@ -24,10 +24,10 @@ Use this skill for:
 ```text
 EvoZeus Case / Candidate
   -> maintainer route
-  -> evozeus-factor-lab submission
+  -> EvoZeus-factor-lab submission
   -> evidence + privacy + scanner permission gates
   -> reviewed / rejected
-  -> optional promotion to evozeus-session-signal-skill
+  -> optional promotion to EvoZeus-session-signal-skill
 ```
 
 ## Required Packet
@@ -48,7 +48,7 @@ Every pack or scanner submission should include:
 - `../evozeus-factor-authoring/SKILL.md` for semantic Factor quality.
 - `../evozeus-redaction/SKILL.md` before public evidence.
 - `../../docs/reference/scanner-pack-protocol.md` for scanner pack contract.
-- `evozeus-factor-lab/templates/scanner-submission.md` when working inside the lab repo.
+- `EvoZeus-factor-lab/templates/scanner-submission.md` when working inside the lab repo.
 
 ## Boundaries
 

@@ -25,9 +25,9 @@ Verdict
 | Case, Evidence Report, Session Verdict Card | `EvoZeus` issue or Candidate PR |
 | Semantic Factor proposal | `EvoZeus` Factor proposal / Candidate PR first |
 | Habit, Pattern, Environment Rule | `EvoZeus` Candidate PR |
-| Executable Factor pack | `evozeus-factor-lab` |
-| Scanner module, resolver, scanner pack | `evozeus-factor-lab` |
-| Promoted official Factor pack | `evozeus-session-signal-skill` |
+| Executable Factor pack | `EvoZeus-factor-lab` |
+| Scanner module, resolver, scanner pack | `EvoZeus-factor-lab` |
+| Promoted official Factor pack | `EvoZeus-session-signal-skill` |
 | Runtime, CLI, TUI, companion, local registry, lockfile, report execution | `evozeus-runtime` |
 
 ## Required Gates

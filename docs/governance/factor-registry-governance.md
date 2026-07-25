@@ -55,14 +55,14 @@ EvoZeus main repo
     builtin/
     registry/
 
-evozeus-factor-lab
+EvoZeus-factor-lab
   submissions/
   candidates/
   reviewed/
   rejected/
   releases/
 
-evozeus-session-signal-skill
+EvoZeus-session-signal-skill
   packs/
   dist/
   releases/
@@ -76,9 +76,9 @@ Example registry entry:
 {
   "id": "evozeus-core",
   "source": "github-release",
-  "repo": "MetaInFLow/evozeus-session-signal-skill",
+  "repo": "MetaInFLow/EvoZeus-session-signal-skill",
   "tag": "core-v0.2.0",
-  "manifest": "https://raw.githubusercontent.com/MetaInFLow/evozeus-session-signal-skill/core-v0.2.0/dist/factor-index.json",
+  "manifest": "https://raw.githubusercontent.com/MetaInFLow/EvoZeus-session-signal-skill/core-v0.2.0/dist/factor-index.json",
   "checksum": "sha256:...",
   "channel": "stable",
   "review_state": "approved",
@@ -308,7 +308,7 @@ The lockfile should record:
 {
   "factors": {
     "evozeus-core/privacy-risk": {
-      "repo": "MetaInFLow/evozeus-session-signal-skill",
+      "repo": "MetaInFLow/EvoZeus-session-signal-skill",
       "tag": "core-v0.2.0",
       "commit": "abc123",
       "path": "factors/privacy-risk/factor.yaml",

@@ -7,10 +7,22 @@ import { homedir } from "node:os";
 import { fileURLToPath } from "node:url";
 
 const SCHEMA_VERSION = 1;
-const CLI_VERSION = "0.2.1";
+const CLI_VERSION = "0.3.0";
 const SOURCE_ROOT = resolve(fileURLToPath(new URL("..", import.meta.url)));
 
 const CAPABILITIES = [
+  {
+    name: "features.describe",
+    domain: "features",
+    summary: "Describe EvoZeus product features by lifecycle stage and map them to executable capabilities.",
+    input_schema: { type: "object", properties: {} },
+    output_schema: { type: "object", required: ["features"] },
+    write_mode: "read_only",
+    risk_level: "low",
+    required_permissions: ["system.read"],
+    requires_approval: false,
+    examples: ["evozeus features --json"]
+  },
   {
     name: "capabilities.describe",
     domain: "capabilities",
@@ -70,9 +82,33 @@ const CAPABILITIES = [
     examples: ["evozeus session scan --dry-run --json"]
   },
   {
+    name: "insights.plan",
+    domain: "insights",
+    summary: "Plan a session insights run through EvoZeus-infra without reading raw stores.",
+    input_schema: { type: "object", properties: { source: { type: "string" } } },
+    output_schema: { type: "object", required: ["insights_plan", "backend"] },
+    write_mode: "plan_only",
+    risk_level: "medium",
+    required_permissions: ["system.read"],
+    requires_approval: false,
+    examples: ["evozeus insights plan --source codex --json"]
+  },
+  {
+    name: "insights.sessions",
+    domain: "insights",
+    summary: "Route approved session insights execution to EvoZeus-infra.",
+    input_schema: { type: "object", properties: { source: { type: "string" }, project: { type: "string" } } },
+    output_schema: { type: "object", required: ["execution", "backend"] },
+    write_mode: "plan_only",
+    risk_level: "high",
+    required_permissions: ["session.scanLocalStore"],
+    requires_approval: true,
+    examples: ["evozeus insights sessions --source codex --reuse-factors --html --json"]
+  },
+  {
     name: "harness.attachPlan",
     domain: "harness",
-    summary: "Create a plan for attaching a co-evolution harness to a specified Skill, plugin, or repo.",
+    summary: "Create a Co-evolve plan for attaching EvoZeus-CoEvolve to a specified Skill, plugin, or repo.",
     input_schema: {
       type: "object",
       required: ["target"],
@@ -84,6 +120,42 @@ const CAPABILITIES = [
     required_permissions: ["repo.inspectTarget"],
     requires_approval: false,
     examples: ["evozeus harness attach --target ./skills/my-skill --json"]
+  },
+  {
+    name: "preserve.draft",
+    domain: "preserve",
+    summary: "Create a privacy-preserving artifact draft from an existing local report.",
+    input_schema: { type: "object", required: ["from_report"], properties: { from_report: { type: "string" } } },
+    output_schema: { type: "object", required: ["artifact_candidates", "privacy"] },
+    write_mode: "read_only",
+    risk_level: "medium",
+    required_permissions: ["report.readExplicitInput"],
+    requires_approval: false,
+    examples: ["evozeus preserve draft --from-report analysis.json --json"]
+  },
+  {
+    name: "coevolve.status",
+    domain: "coevolve",
+    summary: "Inspect local wrapper manifest status for a Skill, plugin, or repo target.",
+    input_schema: { type: "object", required: ["target"], properties: { target: { type: "string" } } },
+    output_schema: { type: "object", required: ["target", "wrapper", "backend"] },
+    write_mode: "read_only",
+    risk_level: "medium",
+    required_permissions: ["repo.inspectTarget"],
+    requires_approval: false,
+    examples: ["evozeus coevolve status --target ./skills/my-skill --json"]
+  },
+  {
+    name: "coevolve.auditFeedback",
+    domain: "coevolve",
+    summary: "Plan a wrapper feedback audit without writing GitHub issues or target repo files.",
+    input_schema: { type: "object", required: ["target", "user_input"], properties: { target: { type: "string" }, user_input: { type: "string" } } },
+    output_schema: { type: "object", required: ["execution", "backend"] },
+    write_mode: "plan_only",
+    risk_level: "medium",
+    required_permissions: ["repo.inspectTarget"],
+    requires_approval: false,
+    examples: ["evozeus coevolve audit --target ./skills/my-skill --user-input '<feedback>' --json"]
   },
   {
     name: "system.doctor",
@@ -123,6 +195,100 @@ const CAPABILITIES = [
   }
 ];
 
+const PRODUCT_FEATURES = [
+  {
+    id: "activate",
+    title: "Activate workspace",
+    title_zh: "激活并检查本地 EvoZeus 工作区",
+    lifecycle_stage: "activate",
+    user_goal: "确认本地 EvoZeus 是否已安装、注册和可继续使用。",
+    command: "evozeus activate --json",
+    backend_owner: "evozeus",
+    status: "available",
+    approval_boundary: "Reads EvoZeus local state only.",
+    related_capabilities: ["workspace.activate"],
+    aliases: []
+  },
+  {
+    id: "review.session",
+    title: "Review one explicit session",
+    title_zh: "分析一个用户显式提供的 session",
+    lifecycle_stage: "interact",
+    user_goal: "把一次用户提供的 Agent Session 转成 Evidence、Signals、Verdict Card 和 Artifact Route。",
+    command: "evozeus review session --input <path|-> --json",
+    backend_owner: "evozeus",
+    status: "alias",
+    approval_boundary: "Reads only the file or stdin explicitly provided by the user.",
+    related_capabilities: ["session.analyze"],
+    aliases: ["evozeus session analyze --input <path|-> --json"]
+  },
+  {
+    id: "insights.sessions",
+    title: "Generate session insights report",
+    title_zh: "扫描历史 sessions 并生成项目洞察报告",
+    lifecycle_stage: "interact",
+    user_goal: "从历史 session 中发现可复用 insight、重复表达、项目差异和可进化点。",
+    command: "evozeus insights plan --source codex --json",
+    backend_owner: "EvoZeus-infra",
+    status: "available",
+    approval_boundary: "Plan is read-only; raw session scan, factor execution, report write, and HTML open require explicit approval.",
+    related_capabilities: ["insights.plan", "insights.sessions", "session.scanPlan"],
+    aliases: ["evozeus session scan --dry-run --json"]
+  },
+  {
+    id: "preserve.artifact",
+    title: "Preserve a Verdict / report as an artifact draft",
+    title_zh: "把 Verdict 或报告沉淀为 Artifact 草稿",
+    lifecycle_stage: "decide",
+    user_goal: "从已有本地报告生成 Case、Factor、Habit 或 Rule 的隐私安全草稿。",
+    command: "evozeus preserve draft --from-report <path> --json",
+    backend_owner: "evozeus",
+    status: "available",
+    approval_boundary: "Reads only the explicit report path and does not publish or upload.",
+    related_capabilities: ["preserve.draft"],
+    aliases: []
+  },
+  {
+    id: "coevolve.target",
+    title: "Co-evolve a Skill / plugin / repo",
+    title_zh: "让 Skill / plugin / repo 接入协同进化机制",
+    lifecycle_stage: "coevolve",
+    user_goal: "把已接受或值得长期沉淀的 Skill、plugin、repo 接入 feedback、issue、design doc、PR、CHANGELOG、release 循环。",
+    command: "evozeus coevolve attach --target <path|url> --json",
+    backend_owner: "EvoZeus-CoEvolve",
+    status: "alias",
+    approval_boundary: "Plan only by default; repo writes and GitHub actions require explicit approval.",
+    related_capabilities: ["harness.attachPlan"],
+    aliases: ["evozeus harness attach --target <path|url> --json"]
+  },
+  {
+    id: "maintain",
+    title: "Maintain EvoZeus",
+    title_zh: "诊断、更新和维护 EvoZeus",
+    lifecycle_stage: "maintain",
+    user_goal: "检查安装状态、组件状态、更新计划和修复路径。",
+    command: "evozeus doctor --json",
+    backend_owner: "evozeus",
+    status: "available",
+    approval_boundary: "Doctor is read-only; update writes require explicit approval.",
+    related_capabilities: ["system.doctor", "system.updatePlan"],
+    aliases: ["evozeus update --dry-run --json"]
+  },
+  {
+    id: "uninstall",
+    title: "Uninstall or archive EvoZeus",
+    title_zh: "卸载或归档 EvoZeus 本地状态",
+    lifecycle_stage: "uninstall",
+    user_goal: "规划停用、删除、归档或保留本地 EvoZeus 状态与报告。",
+    command: "evozeus uninstall --dry-run --json",
+    backend_owner: "evozeus",
+    status: "available",
+    approval_boundary: "Dry-run only by default; destructive cleanup requires explicit approval.",
+    related_capabilities: ["system.uninstallPlan"],
+    aliases: []
+  }
+];
+
 class CliError extends Error {
   constructor(code, message, operation = "unknown", recoverable = true, approval = null) {
     super(message);
@@ -144,7 +310,20 @@ function parseArgs(argv) {
     evozeusHome: process.env.EVOZEUS_HOME || join(homedir(), ".evozeus"),
     workspace: process.cwd(),
     input: null,
-    target: null
+    target: null,
+    source: "codex",
+    project: null,
+    projectMode: "auto",
+    fromReport: null,
+    userInput: null,
+    context: null,
+    html: false,
+    open: false,
+    latest: false,
+    reuseFactors: false,
+    force: false,
+    plan: false,
+    checkNetwork: false
   };
   const positionals = [];
 
@@ -170,6 +349,32 @@ function parseArgs(argv) {
       options.input = argv[++index];
     } else if (arg === "--target") {
       options.target = argv[++index];
+    } else if (arg === "--source") {
+      options.source = argv[++index];
+    } else if (arg === "--project") {
+      options.project = argv[++index];
+    } else if (arg === "--project-mode") {
+      options.projectMode = argv[++index];
+    } else if (arg === "--from-report") {
+      options.fromReport = argv[++index];
+    } else if (arg === "--user-input") {
+      options.userInput = argv[++index];
+    } else if (arg === "--context") {
+      options.context = argv[++index];
+    } else if (arg === "--html") {
+      options.html = true;
+    } else if (arg === "--open") {
+      options.open = true;
+    } else if (arg === "--latest") {
+      options.latest = true;
+    } else if (arg === "--reuse-factors") {
+      options.reuseFactors = true;
+    } else if (arg === "--force") {
+      options.force = true;
+    } else if (arg === "--plan") {
+      options.plan = true;
+    } else if (arg === "--check-network") {
+      options.checkNetwork = true;
     } else if (arg === "--help" || arg === "-h") {
       options.help = true;
     } else if (arg.startsWith("--")) {
@@ -245,6 +450,22 @@ function printResult(result, options) {
     return;
   }
 
+  if (result.operation === "features.describe") {
+    console.log("EvoZeus Features");
+    console.log("");
+    result.data.features.forEach((feature, index) => {
+      console.log(`${index + 1}. ${feature.title}`);
+      console.log(`   Command: ${feature.command}`);
+      console.log(`   Stage: ${feature.lifecycle_stage}`);
+      console.log(`   Owner: ${feature.backend_owner}`);
+      console.log(`   Boundary: ${feature.approval_boundary}`);
+      if (index < result.data.features.length - 1) {
+        console.log("");
+      }
+    });
+    return;
+  }
+
   console.log(`${result.operation}: ok`);
   if (result.approval?.required) {
     console.log(`approval_required: ${result.approval.reason}`);
@@ -257,6 +478,131 @@ function readJsonFile(path) {
   } catch {
     return null;
   }
+}
+
+function resolveWorkspacePath(options, ref) {
+  return resolve(workspaceInfo(options).root, ref);
+}
+
+function siblingRepo(name) {
+  return resolve(dirname(SOURCE_ROOT), name);
+}
+
+function componentRoot(envName, siblingName) {
+  return resolve(process.env[envName] || siblingRepo(siblingName));
+}
+
+function pythonCommandForPackage(root, moduleName, args) {
+  return {
+    cwd: root,
+    env: {
+      PYTHONPATH: join(root, "src")
+    },
+    argv: ["python3", "-m", moduleName, ...args]
+  };
+}
+
+function wrapperCommand(root, args) {
+  return {
+    cwd: root,
+    env: {},
+    argv: ["python3", join(root, "scripts/evozeus_wrapper.py"), ...args]
+  };
+}
+
+function componentReadiness() {
+  const infraRoot = componentRoot("EVOZEUS_INFRA_ROOT", "EvoZeus-infra");
+  const wrapperRoot = componentRoot("EVOZEUS_WRAPPER_ROOT", "EvoZeus-CoEvolve");
+  const officialRoot = componentRoot("EVOZEUS_OFFICIAL_REPO_ROOT", "EvoZeus-session-signal-skill");
+  const infraCli = join(infraRoot, "src/evozeus_runtime/cli/main.py");
+  const wrapperCli = join(wrapperRoot, "scripts/evozeus_wrapper.py");
+  const officialSkill = join(officialRoot, "SKILL.md");
+
+  return {
+    evozeus: {
+      owner: "evozeus",
+      available: existsSync(join(SOURCE_ROOT, "scripts/evozeus-cli.mjs")),
+      detected_path: SOURCE_ROOT,
+      executable_command: ["node", join(SOURCE_ROOT, "scripts/evozeus-cli.mjs"), "--help"],
+      repair_hint: null
+    },
+    "EvoZeus-infra": {
+      owner: "EvoZeus-infra",
+      available: existsSync(infraCli),
+      detected_path: infraRoot,
+      executable_command: ["python3", "-m", "evozeus_runtime.cli.main", "status"],
+      repair_hint: existsSync(infraCli)
+        ? null
+        : "Set EVOZEUS_INFRA_ROOT to a local EvoZeus-infra checkout or install evozeus-runtime."
+    },
+    "EvoZeus-CoEvolve": {
+      owner: "EvoZeus-CoEvolve",
+      available: existsSync(wrapperCli),
+      detected_path: wrapperRoot,
+      executable_command: ["python3", wrapperCli, "--help"],
+      repair_hint: existsSync(wrapperCli)
+        ? null
+        : "Set EVOZEUS_WRAPPER_ROOT to a local EvoZeus-CoEvolve checkout."
+    },
+    "EvoZeus-session-signal-skill": {
+      owner: "EvoZeus-session-signal-skill",
+      available: existsSync(officialSkill),
+      detected_path: officialRoot,
+      executable_command: null,
+      repair_hint: existsSync(officialSkill)
+        ? null
+        : "Set EVOZEUS_OFFICIAL_REPO_ROOT to a local EvoZeus-session-signal-skill checkout."
+    }
+  };
+}
+
+function infraBackendCommand(options, mode) {
+  const readiness = componentReadiness()["EvoZeus-infra"];
+  const official = componentReadiness()["EvoZeus-session-signal-skill"];
+  const workspace = workspaceInfo(options).root;
+  const args =
+    mode === "project"
+      ? [
+          "project-insights",
+          "--workspace",
+          workspace,
+          "--project",
+          options.project,
+          "--format",
+          "markdown",
+          "--format",
+          "json",
+          "--format",
+          "html",
+          ...(options.projectMode === "keyword" || options.projectMode === "contains" ? ["--contains"] : [])
+        ]
+      : [
+          "session-insights",
+          "--workspace",
+          workspace,
+          "--official-repo-root",
+          official.detected_path,
+          ...(options.force ? ["--force"] : [])
+        ];
+
+  return {
+    owner: "EvoZeus-infra",
+    available: readiness.available,
+    detected_path: readiness.detected_path,
+    command: pythonCommandForPackage(readiness.detected_path, "evozeus_runtime.cli.main", args),
+    repair_hint: readiness.repair_hint
+  };
+}
+
+function wrapperBackendCommand(args) {
+  const readiness = componentReadiness()["EvoZeus-CoEvolve"];
+  return {
+    owner: "EvoZeus-CoEvolve",
+    available: readiness.available,
+    detected_path: readiness.detected_path,
+    command: wrapperCommand(readiness.detected_path, args),
+    repair_hint: readiness.repair_hint
+  };
 }
 
 function sha256(value) {
@@ -346,8 +692,16 @@ function buildActivityPayload(result, options) {
   }
 
   const eventByOperation = {
+    "features.describe": ["capability.used", "features.describe", "Checked available EvoZeus product features."],
     "capabilities.describe": ["capability.used", "capabilities.describe", "Checked available EvoZeus capabilities."],
     "workspace.activate": ["workspace.activated", "workspace.activate", "Checked local EvoZeus workspace readiness."],
+    "insights.plan": ["capability.used", "insights.plan", "Prepared a session insights route plan without reading raw stores."],
+    "insights.sessions": ["capability.used", "insights.sessions", "Prepared a session insights execution plan."],
+    "insights.projectSessions": ["capability.used", "insights.projectSessions", "Prepared a project-scoped session insights execution plan."],
+    "insights.openReport": ["capability.used", "insights.openReport", "Prepared a local report open command."],
+    "preserve.draft": ["capability.used", "preserve.draft", "Prepared a privacy-preserving artifact draft from a local report."],
+    "coevolve.status": ["capability.used", "coevolve.status", "Checked local co-evolution wrapper status."],
+    "coevolve.auditFeedback": ["capability.used", "coevolve.auditFeedback", "Prepared a co-evolution feedback audit plan."],
     "session.scanPlan": ["capability.used", "session.scanPlan", "Prepared a local session scan plan without reading raw stores."],
     "system.doctor": ["system.doctor", "system.doctor", "Ran an EvoZeus local health check."],
     "system.updatePlan": ["system.update_planned", "system.updatePlan", "Prepared an EvoZeus update plan."],
@@ -407,6 +761,15 @@ function buildCapabilities(options) {
   });
 }
 
+function buildFeatures(options) {
+  return envelope("features.describe", options, {
+    product_version: "0.3",
+    cli_version: CLI_VERSION,
+    source_root: SOURCE_ROOT,
+    features: PRODUCT_FEATURES
+  });
+}
+
 function activate(options) {
   const workspace = workspaceInfo(options);
   const registration = readJsonFile(join(workspace.evozeus_root, "registration.json"));
@@ -420,9 +783,9 @@ function activate(options) {
       install_status: manifest?.status ?? "missing"
     },
     next_command:
-      "~/.evozeus/bin/evozeus capabilities --json",
+      "~/.evozeus/bin/evozeus features --json && ~/.evozeus/bin/evozeus capabilities --json",
     next_action:
-      "Show the EvoZeus capabilities to the user, then ask which path to take. Do not scan local sessions, write files, or submit to GitHub without explicit approval."
+      "Show the EvoZeus product features to the user, use capabilities for risk and permission facts, then ask which path to take. Do not scan local sessions, write files, or submit to GitHub without explicit approval."
   });
 }
 
@@ -565,6 +928,93 @@ function scanPlan(options) {
   );
 }
 
+function insightsPlan(options) {
+  const backend = infraBackendCommand(options, "session");
+  return envelope("insights.plan", options, {
+    insights_plan: {
+      source: options.source || "codex",
+      reads_raw_store_now: false,
+      writes_report_now: false,
+      runs_factor_now: false,
+      opens_browser_now: false,
+      required_before_execution: [
+        "specific source path or approved provider",
+        "redaction policy",
+        "factor reuse policy",
+        "artifact write destination",
+        "user approval"
+      ],
+      forbidden_in_this_command: [
+        "reading raw session files",
+        "running scanner",
+        "running FactorRunner",
+        "writing reports",
+        "opening browser"
+      ]
+    },
+    backend
+  });
+}
+
+function insightsSessions(options) {
+  const isProject = Boolean(options.project);
+  const backend = infraBackendCommand(options, isProject ? "project" : "session");
+  const operation = isProject ? "insights.projectSessions" : "insights.sessions";
+
+  return envelope(
+    operation,
+    options,
+    {
+      project: isProject
+        ? {
+            project_key: options.project,
+            project_mode: options.projectMode || "auto"
+          }
+        : null,
+      execution: {
+        source: options.source || "codex",
+        runs_backend_now: false,
+        reads_raw_store_now: false,
+        writes_now: false,
+        opens_browser_now: false,
+        reuse_factors: Boolean(options.reuseFactors),
+        html: Boolean(options.html),
+        force: Boolean(options.force)
+      },
+      backend,
+      approval_required_for: [
+        "reading raw session files",
+        "running scanner",
+        "running FactorRunner",
+        "writing local reports",
+        "opening generated HTML"
+      ]
+    },
+    {
+      required: true,
+      reason: "Session insights execution reads local runtime/session stores and writes reports; review the route plan before approving."
+    }
+  );
+}
+
+function insightsOpen(options) {
+  const workspace = workspaceInfo(options).root;
+  const reportPath = join(workspace, ".evozeus/runtime/reports/ai-usage-profile/index.html");
+  return envelope("insights.openReport", options, {
+    report: {
+      latest: Boolean(options.latest),
+      html_path: reportPath,
+      exists: existsSync(reportPath)
+    },
+    execution: {
+      opens_browser_now: false,
+      reads_raw_store_now: false,
+      writes_now: false
+    },
+    open_command: ["open", reportPath]
+  });
+}
+
 function classifyTarget(target, options) {
   if (/^https?:\/\/github\.com\//i.test(target)) {
     return { kind: "github_repo", ref: target, inside_workspace: false, exists: null };
@@ -620,7 +1070,7 @@ function attachHarness(options) {
     {
       handoff_plan: {
         target,
-        recommended_route: "EvoZeus-wrapper",
+        recommended_route: "EvoZeus-CoEvolve",
         global_evozeus_home: "~/.evozeus",
         target_infra_dir: ".evozeus_evoinfra",
         legacy_target_infra_dir: ".evozeus",
@@ -637,7 +1087,7 @@ function attachHarness(options) {
           "confirm target owner",
           "route target repo-local harness files under .evozeus_evoinfra/",
           "redact private examples",
-          "run EvoZeus-wrapper harness upgrade-check",
+          "run EvoZeus-CoEvolve harness upgrade-check",
           "generate feedback issue draft",
           "prepare design doc / PR plan"
         ],
@@ -646,6 +1096,166 @@ function attachHarness(options) {
     },
     approval
   );
+}
+
+function coevolveStatus(options) {
+  if (!options.target) {
+    throw new CliError("MISSING_TARGET", "coevolve.status requires --target <path|url>.", "coevolve.status");
+  }
+
+  const target = classifyTarget(options.target, options);
+  const targetPath = resolveWorkspacePath(options, options.target);
+  const manifestPath = join(targetPath, ".evozeus_evoinfra/wrapper.json");
+  const manifest = readJsonFile(manifestPath);
+  const backend = wrapperBackendCommand(["skill", "diagnose", "--target", targetPath, "--json"]);
+
+  return envelope("coevolve.status", options, {
+    target,
+    wrapper: {
+      manifest_path: manifestPath,
+      manifest_exists: Boolean(manifest),
+      wrapper_version: manifest?.wrapper_version || manifest?.version || null,
+      integration_mode: manifest?.integration?.mode || null
+    },
+    execution: {
+      reads_target_manifest_now: true,
+      writes_now: false,
+      github_writes_now: false
+    },
+    backend
+  });
+}
+
+function coevolveAudit(options) {
+  if (!options.target) {
+    throw new CliError("MISSING_TARGET", "coevolve.audit requires --target <path|url>.", "coevolve.auditFeedback");
+  }
+  if (!options.userInput) {
+    throw new CliError("MISSING_USER_INPUT", "coevolve.audit requires --user-input <feedback>.", "coevolve.auditFeedback");
+  }
+
+  const targetPath = resolveWorkspacePath(options, options.target);
+  const userInputHash = sha256(options.userInput);
+  const backend = wrapperBackendCommand([
+    "loop",
+    "audit",
+    "--target",
+    targetPath,
+    "--user-input",
+    "<redacted-user-input>",
+    "--json"
+  ]);
+
+  return envelope("coevolve.auditFeedback", options, {
+    target: classifyTarget(options.target, options),
+    feedback: {
+      sha256: userInputHash,
+      bytes: Buffer.byteLength(options.userInput, "utf8"),
+      raw_content_included: false
+    },
+    execution: {
+      writes_now: false,
+      github_writes_now: false,
+      target_repo_writes_now: false
+    },
+    backend,
+    next_action:
+      "Review the redacted feedback audit plan with the user before creating any GitHub issue, PR, or target repo change."
+  });
+}
+
+function summarizeReportForDraft(report) {
+  const projects = reportProjects(report);
+  const candidates = [];
+
+  for (const [index, project] of projects.entries()) {
+    candidates.push({
+      artifact_type: "Accepted Case",
+      title: `Project insight case: ${project.project_key || project.project_label || `project-${index + 1}`}`,
+      evidence_refs: [`report://projects/${index}`],
+      source_sessions: projectSessionCount(project)
+    });
+
+    const phrases = projectRepeatedPhrases(project);
+    for (const [phraseIndex, phrase] of phrases.entries()) {
+      candidates.push({
+        artifact_type: "Habit or Factor Candidate",
+        title: `Repeated user phrase candidate #${phraseIndex + 1}`,
+        evidence_refs: [`report://projects/${index}/user_repeated_phrases/${phraseIndex}`],
+        occurrence_count: Number(phrase.count || phrase.occurrence_count || phrase.occurrences?.length || 0),
+        text_sha256: phrase.text ? sha256(String(phrase.text)) : null
+      });
+    }
+  }
+
+  if (candidates.length === 0) {
+    candidates.push({
+      artifact_type: "Open Case",
+      title: "Report requires human review before preservation",
+      evidence_refs: ["report://root"],
+      source_sessions: Number(report?.session_count || report?.sessions || 0)
+    });
+  }
+
+  return candidates;
+}
+
+function reportProjects(report) {
+  if (Array.isArray(report?.projects)) {
+    return report.projects;
+  }
+  if (Array.isArray(report?.reports)) {
+    return report.reports;
+  }
+  if (report && typeof report === "object" && (report.project || report.project_key || report.user_repeated_phrases || report.exact_phrases)) {
+    return [report];
+  }
+  return [];
+}
+
+function projectSessionCount(project) {
+  if (Array.isArray(project.source_sessions)) {
+    return project.source_sessions.length;
+  }
+  return Number(project.source_sessions || project.session_count || project.sessions || 0);
+}
+
+function projectRepeatedPhrases(project) {
+  if (Array.isArray(project.user_repeated_phrases)) {
+    return project.user_repeated_phrases;
+  }
+  return Array.isArray(project.exact_phrases) ? project.exact_phrases : [];
+}
+
+function preserveDraft(options) {
+  if (!options.fromReport) {
+    throw new CliError("MISSING_REPORT", "preserve.draft requires --from-report <path>.", "preserve.draft");
+  }
+
+  const reportPath = resolveWorkspacePath(options, options.fromReport);
+  const report = readJsonFile(reportPath);
+  if (!report) {
+    throw new CliError("REPORT_READ_FAILED", "Unable to read the explicit report JSON file.", "preserve.draft");
+  }
+
+  return envelope("preserve.draft", options, {
+    source_report: {
+      path: options.fromReport,
+      sha256: sha256(JSON.stringify(report))
+    },
+    artifact_candidates: summarizeReportForDraft(report),
+    execution: {
+      writes_now: false,
+      external_writes_now: false
+    },
+    privacy: {
+      raw_report_embedded: false,
+      raw_session_included: false,
+      phrase_text_redacted: true
+    },
+    next_action:
+      "Review artifact candidates with the user, then choose Case, Factor, Habit, Rule, wrapper co-evolution, or no preservation."
+  });
 }
 
 function doctor(options) {
@@ -673,12 +1283,13 @@ function doctor(options) {
       status: missing.length === 0 ? "complete" : "incomplete",
       missing
     },
+    component_readiness: componentReadiness(),
     optional_paths: {
       session_scan: "approval_required",
       infra_runtime: "approval_required",
       wrapper_github_write: "forbidden_in_p0"
     },
-    next_command: "~/.evozeus/bin/evozeus capabilities --json"
+    next_command: "~/.evozeus/bin/evozeus features --json && ~/.evozeus/bin/evozeus capabilities --json"
   });
 }
 
@@ -772,10 +1383,19 @@ function printHelp() {
   console.log(`Usage: evozeus <command> [options]
 
 Commands:
+  features --json
   capabilities --json
   activate --json
+  review session --input <path|-> --json
+  insights plan --source codex --json
+  insights sessions --source codex --reuse-factors --html --json
+  insights open --latest --json
+  preserve draft --from-report <path> --json
   session analyze --input <path|-> --json
   session scan --dry-run --json
+  coevolve attach --target <path|url> --json
+  coevolve status --target <path|url> --json
+  coevolve audit --target <path|url> --user-input <feedback> --json
   harness attach --target <path|url> --json
   doctor --json
   update --dry-run --json
@@ -803,8 +1423,16 @@ function route(parsed) {
     return buildCapabilities(options);
   }
 
+  if (command === "features") {
+    return buildFeatures(options);
+  }
+
   if (command === "activate") {
     return activate(options);
+  }
+
+  if (command === "review" && subcommand === "session") {
+    return analyzeSession(options);
   }
 
   if (command === "session" && subcommand === "analyze") {
@@ -815,8 +1443,36 @@ function route(parsed) {
     return scanPlan(options);
   }
 
+  if (command === "insights" && subcommand === "plan") {
+    return insightsPlan(options);
+  }
+
+  if (command === "insights" && subcommand === "sessions") {
+    return insightsSessions(options);
+  }
+
+  if (command === "insights" && subcommand === "open") {
+    return insightsOpen(options);
+  }
+
+  if (command === "preserve" && subcommand === "draft") {
+    return preserveDraft(options);
+  }
+
   if (command === "harness" && subcommand === "attach") {
     return attachHarness(options);
+  }
+
+  if (command === "coevolve" && subcommand === "attach") {
+    return attachHarness(options);
+  }
+
+  if (command === "coevolve" && subcommand === "status") {
+    return coevolveStatus(options);
+  }
+
+  if (command === "coevolve" && subcommand === "audit") {
+    return coevolveAudit(options);
   }
 
   if (command === "doctor") {

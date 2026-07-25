@@ -9,9 +9,9 @@ Factor submissions.
 | Asset | Primary location |
 | --- | --- |
 | Factor proposal / Candidate | GitHub issue or Candidate PR in `EvoZeus` |
-| Draft Factor pack or scanner module | `evozeus-factor-lab` |
-| Reviewed but unreleased Factor asset | `evozeus-factor-lab/reviewed/` |
-| Session signal review method / official review factor tools | `evozeus-session-signal-skill` |
+| Draft Factor pack or scanner module | `EvoZeus-factor-lab` |
+| Reviewed but unreleased Factor asset | `EvoZeus-factor-lab/reviewed/` |
+| Session signal review method / official review factor tools | `EvoZeus-session-signal-skill` |
 | Official released Factor pack | future official Factor release mechanism |
 | Stable public registry pointer | `EvoZeus` main registry / docs |
 
