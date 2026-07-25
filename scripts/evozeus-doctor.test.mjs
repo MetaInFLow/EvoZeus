@@ -100,6 +100,7 @@ describe("evozeus-doctor", () => {
     assert.match(result.stdout, /available_capabilities: .*fixture-only official factor runner smoke/);
     assert.match(result.stdout, /approval_required_capabilities: .*workspace scan/);
     assert.match(result.stdout, /approval_required_capabilities: .*factor execution on user data/);
+    assert.match(result.stdout, /evozeus features --json/);
     assert.match(result.stdout, /evozeus capabilities --json/);
   });
 

@@ -47,7 +47,7 @@ EvoZeus CLI 是 install skill 落地后的本地 Agent Surface。它用结构化
 3. CLI 默认 dry-run 和 read-only，写入、扫描、网络发布必须显式批准。
 4. agent 必须先 describe capabilities，再选择具体 operation。
 5. 所有 agent 可用输出必须支持 JSON envelope，不能依赖自然语言 stdout。
-6. `evozeus` 负责编排和权限边界，`evozeus-infra`、`EvoZeus-wrapper`、signal skill 只在明确场景下被调用。
+6. `evozeus` 负责编排和权限边界，`EvoZeus-infra`、`EvoZeus-CoEvolve`、signal skill 只在明确场景下被调用。
 7. P0 不引入 daemon、MCP server、TUI、cloud sync 或全局 npm publish。
 
 ## 4. 目标与非目标
@@ -70,8 +70,8 @@ EvoZeus CLI 是 install skill 落地后的本地 Agent Surface。它用结构化
 - 不实现 MCP server。
 - 不自动读取 `~/.codex/sessions` 或其它 agent raw store。
 - 不自动 clone、checkout、push、创建 GitHub issue / PR / release。
-- 不把 `evozeus-infra` 变成默认第一入口。
-- 不把 `EvoZeus-wrapper` 变成 session 分析器。
+- 不把 `EvoZeus-infra` 变成默认第一入口。
+- 不把 `EvoZeus-CoEvolve` 变成 session 分析器。
 - 不发布 npm global package 作为第一版安装前提。
 
 ## 5. 用户旅程
@@ -80,7 +80,7 @@ EvoZeus CLI 是 install skill 落地后的本地 Agent Surface。它用结构化
 
 ```text
 User
-  -> copies install skill from evozeus-web /skill
+  -> copies install skill from EvoZeus-web /skill
   -> local agent runs install flow
   -> EvoZeus writes .evozeus skeleton after approval
   -> install report points to .evozeus/bin/evozeus
@@ -312,7 +312,7 @@ handoff plan 至少包含：
     "kind": "skill",
     "ref": "/path/to/skill"
   },
-  "recommended_route": "EvoZeus-wrapper",
+  "recommended_route": "EvoZeus-CoEvolve",
   "global_evozeus_home": "~/.evozeus",
   "target_infra_dir": ".evozeus_evoinfra",
   "legacy_target_infra_dir": ".evozeus",
@@ -323,7 +323,7 @@ handoff plan 至少包含：
     "confirm target owner",
     "route target repo-local harness files under .evozeus_evoinfra/",
     "redact private examples",
-    "run EvoZeus-wrapper harness upgrade-check",
+    "run EvoZeus-CoEvolve harness upgrade-check",
     "generate feedback issue draft",
     "prepare design doc / PR plan"
   ],
@@ -404,10 +404,10 @@ Run ~/.evozeus/bin/evozeus capabilities --json, show the available EvoZeus capab
 | 组件 | CLI 中的位置 | 边界 |
 | --- | --- | --- |
 | `evozeus` | CLI、capability router、install skeleton、permission gate | 产品主入口 |
-| `evozeus-infra` | `session.scan`、future runtime/factor path 的 optional executor | 不默认扫描，不定义产品语义 |
-| `EvoZeus-wrapper` | `harness.attach` 的 recommended route | 不做 session judgment |
-| `evozeus-session-signal-skill` | `session.analyze` 的 optional signal method | 不做最终 verdict |
-| `evozeus-web` | `/skill` 分发 install skill | 不执行 CLI，不扫描本地 |
+| `EvoZeus-infra` | `session.scan`、future runtime/factor path 的 optional executor | 不默认扫描，不定义产品语义 |
+| `EvoZeus-CoEvolve` | `harness.attach` 的 recommended route | 不做 session judgment |
+| `EvoZeus-session-signal-skill` | `session.analyze` 的 optional signal method | 不做最终 verdict |
+| `EvoZeus-web` | `/skill` 分发 install skill | 不执行 CLI，不扫描本地 |
 
 ## 14. 测试计划
 

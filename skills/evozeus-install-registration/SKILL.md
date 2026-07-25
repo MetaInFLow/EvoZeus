@@ -30,8 +30,9 @@ community /skill
   -> install or update ~/.evozeus/skeleton and ~/.evozeus/bin/evozeus
   -> output install report
   -> run ~/.evozeus/bin/evozeus --help
+  -> run ~/.evozeus/bin/evozeus features --json
   -> run ~/.evozeus/bin/evozeus capabilities --json
-  -> translate relevant capabilities into natural language for the user's goal
+  -> translate relevant product features into natural language for the user's goal
   -> ask which concrete EvoZeus path the user wants next
 ```
 
@@ -126,7 +127,7 @@ Registration status -> Skeleton source -> Skills inventory -> Files written -> N
 
 The installer emits this report as JSON so the agent can summarize it without guessing.
 
-After install, run the local capability router before asking for the next approval:
+After install, run local help and the product feature router before asking for the next approval:
 
 ```bash
 ~/.evozeus/bin/evozeus --help
@@ -135,24 +136,32 @@ After install, run the local capability router before asking for the next approv
 Use CLI help as the installed command surface. Then run:
 
 ```bash
+~/.evozeus/bin/evozeus features --json
+```
+
+Use `features --json` as the product menu. Then run:
+
+```bash
 ~/.evozeus/bin/evozeus capabilities --json
 ```
 
-Use `capabilities --json` as the source of write mode, risk level, approval, and examples. Show the natural-language capability summary with the fixed `Post-Install Capability Template` from `../../docs/reference/install-onboarding-conversation.md` before asking the user what to do:
+Use `capabilities --json` as the source of write mode, risk level, approval, and examples. Show the natural-language feature summary with the fixed `Post-Install Capability Template` from `../../docs/reference/install-onboarding-conversation.md` before asking the user what to do:
 
-| Capability | Status after health OK |
+| Product feature | Status after health OK |
 | --- | --- |
-| Analyze Agent Session | Available for explicit user input through `evozeus session analyze --input <path|-> --json`; do not scan local stores by default |
-| Attach Co-evolution Harness | Available as a plan through `evozeus harness attach --target <path|url> --json`; do not write repos or GitHub by default |
+| Review Agent Session | Available for explicit user input through `evozeus review session --input <path|-> --json`; do not scan local stores by default |
+| Generate Session Insights Report | Plan route through `evozeus insights plan --source codex --json`; after separate approval, execute `evozeus-runtime session-insights --workspace "$HOME" --official-repo-root <EvoZeus-session-signal-skill>` from the runtime checkout to generate `.evozeus/runtime/reports/ai-usage-profile/index.html` |
+| Preserve Artifact Draft | Available through `evozeus preserve draft --from-report <path> --json`; does not upload or publish |
+| Attach Co-evolution Harness | Available as a plan through `evozeus coevolve attach --target <path|url> --json`; do not write repos or GitHub by default |
 | Check / Repair EvoZeus | Available through `evozeus doctor --json` |
 | Update EvoZeus | Dry-run plan available through `evozeus update --dry-run --json`; writes require approval |
 | Uninstall / Archive EvoZeus | Dry-run plan available through `evozeus uninstall --dry-run --json`; deletion requires approval |
 | Workspace scan, runtime execution, factor execution on user data, report files, artifact preservation, GitHub issue/PR/public artifact | Not enabled by install; ask for explicit user approval and route to the matching scenario skill first |
 
-The next command should be capability-first:
+The next command should be feature-first:
 
 ```text
-Run ~/.evozeus/bin/evozeus --help, then run ~/.evozeus/bin/evozeus capabilities --json. Translate the available EvoZeus capabilities into the user's current business goal using the fixed template, recommend one safe next path, and ask the user to choose. Do not scan local sessions, write files, or submit to GitHub unless the user explicitly approves the specific action.
+Run ~/.evozeus/bin/evozeus --help, then run ~/.evozeus/bin/evozeus features --json and ~/.evozeus/bin/evozeus capabilities --json. Translate the available EvoZeus product features into the user's current business goal using the fixed template, recommend one safe next path, and ask the user to choose. Do not scan local sessions, write files, or submit to GitHub unless the user explicitly approves the specific action.
 ```
 
 ## Boundaries

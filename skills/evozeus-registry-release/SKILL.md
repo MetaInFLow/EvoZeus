@@ -24,7 +24,7 @@ EvoZeus registry pointer
 - point to allowlisted official releases
 - define default official factor set
 - track channel, version pinning, review state, deprecation, and yank behavior
-- route official pack body changes to `evozeus-session-signal-skill`
+- route official pack body changes to `EvoZeus-session-signal-skill`
 
 ## Default Official Factors
 

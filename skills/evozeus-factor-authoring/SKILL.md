@@ -41,10 +41,10 @@ Route heavier assets as follows:
 
 | Asset | Repo |
 | --- | --- |
-| Draft Factor pack | `evozeus-factor-lab` |
-| Scanner module | `evozeus-factor-lab` |
-| Reviewed/rejected lab record | `evozeus-factor-lab` |
-| Official released Factor pack | `evozeus-session-signal-skill` |
+| Draft Factor pack | `EvoZeus-factor-lab` |
+| Scanner module | `EvoZeus-factor-lab` |
+| Reviewed/rejected lab record | `EvoZeus-factor-lab` |
+| Official released Factor pack | `EvoZeus-session-signal-skill` |
 | Stable registry pointer | `EvoZeus` |
 
 Do not place executable scanner code, unreviewed pack assets, or raw private session evidence in the main repo.

@@ -45,8 +45,8 @@
 
 | Repo | Responsibility |
 | --- | --- |
-| `evozeus-factor-lab` | Factor pack and scanner module submissions, reviewed/rejected records, and incubation templates |
-| `evozeus-session-signal-skill` | Official Factor pack releases, manifests, checksums, SBOM, and attestations |
+| `EvoZeus-factor-lab` | Factor pack and scanner module submissions, reviewed/rejected records, and incubation templates |
+| `EvoZeus-session-signal-skill` | Official Factor pack releases, manifests, checksums, SBOM, and attestations |
 
 The main repo remains the public intake and canonical governance surface. It should not host executable Factor pack code or scanner modules directly.
 

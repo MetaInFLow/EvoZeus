@@ -35,8 +35,8 @@ Runtime-owned bundled scanner packs belong in `evozeus-runtime` after explicit p
 
 ```text
 evozeus-runtime/<runtime-pack-location>/<scanner_id>/<version>/
-evozeus-factor-lab/submissions/<domain>/<scanner-id>/
-evozeus-session-signal-skill/packs/<pack-id>/
+EvoZeus-factor-lab/submissions/<domain>/<scanner-id>/
+EvoZeus-session-signal-skill/packs/<pack-id>/
 ```
 
 用户下载的 scanner pack 放在：

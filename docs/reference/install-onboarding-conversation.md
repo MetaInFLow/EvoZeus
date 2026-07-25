@@ -27,7 +27,7 @@ The agent must move the user through four gates:
 1. Confirm the user's intent to join EvoZeus.
 2. Explain registration and privacy boundaries before asking for approval.
 3. Install or reconcile EvoZeus only after approval.
-4. Run CLI help and capabilities, translate the user's relevant business functions into plain language, then ask the user to choose one next path.
+4. Run CLI help, features, and capabilities; translate the user's relevant product feature into plain language, then ask the user to choose one next path.
 
 The goal is not to sell every capability. The goal is to help the user decide the next safe, useful EvoZeus action.
 
@@ -73,45 +73,52 @@ If the local shim is not available yet but the resolved source tree is available
 node scripts/evozeus-cli.mjs --help
 ```
 
+Then run the product feature router:
+
+```bash
+~/.evozeus/bin/evozeus features --json
+```
+
 Then run the structured capability router:
 
 ```bash
 ~/.evozeus/bin/evozeus capabilities --json
 ```
 
-Do not invent capabilities. Treat CLI help as the command surface and `capabilities --json` as the source of risk, approval, examples, and write-mode facts.
+Do not invent features or capabilities. Treat CLI help as the installed command surface, `features --json` as the product menu, and `capabilities --json` as the source of risk, approval, examples, and write-mode facts.
 
-## Natural Language Capability Mapping
+## Natural Language Feature Mapping
 
-Translate capabilities by user goal, not by implementation name.
+Translate features by user goal, not by implementation name. Use related capabilities only when explaining execution risk and approval boundaries.
 
-| User goal | Capability to present | Plain-language description |
-| --- | --- | --- |
-| "我想让 EvoZeus 看这次 Agent 表现" | `session.analyze` | 你提供一段明确的 Session 文本或文件，EvoZeus 在本地生成 Session Verdict Card，指出哪些行为值得保留、修复、提炼成 Skill / Factor，默认不扫描本机历史记录。 |
-| "我想让某个 Skill / repo 持续进化" | `harness.attachPlan` | EvoZeus 先为目标 Skill、plugin 或 repo 生成接入计划，把真实使用中的问题转成可复盘、可改进、可治理的共进化路径；这一步只做计划，不写目标仓库。 |
-| "我不确定装好了没有" | `system.doctor` / `workspace.activate` | EvoZeus 检查本地注册、skeleton、CLI 和必需组件是否可用，并告诉你下一条安全命令。 |
-| "我想更新 EvoZeus" | `system.updatePlan` | EvoZeus 先给出 dry-run 更新计划，列出将刷新哪些本地 skeleton / CLI 文件；实际写入需要单独批准。 |
-| "我想退出或清理" | `system.uninstallPlan` | EvoZeus 先给出归档或卸载计划，不直接删除；任何破坏性动作都需要单独批准。 |
-| "我想扫描历史会话或跑 Factor" | `session.scanPlan` plus runtime routing | 安装阶段不会扫描历史会话。只能先生成扫描计划，确认来源、脱敏策略、输出位置和权限后，再进入 runtime routing。 |
+| User goal | Feature to present | Related capability | Plain-language description |
+| --- | --- | --- | --- |
+| "我想让 EvoZeus 看这次 Agent 表现" | `review.session` | `session.analyze` | 你提供一段明确的 Session 文本或文件，EvoZeus 在本地生成 Session Verdict Card，指出哪些行为值得保留、修复、提炼成 Skill / Factor，默认不扫描本机历史记录。 |
+| "我想扫描历史会话或按项目看洞察" | `insights.sessions` | `session.scanPlan` plus runtime routing | 安装阶段不会扫描历史会话。只能先生成扫描计划，确认来源、脱敏策略、输出位置和权限后，再进入 runtime routing。 |
+| "我想让某个 Skill / repo 持续进化" | `coevolve.target` | `harness.attachPlan` | EvoZeus 先为目标 Skill、plugin 或 repo 生成接入计划，把真实使用中的问题转成可复盘、可改进、可治理的共进化路径；这一步只做计划，不写目标仓库。 |
+| "我不确定装好了没有" | `activate` / `maintain` | `system.doctor` / `workspace.activate` | EvoZeus 检查本地注册、skeleton、CLI 和必需组件是否可用，并告诉你下一条安全命令。 |
+| "我想更新 EvoZeus" | `maintain` | `system.updatePlan` | EvoZeus 先给出 dry-run 更新计划，列出将刷新哪些本地 skeleton / CLI 文件；实际写入需要单独批准。 |
+| "我想退出或清理" | `uninstall` | `system.uninstallPlan` | EvoZeus 先给出归档或卸载计划，不直接删除；任何破坏性动作都需要单独批准。 |
 
 When the user's current intent is clear, lead with one recommended path and keep the full list secondary.
 
 ## Post-Install Capability Template
 
-After running help and `capabilities --json`, output the capability introduction with this template. Keep the section order stable and fill placeholders from the install report, CLI help, capability JSON, and the user's current intent. Do not freestyle a different structure.
+After running help, `features --json`, and `capabilities --json`, output the feature introduction with this template. Keep the section order stable and fill placeholders from the install report, CLI help, feature JSON, capability JSON, and the user's current intent. Do not freestyle a different structure.
 
 ```text
 EvoZeus 已接入本地 Agent。
 
 安装状态：<installed | reconciled | dry_run | blocked>
 注册状态：<registered | missing | restored | unknown>
-已读取：`<help command>`、`<capabilities command>`
+已读取：`<help command>`、`<features command>`、`<capabilities command>`
 
 现在能做：
 1. 复盘 Agent Session：你明确提供 session 文本或文件后，我在本地生成 Session Verdict Card。
-2. 接入 Skill / repo 共进化：我先为目标生成 harness 接入计划，不直接改目标仓库。
-3. 检查本地状态：检查注册、skeleton、CLI 和组件完整性。
-4. 更新或卸载：先输出 dry-run 计划，任何写入或删除前再确认。
+2. 扫描历史 Session 并生成洞察报告：先出扫描计划；读取历史记录、跑 Factor、写报告前再确认。
+3. 接入 Skill / repo 共进化：我先为目标生成 co-evolve 接入计划，不直接改目标仓库。
+4. 检查本地状态：检查注册、skeleton、CLI 和组件完整性。
+5. 更新或卸载：先输出 dry-run 计划，任何写入或删除前再确认。
 
 需要额外批准：
 本地历史会话扫描、FactorRunner、报告文件、活动反馈、GitHub Issue/PR、任何外部上传。
@@ -121,19 +128,21 @@ EvoZeus 已接入本地 Agent。
 
 请选择：
 A. 分析一个我明确提供的 Session
-B. 为某个 Skill / repo 生成 harness 接入计划
-C. 运行本地健康检查
-D. 查看更新或卸载 dry-run 计划
-E. 暂停在已安装状态
+B. 先生成历史 Session 洞察扫描计划
+C. 为某个 Skill / repo 生成 co-evolve 接入计划
+D. 运行本地健康检查
+E. 查看更新或卸载 dry-run 计划
+F. 暂停在已安装状态
 ```
 
-If a capability is unavailable in the JSON result, remove that option from "现在能做" and the choices instead of inventing support.
+If a feature or capability is unavailable in the JSON result, remove that option from "现在能做" and the choices instead of inventing support.
 
 ## Safety Language
 
 Use these boundaries when the user asks for more automation:
 
-- `session.analyze` may read only explicit input provided by the user through a file path or stdin.
+- `review.session` / `session.analyze` may read only explicit input provided by the user through a file path or stdin.
+- `insights.sessions` is only a planned route until the user separately approves local session store access and report writes.
 - `session.scanPlan` is only a plan unless the user separately approves local session store access.
 - Activity feedback is optional and hash-only; sending feedback requires explicit approval such as `--approve-feedback`.
 - Public GitHub target URLs may be included only when the user explicitly marks the target public.
@@ -146,8 +155,9 @@ The post-install response must include:
 - installation or reconciliation status
 - whether local registration exists
 - CLI help command run
+- feature router command run
 - capability router command run
-- the fixed capability template above, with natural-language descriptions tied to the user's current goal
+- the fixed feature template above, with natural-language descriptions tied to the user's current goal
 - recommended next path
 - approval needed before any write, scan, network feedback, or GitHub action
 

@@ -34,11 +34,11 @@ EvoZeus also defines a software pattern: **Skill Driven Software (SDS)**. In SDS
 Copy this into your agent:
 
 ```text
-Run ~/.evozeus/bin/evozeus capabilities --json, show the available EvoZeus capabilities, then ask the user which path to take. Do not scan local sessions, write files, or submit to GitHub unless the user explicitly approves the specific action.
+Run ~/.evozeus/bin/evozeus features --json, show the available EvoZeus product features, then use ~/.evozeus/bin/evozeus capabilities --json for the selected feature's risk and permission facts. Do not scan local sessions, write files, or submit to GitHub unless the user explicitly approves the specific action.
 ```
 
 If you arrived from `https://evozeus-community.vercel.app/skill`, this is the agent-readable install skill handoff. The user copies the install skill to a local agent; the agent asks before local writes, then installs or reconciles `~/.evozeus/skeleton`, `~/.evozeus/bin/evozeus`, and EvoZeus skills. Runtime, default official factors, local scans, report files, wrapper writes, and GitHub contribution happen only after explicit user approval.
-In that path, read [EvoZeus-Install Registration](skills/evozeus-install-registration/SKILL.md) before running any judgment, harness attach, update, or uninstall action.
+In that path, read [EvoZeus-Install Registration](skills/evozeus-install-registration/SKILL.md) before running any judgment, co-evolution, update, or uninstall action.
 
 ## <img src="assets/icons/evozeus-gold-128.png" alt="" width="24" align="absmiddle"> Registration / Install Sequence
 
@@ -48,13 +48,13 @@ The community `/skill` page should return an install skill, not a normal install
 sequenceDiagram
   autonumber
   participant User
-  participant Community as evozeus-web /skill
+  participant Community as EvoZeus-web /skill
   participant Installer as Agent / installer
   participant Local as User home
   participant Main as EvoZeus repo
   participant Skills as EvoZeus skills
-  participant Runtime as evozeus-infra
-  participant Official as evozeus-session-signal-skill
+  participant Runtime as EvoZeus-infra
+  participant Official as EvoZeus-session-signal-skill
 
   User->>Community: Open /skill
   Community-->>User: Agent-readable install skill
@@ -74,11 +74,13 @@ sequenceDiagram
     Installer-->>User: Report installed skeleton, CLI, and skills
   end
 
+  Installer->>Local: Run ~/.evozeus/bin/evozeus features --json
+  Local-->>Installer: Product feature menu
   Installer->>Local: Run ~/.evozeus/bin/evozeus capabilities --json
   Local-->>Installer: Capability manifest and approval gates
-  Installer-->>User: Choose session analysis, harness attach, update, or uninstall
+  Installer-->>User: Choose review, insights, co-evolve, maintain, or uninstall
   User->>Installer: Choose explicit-input session analysis
-  Installer->>Local: Run evozeus session analyze --input <path|-> --json
+  Installer->>Local: Run evozeus review session --input <path|-> --json
   Local-->>Installer: Session Verdict Card envelope
   Installer-->>User: Explain Verdict Card and next approval gates
 
@@ -101,10 +103,11 @@ sequenceDiagram
 | Web `/skill` | Should return agent-readable install skill |
 | `~/.evozeus` registration | Install path must check existing registration before creating or updating state |
 | EvoZeus install | Should install `~/.evozeus/skeleton`, `~/.evozeus/bin/evozeus`, and EvoZeus skills |
-| Capability router | Should expose `capabilities --json` before judgment, harness, update, or uninstall |
+| Product feature router | Should expose `features --json` before judgment, insights, co-evolve, maintain, or uninstall |
+| Capability router | Should expose `capabilities --json` for risk, permission, schema, and examples |
 | Explicit-input session analysis | Can produce a Session Verdict Card envelope without scanning local stores |
 | Runtime approval | Required before scanning, installing, networking, or writing `~/.evozeus/` |
-| Runtime implementation | Lives in `evozeus-infra`; scanner / runner prototype is not a default user command |
+| Runtime implementation | Lives in `EvoZeus-infra`; scanner / runner prototype is not a default user command |
 | Official Factors | Must come through registry pointer + manifest + checksum + attestation |
 | Local output | Only after approval: `~/.evozeus/infra/lockfile.json`, local evidence index, Markdown / JSON / HTML report |
 
@@ -146,21 +149,43 @@ EvoZeus is currently an **install-skill + local CLI-first agent surface**. This 
 | Goal | Start here | Output |
 | --- | --- | --- |
 | Register and install EvoZeus | [EvoZeus-Install Registration](skills/evozeus-install-registration/SKILL.md) | `~/.evozeus` registration state, skeleton, CLI, skills inventory |
-| Choose EvoZeus capability | `~/.evozeus/bin/evozeus capabilities --json` | capability manifest and approval gates |
-| Analyze one Agent Session | `~/.evozeus/bin/evozeus session analyze --input <path|-> --json` | Session Verdict Card envelope |
-| Attach co-evolution harness | `~/.evozeus/bin/evozeus harness attach --target <path|url> --json` | wrapper handoff plan |
+| Choose EvoZeus feature | `~/.evozeus/bin/evozeus features --json` | product feature menu by lifecycle |
+| Inspect execution capability | `~/.evozeus/bin/evozeus capabilities --json` | capability manifest and approval gates |
+| Analyze one Agent Session | `~/.evozeus/bin/evozeus review session --input <path|-> --json` | Session Verdict Card envelope |
+| Plan historical Session insights | `~/.evozeus/bin/evozeus insights plan --source codex --json` | infra route plan without reading raw stores |
+| Generate AI usage profile report | `~/.evozeus/bin/evozeus insights sessions --source codex --reuse-factors --html --json` | after approval, local AI Usage Profile HTML at `.evozeus/runtime/reports/ai-usage-profile/index.html` |
+| Preserve an artifact draft | `~/.evozeus/bin/evozeus preserve draft --from-report <path> --json` | local draft from an existing report |
+| Attach co-evolution harness | `~/.evozeus/bin/evozeus coevolve attach --target <path|url> --json` | wrapper handoff plan |
+| Inspect co-evolution status | `~/.evozeus/bin/evozeus coevolve status --target <path|url> --json` | wrapper manifest and route status |
 | Choose the right work scenario | [EvoZeus-Skill Index](skills/index/SKILL.md) | `EvoZeus-Development` / `EvoZeus-Community Contribution` / `EvoZeus-Reporting` / `EvoZeus-Runtime Routing` |
 | Develop EvoZeus itself | [EvoZeus-Development](skills/evozeus-development/SKILL.md) | small issue/branch/PR |
 | Contribute a Case or Candidate | [CONTRIBUTING.md](CONTRIBUTING.md) | redacted Case / Candidate PR |
 | Review PR rules | [docs/governance/pr-guidelines.md](docs/governance/pr-guidelines.md) | proof-backed PR |
 | Understand the semantic model | [docs/reference/ontology.md](docs/reference/ontology.md) | Candidate / Evidence / Verdict boundaries |
 
+**AI usage profile execution note:** `evozeus insights sessions` is the approval-safe wrapper route. It reports the backend plan and permission boundary; it does not scan raw stores by itself. After the user approves local scanning and report writes, run the runtime command from an `EvoZeus-infra` checkout with the official factor checkout installed:
+
+```bash
+cd /path/to/EvoZeus-infra
+python3 -m pip install -e .
+python3 -m pip install -e "../EvoZeus-session-signal-skill[nlp]"
+evozeus-runtime session-insights \
+  --workspace "$HOME" \
+  --official-repo-root "../EvoZeus-session-signal-skill" \
+  --force \
+  --no-skip-fresh \
+  --project-min-sessions 1 \
+  --project-top-n 30
+```
+
+The generated local report is `$HOME/.evozeus/runtime/reports/ai-usage-profile/index.html`.
+
 ## <img src="assets/icons/evozeus-gold-128.png" alt="" width="24" align="absmiddle"> Safety Defaults
 
 The default EvoZeus path is low-permission, reviewable, and reversible.
 
 - **Zero-install entry**: reading `SKILL.md` should not install packages.
-- **Capability first**: after install, the first local action is `capabilities --json`, not a silent scan or write.
+- **Feature first**: after install, the first local action is `features --json`; use `capabilities --json` for execution risk and permission facts.
 - **Local-first evidence**: raw sessions stay local by default and do not go into public PRs.
 - **Redacted public artifacts**: public Cases, Candidates, and Reports must be redacted first.
 - **Markdown/JSON first**: base reports and schemas do not depend on dashboards, scanners, or cloud services.

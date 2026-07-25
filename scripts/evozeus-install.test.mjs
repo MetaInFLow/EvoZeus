@@ -115,12 +115,22 @@ describe("evozeus-install", () => {
       assert.ok(report.files_written.includes(join(evozeusHome, "bin/evozeus")));
       assert.ok(report.files_written.includes(join(evozeusHome, "install-manifest.json")));
       assert.match(report.approval_needed, /Ask before session analysis/);
+      assert.match(report.next_command, /evozeus features --json/);
       assert.match(report.next_command, /evozeus capabilities --json/);
     }));
 
-  it("installs a local CLI shim that can describe capabilities", () =>
+  it("installs a local CLI shim that can describe features and capabilities", () =>
     withTempInstall(({ workspace, evozeusHome }) => {
       parseStdout(runInstall(workspace, evozeusHome, ["--approve-write"]));
+
+      const featuresResult = spawnSync(join(evozeusHome, "bin/evozeus"), ["features", "--json"], {
+        cwd: workspace,
+        encoding: "utf8"
+      });
+      const featuresReport = parseStdout(featuresResult);
+
+      assert.equal(featuresReport.operation, "features.describe");
+      assert.ok(featuresReport.data.features.some((feature) => feature.id === "insights.sessions"));
 
       const result = spawnSync(join(evozeusHome, "bin/evozeus"), ["capabilities", "--json"], {
         cwd: workspace,

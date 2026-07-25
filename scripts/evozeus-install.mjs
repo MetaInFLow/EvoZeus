@@ -345,7 +345,7 @@ function buildManifest(sourceRoot, skillInventory, evozeusRoot, now, existingMan
       "workspace scan",
       "cloud sync",
       "GitHub issue/PR/public artifact",
-      "EvoZeus-wrapper repo writes"
+      "EvoZeus-CoEvolve repo writes"
     ]
   };
 }
@@ -435,7 +435,7 @@ function install(options) {
     files_written: filesWritten,
     files_planned: options.approveWrite ? [] : plannedFiles(evozeusRoot),
     next_command:
-      "Run ~/.evozeus/bin/evozeus capabilities --json, show the available EvoZeus capabilities, then ask the user which path to take. Do not scan local sessions, write files, or submit to GitHub unless the user explicitly approves the specific action.",
+      "Run ~/.evozeus/bin/evozeus features --json, show the available EvoZeus product features, then use ~/.evozeus/bin/evozeus capabilities --json for the selected feature's risk and permission facts. Do not scan local sessions, write files, or submit to GitHub unless the user explicitly approves the specific action.",
     approval_needed: options.approveWrite
       ? "Ask before session analysis, runtime, scanner, factor execution, report file generation, wrapper handoff writes, GitHub issue/PR/public artifact, update, or uninstall."
       : "Ask the user before writing ~/.evozeus, then rerun with --approve-write.",

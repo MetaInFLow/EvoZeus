@@ -9,7 +9,7 @@ A Case is not a vague idea. It is a session-derived finding with evidence, a pro
 | Type | Where it goes | Use when |
 | --- | --- | --- |
 | Case | `cases/` or GitHub issue | A real session exposed a reusable judgment |
-| Factor | GitHub issue or Candidate PR first; `evozeus-factor-lab` only after maintainer routing | A judgment rule may become a reusable Factor |
+| Factor | GitHub issue or Candidate PR first; `EvoZeus-factor-lab` only after maintainer routing | A judgment rule may become a reusable Factor |
 | Pattern | `patterns/` | A behavior pattern should be preserved, fixed, or rejected |
 | Report template | `docs/reference/report-templates.md` or `examples/reports/` | A better review surface is needed |
 | Privacy improvement | `docs/governance/privacy-and-redaction.md` or `SECURITY.md` | The contribution flow needs stronger safety |
@@ -32,8 +32,8 @@ Do not submit raw sessions, private code, customer data, secrets, tokens, privat
 2. Maintainers and contributors review the evidence.
 3. The Case receives a verdict.
 4. Accepted Cases move into the relevant library area: `cases/`, `patterns/`, docs, or a Candidate lifecycle path.
-5. Factor Candidates stay in the public main repo intake until maintainers route heavier pack or scanner work to `evozeus-factor-lab`.
-6. Official Factor packs are released from `evozeus-session-signal-skill` and referenced by the main registry; the main repo does not host executable Factor packs.
+5. Factor Candidates stay in the public main repo intake until maintainers route heavier pack or scanner work to `EvoZeus-factor-lab`.
+6. Official Factor packs are released from `EvoZeus-session-signal-skill` and referenced by the main registry; the main repo does not host executable Factor packs.
 7. Rejected Cases can still be valuable if they document token-wasting or quality-lowering behavior.
 
 ## Verdict Review Gates
@@ -88,7 +88,7 @@ Avoid:
 - Refactor-only PRs without a linked issue, active fix, or maintainer request.
 - Test-only PRs that do not validate a new behavior, new Case, or bug fix in the same PR.
 - Mixed PRs that combine runtime code, governance, docs, and community Case contribution.
-- Factor pack or scanner code in the main repo; maintainers should route that work to `evozeus-factor-lab`.
+- Factor pack or scanner code in the main repo; maintainers should route that work to `EvoZeus-factor-lab`.
 - Changelog edits unless the PR is explicitly about release notes or governance history.
 
 Maintainers may close without full review:
