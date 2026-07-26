@@ -22,12 +22,13 @@ Use this skill when the user:
 community /skill
   -> read this skill
   -> read ../../docs/reference/install-onboarding-conversation.md
-  -> resolve EvoZeus source tree from latest release tag or main fallback
+  -> resolve the latest immutable EvoZeus Stable Release assets and checksum
   -> check ~/.evozeus registration state
   -> explain registration value, privacy boundaries, and approval choices
   -> ask before identity writes, network registration, source writes, or user-home writes
   -> run node scripts/evozeus-install.mjs --workspace <workspace> --approve-write
-  -> install or update ~/.evozeus/skeleton and ~/.evozeus/bin/evozeus
+  -> install bootstrap skeleton and ~/.evozeus/bin/evozeus
+  -> run evozeus update --channel stable --approve-write using the Stable product manifest
   -> output install report
   -> run ~/.evozeus/bin/evozeus --help
   -> run ~/.evozeus/bin/evozeus features --json
@@ -48,15 +49,14 @@ community /skill
 
 ## Source Material
 
-The installer installs from a resolved EvoZeus source tree. The latest release tag selects the source ref; it does not imply a binary release artifact or package installer.
+The bootstrap installer must run from the verified custom EvoZeus Release archive. The public path requires the matching `.sha256` asset and `evozeus-product-stable.json`. Do not fall back to `main`, a moving branch, an unreleased commit, or GitHub's automatic source archive.
 
 Report the install material explicitly:
 
-- `local_source_checkout`: use an existing local `MetaInFLow/EvoZeus` checkout that is aligned to the resolved ref.
-- `git_checkout`: clone or checkout the resolved ref after user approval.
-- `github_source_archive`: download the GitHub source archive after user approval.
+- `release_archive`: verified custom Release asset used for bootstrap and Stable Core installation.
+- `product_manifest`: immutable Stable component map with exact commits and SHA-256 values.
 
-If a local checkout is aligned to a release tag, report both the tag and commit. Do not say a release artifact was installed unless an actual release asset was downloaded.
+An existing checkout may help maintainers inspect code, but it is not a Stable user installation source.
 
 ## Allowed Local Files
 
@@ -68,6 +68,9 @@ Only after user approval, the install path may write:
 | `~/.evozeus/install-manifest.json` | skeleton source, resolved commit, installed skills inventory, last checked time |
 | `~/.evozeus/skeleton/` | local copy of the EvoZeus root `SKILL.md`, scenario skills, reference docs, and install / doctor scripts |
 | `~/.evozeus/bin/evozeus` | local CLI shim for capability discovery and approved P0 operations |
+| `~/.evozeus/releases/stable/` | immutable Stable component archives selected by the product manifest |
+| `~/.evozeus/channel-state.json` | Stable/UAT installed manifests and rollback pointers |
+| `~/.evozeus/active-channel.json` | active Stable or single UAT selection |
 
 Only after user approval, the install path may also create or reuse `~/.evozeus/agent-identity.json` and call the EvoZeus Web registration API. Registration is hash-only and must not upload raw session, private paths, tokens, workspace contents, customer data, or unreleased code.
 
@@ -107,12 +110,14 @@ After the user approves local writes, run the installer from the resolved EvoZeu
 
 ```bash
 node scripts/evozeus-install.mjs --workspace "<target-workspace>" --approve-write
+~/.evozeus/bin/evozeus update --channel stable --manifest "<verified-release>/evozeus-product-stable.json" --approve-write --json
 ```
 
 Without approval, run a dry-run first:
 
 ```bash
 node scripts/evozeus-install.mjs --workspace "<target-workspace>"
+~/.evozeus/bin/evozeus update --channel stable --manifest "<verified-release>/evozeus-product-stable.json" --dry-run --json
 ```
 
 The dry-run must not write `~/.evozeus/`; it only reports planned files and the approval needed.
@@ -131,6 +136,8 @@ After install, run local help and the product feature router before asking for t
 
 ```bash
 ~/.evozeus/bin/evozeus --help
+~/.evozeus/bin/evozeus version --json
+~/.evozeus/bin/evozeus doctor --json
 ```
 
 Use CLI help as the installed command surface. Then run:

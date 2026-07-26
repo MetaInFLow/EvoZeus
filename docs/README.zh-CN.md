@@ -231,12 +231,19 @@ GitHub automation is dry-run by default: labeler、proof gate、privacy scan、d
 | Developer Workflow | branch 规范、PR 模板、dry-run governance gates、pre-submit checks |
 | Public Examples | redacted Case、Evidence Report、valid/invalid Candidate examples |
 | Factor Surface | 公开 Factor Candidate 入口和 registry pointer；可执行 packs 不放在本 repo |
+| Version Channels | Stable Release 安装、唯一 UAT worktree、version/Doctor/update/rollback CLI |
+| Runtime Assembly | 按版本固定 Infra、CoEvolve、Session Signal，并隔离渠道 state |
 
-Planned but not stable yet:
+v0.3.0 发布组合已提供：
 
-- Local Runtime：`~/.evozeus/` 本地状态、SQLite registry、Markdown/JSON report
-- Community Library：Cases、Factor references、Habits、Environment Rules、Rejected Patterns
-- CLI / TUI / browser companion
+- 本地 CLI：`version`、`channel status/use`、`update`、`doctor`、feature 和 capability router。
+- `~/.evozeus/releases`、`worktrees`、`state` 下的 Stable/UAT 隔离。
+- 用户批准后运行固定版本 `EvoZeus-infra` 并生成本地报告。
+
+后续范围：
+
+- TUI / desktop updater。
+- 扩展 Community Library 和 browser companion。
 
 Not promised:
 

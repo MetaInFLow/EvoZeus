@@ -3,9 +3,11 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "test": "npm run test:cli && npm run test:install && npm run test:doctor && npm run test:channels && npm run test:github-gates",
     "test:cli": "node --test scripts/evozeus-cli.test.mjs",
     "test:install": "node --test scripts/evozeus-install.test.mjs",
     "test:doctor": "node --test scripts/evozeus-doctor.test.mjs",
+    "test:channels": "node --test scripts/evozeus-channels.test.mjs",
     "test:github-gates": "node scripts/github/gate-tests.mjs"
   },
   "devDependencies": {

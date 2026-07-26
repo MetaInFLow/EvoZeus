@@ -246,12 +246,19 @@ GitHub automation is dry-run by default: labeler, proof gate, privacy scan, dirt
 | Developer Workflow | branch rules, PR templates, dry-run governance gates, pre-submit checks |
 | Public Examples | redacted Case, Evidence Report, valid/invalid Candidate examples |
 | Factor Surface | public Factor Candidate intake and registry pointers; executable packs live outside this repo |
+| Version Channels | Stable Release install, single UAT worktree, version/Doctor/update/rollback CLI |
+| Runtime Assembly | Version-pinned Infra, CoEvolve and Session Signal components with channel-isolated state |
 
-Planned but not stable yet:
+Available in the v0.3.0 release set:
 
-- Local Runtime: `~/.evozeus/` local state, SQLite registry, Markdown/JSON report
-- Community Library: Cases, Factor references, Habits, Environment Rules, Rejected Patterns
-- CLI / TUI / browser companion
+- Local CLI: `version`, `channel status/use`, `update`, `doctor`, feature and capability routing.
+- Stable/UAT isolation under `~/.evozeus/releases`, `~/.evozeus/worktrees`, and `~/.evozeus/state`.
+- Opt-in local Runtime reports through the pinned `EvoZeus-infra` component.
+
+Planned beyond this release:
+
+- TUI / desktop updater.
+- Expanded Community Library and browser companion.
 
 Not promised:
 

@@ -1,7 +1,7 @@
 # Launch Readiness Criteria
 
-- Status: draft
-- Last updated: 2026-06-18
+- Status: active
+- Last updated: 2026-07-26
 
 本文定义 EvoZeus 的上线评判标准。这里的“上线”不是单一发布按钮，而是把仓库、协议、贡献流程、自动化门禁或未来 runtime 推到更大使用范围前的准入判断。
 
@@ -17,7 +17,7 @@ EvoZeus 当前首先是 agent-readable protocol repo，不是稳定 CLI 产品�
 | `L3` | Core Library Stable | 推广 reviewed/core Candidates、Skills、Factors | 核心资产有 E4 级证据、owner review、回滚或废弃路径 |
 | `L4` | Runtime Product Launch | 发布 CLI/TUI/browser companion/cloud 等 runtime | 自动采集、存储、报告、权限、安全和失败降级都稳定可验 |
 
-当前仓库的合理近期目标是 `L2 Public Contribution Beta`。`L3` 只适用于被稳定复用的 core assets；`L4` 需要 runtime 实现后另行评估。
+`v0.3.0` 发布组合把版本渠道、安装、更新、Doctor、回滚和明确批准的本地 Runtime 组装纳入有边界的 `L4`。自动 raw session 上传、静默 Stable 更新、完整 TUI/desktop updater 和大规模 benchmark 仍不在该发布承诺内。
 
 ## 2. Go / No-Go 规则
 
@@ -122,7 +122,7 @@ node scripts/github/candidate-schema-check.mjs
 
 ### L4 Runtime Product Launch
 
-`L4` 当前不是仓库现状目标。未来 runtime 上线必须额外满足：
+`L4` 发布必须额外满足：
 
 - session event schema、local registry、report generation、权限模型和失败降级稳定。
 - 默认 local-first，不默认上传 raw session。
@@ -169,7 +169,7 @@ Decision date:
 
 - 若所有本地检查通过，当前仓库可以按 `L2 Public Contribution Beta` 准备发布。
 - 不建议声明 `L3 Core Library Stable`，除非已有 core assets 达到 `E4` 并完成 owner review。
-- 不建议声明 `L4 Runtime Product Launch`，因为 README 已明确 CLI/TUI/browser companion 和 local runtime 仍是 planned but not stable。
+- 只有版本渠道 Design Doc 的 Stable/UAT、回滚、Legacy 迁移和发布门禁全部通过后，才可声明 `v0.3.0` 的受控本地 Runtime 组合达到当前 L4 边界；TUI、desktop updater 和自动上传仍单独评估。
 
 ## 6. Maintainer 复核清单
 

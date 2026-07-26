@@ -1,0 +1,67 @@
+{
+  "product_version": "v0.3.0",
+  "core": {
+    "archive_url": "https://github.com/MetaInFLow/EvoZeus/releases/download/v0.3.0/evozeus-v0.3.0.tar.gz",
+    "required_paths": [
+      "SKILL.md",
+      "scripts/evozeus-cli.mjs",
+      "scripts/evozeus-channels.mjs",
+      "scripts/evozeus-launcher.mjs",
+      "scripts/evozeus-coevolve-dispatcher.py",
+      "schemas/product-channel-manifest.schema.json"
+    ]
+  },
+  "components": {
+    "infra": {
+      "version": "v0.2.0",
+      "commit": "00b3e00bdc32b347c25220471454eb580c7a3651",
+      "source": {
+        "kind": "release_archive",
+        "url": "https://github.com/MetaInFLow/EvoZeus-infra/releases/download/v0.2.0/evozeus-infra-v0.2.0.tar.gz",
+        "ref": "v0.2.0",
+        "sha256": "sha256:e5ed65200b0fd366fb7720b3f7992c2f54dad4ea7ce87f2bfe04c995b6d47820"
+      },
+      "required_paths": [
+        "pyproject.toml",
+        "src/evozeus_runtime/cli/main.py",
+        "src/evozeus_runtime/ledger/paths.py"
+      ]
+    },
+    "coevolve": {
+      "version": "v0.12.0",
+      "commit": "ed4eae75e211209bb9fb862b5ff231bfd169b457",
+      "source": {
+        "kind": "release_archive",
+        "url": "https://github.com/MetaInFLow/EvoZeus-CoEvolve/releases/download/v0.12.0/evozeus-coevolve-v0.12.0.tar.gz",
+        "ref": "v0.12.0",
+        "sha256": "sha256:a5985ea37ca263cd79321f841f88a453f1bd7d19c5c1a0fcbc1984967ac57d6e"
+      },
+      "required_paths": [
+        "SKILL.md",
+        "scripts/evozeus_wrapper.py",
+        "templates/global/evozeus_wrapper_dispatcher.py",
+        "contracts/v1/manifest.json"
+      ]
+    },
+    "session_signal": {
+      "version": "v0.1.0",
+      "commit": "a9f8fd0308afe8e3b31dfdce2440b0f27b53b548",
+      "source": {
+        "kind": "release_archive",
+        "url": "https://github.com/MetaInFLow/EvoZeus-session-signal-skill/releases/download/v0.1.0/evozeus-session-signal-skill-v0.1.0.tar.gz",
+        "ref": "v0.1.0",
+        "sha256": "sha256:cbcaacdcaba80f9fb60fddec65ba46c77bddb3a5b092fa0499ea7d11f77413ae"
+      },
+      "required_paths": [
+        "SKILL.md",
+        "scripts/validate_official_factor_spec.py",
+        "factors/task-completion/spec.json"
+      ]
+    }
+  },
+  "compatibility": {
+    "runtime_min_inclusive": "0.2.0",
+    "runtime_max_exclusive": "0.3.0",
+    "coevolve_contract": "v1.0.0"
+  }
+}
