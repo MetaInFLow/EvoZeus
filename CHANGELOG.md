@@ -1,5 +1,17 @@
 # Changelog
 
+## [v0.3.2] - 2026-07-26
+
+### Fixed
+
+- A previously verified UAT root can be selected again when the single `uat/current` manifest points back to it.
+- Reused UAT roots are checked for exact commits, local changes, required files, smoke health, and compatibility before the atomic switch.
+- Failed reuse keeps the current verified UAT and its rollback path unchanged.
+
+### Verification
+
+- Channel transaction regression covers UAT A → B → A reuse without creating another user-visible UAT.
+
 ## [v0.3.1] - 2026-07-26
 
 ### Fixed
