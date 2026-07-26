@@ -8,6 +8,35 @@ import { describe, it } from "node:test";
 
 const SCRIPT = fileURLToPath(new URL("./evozeus-cli.mjs", import.meta.url));
 
+function stableManifest() {
+  const versions = { evozeus: "v0.3.0", infra: "v0.2.0", coevolve: "v0.12.0", session_signal: "v0.1.0" };
+  return {
+    schema_version: "evozeus.product-channel.v1",
+    product_version: "v0.3.0",
+    channel: "stable",
+    generated_at: "2026-07-26T00:00:00Z",
+    components: Object.fromEntries(Object.entries(versions).map(([id, version], index) => [
+      id,
+      {
+        version,
+        commit: String(index + 1).repeat(40),
+        source: {
+          kind: "release_archive",
+          url: `https://example.invalid/${id}.tar.gz`,
+          ref: version,
+          sha256: `sha256:${String(index + 1).repeat(64)}`
+        },
+        required_paths: ["SKILL.md"]
+      }
+    ])),
+    compatibility: {
+      runtime_min_inclusive: "0.1.0",
+      runtime_max_exclusive: "0.3.0",
+      coevolve_contract: "v1.0.0"
+    }
+  };
+}
+
 function withTempWorkspace(callback) {
   const root = mkdtempSync(join(tmpdir(), "evozeus-cli-"));
   try {
@@ -213,8 +242,14 @@ describe("evozeus-cli", () => {
     assert.ok(report.data.scan_plan.forbidden_in_this_command.includes("reading raw session files"));
   });
 
-  it("plans session insights through infra without reading raw stores", () => {
-    const result = runCli(["insights", "plan", "--source", "codex", "--json"]);
+  it("plans session insights through an explicitly resolved infra without reading raw stores", () => withTempWorkspace((workspace) => {
+    const infraRoot = join(workspace, "infra");
+    mkdirSync(join(infraRoot, "src/evozeus_runtime/cli"), { recursive: true });
+    writeFileSync(join(infraRoot, "src/evozeus_runtime/cli/main.py"), "# fixture\n");
+    const result = runCli(["insights", "plan", "--source", "codex", "--json"], {
+      cwd: workspace,
+      env: { EVOZEUS_INFRA_ROOT: infraRoot }
+    });
     const report = parseJson(result);
 
     assert.equal(report.operation, "insights.plan");
@@ -224,7 +259,7 @@ describe("evozeus-cli", () => {
     assert.equal(report.data.backend.available, true);
     assert.ok(report.data.backend.command.argv.includes("session-insights"));
     assert.ok(report.data.insights_plan.forbidden_in_this_command.includes("reading raw session files"));
-  });
+  }));
 
   it("reports missing infra readiness with a repair hint", () => {
     const missingRoot = join(tmpdir(), "missing-evozeus-infra-for-test");
@@ -377,7 +412,9 @@ describe("evozeus-cli", () => {
 
   it("returns update and uninstall dry-run plans without writing", () =>
     withTempWorkspace((workspace) => {
-      const update = parseJson(runCli(["update", "--dry-run", "--json"], { cwd: workspace }));
+      const manifestPath = join(workspace, "stable.json");
+      writeFileSync(manifestPath, `${JSON.stringify(stableManifest(), null, 2)}\n`);
+      const update = parseJson(runCli(["update", "--channel", "stable", "--manifest", manifestPath, "--dry-run", "--json"], { cwd: workspace }));
       const uninstall = parseJson(runCli(["uninstall", "--dry-run", "--json"], { cwd: workspace }));
 
       assert.equal(update.operation, "system.updatePlan");
@@ -386,8 +423,23 @@ describe("evozeus-cli", () => {
       assert.equal(uninstall.operation, "system.uninstallPlan");
       assert.equal(uninstall.approval.required, true);
       assert.equal(uninstall.data.uninstall_plan.writes_now, false);
-      assert.equal(existsSync(join(workspace, ".evozeus")), false);
+      assert.equal(existsSync(join(workspace, "home", ".evozeus")), false);
     }));
+
+  it("exposes only Stable and the single UAT through version and channel commands", () => {
+    const version = parseJson(runCli(["version", "--json"]));
+    const status = parseJson(runCli(["channel", "status", "--json"]));
+    const plan = parseJson(runCli(["channel", "use", "uat", "--json"]));
+    const rollback = parseJson(runCli(["channel", "rollback", "uat", "--json"]));
+
+    assert.deepEqual(Object.keys(version.data.channels), ["stable", "uat"]);
+    assert.deepEqual(Object.keys(status.data.channels), ["stable", "uat"]);
+    assert.equal(plan.data.channel, "uat");
+    assert.equal(plan.data.installed, false);
+    assert.match(plan.data.next_command, /--channel uat/);
+    assert.equal(rollback.operation, "system.channelRollbackPlan");
+    assert.match(rollback.data.next_command, /channel rollback uat --approve-write/);
+  });
 
   it("creates a privacy-preserving preserve draft from a report", () =>
     withTempWorkspace((workspace) => {

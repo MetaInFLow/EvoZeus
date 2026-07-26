@@ -29,6 +29,9 @@ const DEFAULT_SKELETON_ENTRIES = [
   "docs/governance/privacy-and-redaction.md",
   "docs/governance/terminology-glossary.md",
   "scripts/evozeus-cli.mjs",
+  "scripts/evozeus-channels.mjs",
+  "scripts/evozeus-coevolve-dispatcher.py",
+  "scripts/evozeus-launcher.mjs",
   "scripts/evozeus-doctor.mjs",
   "scripts/evozeus-install.mjs"
 ];
@@ -360,7 +363,7 @@ function writeCliShim(evozeusRoot, filesWritten) {
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
 EVOZEUS_HOME="\${EVOZEUS_HOME:-$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)}"
 export EVOZEUS_HOME
-exec node "$SCRIPT_DIR/../skeleton/scripts/evozeus-cli.mjs" "$@"
+exec node "$SCRIPT_DIR/../skeleton/scripts/evozeus-launcher.mjs" "$@"
 `
   );
   chmodSync(shimPath, 0o755);
@@ -435,7 +438,7 @@ function install(options) {
     files_written: filesWritten,
     files_planned: options.approveWrite ? [] : plannedFiles(evozeusRoot),
     next_command:
-      "Run ~/.evozeus/bin/evozeus features --json, show the available EvoZeus product features, then use ~/.evozeus/bin/evozeus capabilities --json for the selected feature's risk and permission facts. Do not scan local sessions, write files, or submit to GitHub unless the user explicitly approves the specific action.",
+      "Run ~/.evozeus/bin/evozeus version --json and ~/.evozeus/bin/evozeus doctor --json first. After channel health is ready, run ~/.evozeus/bin/evozeus features --json and ~/.evozeus/bin/evozeus capabilities --json. Do not scan local sessions, write files, or submit to GitHub unless the user explicitly approves the specific action.",
     approval_needed: options.approveWrite
       ? "Ask before session analysis, runtime, scanner, factor execution, report file generation, wrapper handoff writes, GitHub issue/PR/public artifact, update, or uninstall."
       : "Ask the user before writing ~/.evozeus, then rerun with --approve-write.",

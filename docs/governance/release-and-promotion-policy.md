@@ -1,7 +1,14 @@
 # Release And Promotion Policy
 
-- Status: draft
-- Last updated: 2026-06-16
+- Status: active
+- Last updated: 2026-07-26
+
+## Product release channels
+
+- Stable 是不可变 GitHub Release，必须提供产品清单、组件 exact commit、archive SHA-256 和验证记录。
+- UAT 只有一个 `uat/current`，由中央清单固定跨 Repo commits；修复覆盖同一候选。
+- `main`、普通 feature branch 和本地未发布 commit 不属于用户更新源。
+- Stable Release 失败不得影响上一版 Stable；UAT 更新失败不得影响上一版 UAT。
 
 EvoZeus is not ready for a heavy release train. This policy defines the lightweight equivalent of OpenClaw's release gates: promotion from raw contribution into reusable library assets.
 

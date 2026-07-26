@@ -5,12 +5,70 @@ import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } 
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { homedir } from "node:os";
 import { fileURLToPath } from "node:url";
+import {
+  ChannelError,
+  activateInstalledChannel,
+  applyChannelUpdate,
+  channelSnapshot,
+  prepareChannelUpdate,
+  readActiveChannel,
+  rollbackChannel,
+  resolveInstalledComponentRoot
+} from "./evozeus-channels.mjs";
 
 const SCHEMA_VERSION = 1;
 const CLI_VERSION = "0.3.0";
 const SOURCE_ROOT = resolve(fileURLToPath(new URL("..", import.meta.url)));
 
 const CAPABILITIES = [
+  {
+    name: "system.version",
+    domain: "system",
+    summary: "Describe the active EvoZeus channel, product manifest, component versions, commits, and health.",
+    input_schema: { type: "object", properties: {} },
+    output_schema: { type: "object", required: ["active_channel", "health", "channels"] },
+    write_mode: "read_only",
+    risk_level: "low",
+    required_permissions: ["system.read"],
+    requires_approval: false,
+    examples: ["evozeus version --json"]
+  },
+  {
+    name: "system.channelStatus",
+    domain: "system",
+    summary: "Inspect installed Stable and UAT channels without changing the active channel.",
+    input_schema: { type: "object", properties: {} },
+    output_schema: { type: "object", required: ["channels"] },
+    write_mode: "read_only",
+    risk_level: "low",
+    required_permissions: ["system.read"],
+    requires_approval: false,
+    examples: ["evozeus channel status --json"]
+  },
+  {
+    name: "system.channelUse",
+    domain: "system",
+    summary: "Plan or approve switching between an already installed Stable channel and the single UAT channel.",
+    input_schema: { type: "object", required: ["channel"], properties: { channel: { enum: ["stable", "uat"] } } },
+    output_schema: { type: "object", required: ["channel"] },
+    write_mode: "approved_write",
+    risk_level: "medium",
+    required_permissions: ["system.writeLocal"],
+    requires_approval: true,
+    examples: ["evozeus channel use uat --approve-write --auto-refresh --json"]
+  },
+  {
+    name: "system.channelRollback",
+    domain: "system",
+    summary: "Plan or approve restoring the previous verified Stable or single-UAT product installation.",
+    input_schema: { type: "object", required: ["channel"], properties: { channel: { enum: ["stable", "uat"] } } },
+    output_schema: { type: "object", required: ["rollback"] },
+    write_mode: "approved_write",
+    risk_level: "medium",
+    required_permissions: ["system.writeLocal"],
+    requires_approval: true,
+    examples: ["evozeus channel rollback uat --approve-write --json"]
+  },
   {
     name: "features.describe",
     domain: "features",
@@ -172,14 +230,14 @@ const CAPABILITIES = [
   {
     name: "system.updatePlan",
     domain: "system",
-    summary: "Plan an EvoZeus local skeleton and CLI update without writing files.",
-    input_schema: { type: "object", properties: { dry_run: { const: true } } },
+    summary: "Plan or approve a manifest-pinned Stable or single-UAT transaction.",
+    input_schema: { type: "object", properties: { channel: { enum: ["stable", "uat"] } } },
     output_schema: { type: "object", required: ["update_plan"] },
     write_mode: "plan_only",
     risk_level: "medium",
     required_permissions: ["system.writeLocal"],
     requires_approval: true,
-    examples: ["evozeus update --dry-run --json"]
+    examples: ["evozeus update --channel stable --dry-run --json", "evozeus update --channel uat --approve-write --json"]
   },
   {
     name: "system.uninstallPlan",
@@ -271,8 +329,8 @@ const PRODUCT_FEATURES = [
     backend_owner: "evozeus",
     status: "available",
     approval_boundary: "Doctor is read-only; update writes require explicit approval.",
-    related_capabilities: ["system.doctor", "system.updatePlan"],
-    aliases: ["evozeus update --dry-run --json"]
+    related_capabilities: ["system.doctor", "system.updatePlan", "system.channelRollback"],
+    aliases: ["evozeus update --dry-run --json", "evozeus channel rollback uat --json"]
   },
   {
     id: "uninstall",
@@ -323,7 +381,10 @@ function parseArgs(argv) {
     reuseFactors: false,
     force: false,
     plan: false,
-    checkNetwork: false
+    checkNetwork: false,
+    channel: null,
+    manifest: null,
+    autoRefresh: false
   };
   const positionals = [];
 
@@ -375,6 +436,12 @@ function parseArgs(argv) {
       options.plan = true;
     } else if (arg === "--check-network") {
       options.checkNetwork = true;
+    } else if (arg === "--channel") {
+      options.channel = argv[++index];
+    } else if (arg === "--manifest") {
+      options.manifest = argv[++index];
+    } else if (arg === "--auto-refresh") {
+      options.autoRefresh = true;
     } else if (arg === "--help" || arg === "-h") {
       options.help = true;
     } else if (arg.startsWith("--")) {
@@ -405,10 +472,17 @@ function actorInfo() {
 }
 
 function envelope(operation, options, data, approval = { required: false, reason: null }) {
+  const version = channelSnapshot(workspaceInfo(options).evozeus_root);
   return {
     ok: true,
     operation,
     schema_version: SCHEMA_VERSION,
+    runtime: {
+      channel: version.active_channel,
+      product_version: version.product_version ?? null,
+      manifest_digest: version.manifest_digest ?? null,
+      health: version.health
+    },
     actor: actorInfo(),
     workspace: workspaceInfo(options),
     approval,
@@ -441,6 +515,10 @@ function printResult(result, options) {
   if (!result.ok) {
     console.error(`${result.error.code}: ${result.error.message}`);
     return;
+  }
+
+  if (result.runtime?.channel) {
+    console.log(`[EvoZeus ${result.runtime.channel.toUpperCase()}] ${result.runtime.product_version || "unknown version"}`);
   }
 
   if (result.operation === "capabilities.describe") {
@@ -488,32 +566,33 @@ function siblingRepo(name) {
   return resolve(dirname(SOURCE_ROOT), name);
 }
 
-function componentRoot(envName, siblingName) {
-  return resolve(process.env[envName] || siblingRepo(siblingName));
-}
-
-function pythonCommandForPackage(root, moduleName, args) {
+function pythonCommandForPackage(root, moduleName, args, extraEnv = {}) {
   return {
     cwd: root,
     env: {
-      PYTHONPATH: join(root, "src")
+      PYTHONPATH: join(root, "src"),
+      ...extraEnv
     },
     argv: ["python3", "-m", moduleName, ...args]
   };
 }
 
-function wrapperCommand(root, args) {
+function wrapperCommand(root, args, extraEnv = {}) {
   return {
     cwd: root,
-    env: {},
+    env: extraEnv,
     argv: ["python3", join(root, "scripts/evozeus_wrapper.py"), ...args]
   };
 }
 
-function componentReadiness() {
-  const infraRoot = componentRoot("EVOZEUS_INFRA_ROOT", "EvoZeus-infra");
-  const wrapperRoot = componentRoot("EVOZEUS_WRAPPER_ROOT", "EvoZeus-CoEvolve");
-  const officialRoot = componentRoot("EVOZEUS_OFFICIAL_REPO_ROOT", "EvoZeus-session-signal-skill");
+function componentReadiness(options) {
+  const home = workspaceInfo(options).evozeus_root;
+  const infra = resolveInstalledComponentRoot({ evozeusHome: home, componentId: "infra", sourceRoot: SOURCE_ROOT });
+  const wrapper = resolveInstalledComponentRoot({ evozeusHome: home, componentId: "coevolve", sourceRoot: SOURCE_ROOT });
+  const official = resolveInstalledComponentRoot({ evozeusHome: home, componentId: "session_signal", sourceRoot: SOURCE_ROOT });
+  const infraRoot = infra.root;
+  const wrapperRoot = wrapper.root;
+  const officialRoot = official.root;
   const infraCli = join(infraRoot, "src/evozeus_runtime/cli/main.py");
   const wrapperCli = join(wrapperRoot, "scripts/evozeus_wrapper.py");
   const officialSkill = join(officialRoot, "SKILL.md");
@@ -530,6 +609,7 @@ function componentReadiness() {
       owner: "EvoZeus-infra",
       available: existsSync(infraCli),
       detected_path: infraRoot,
+      resolution_source: infra.source,
       executable_command: ["python3", "-m", "evozeus_runtime.cli.main", "status"],
       repair_hint: existsSync(infraCli)
         ? null
@@ -539,6 +619,7 @@ function componentReadiness() {
       owner: "EvoZeus-CoEvolve",
       available: existsSync(wrapperCli),
       detected_path: wrapperRoot,
+      resolution_source: wrapper.source,
       executable_command: ["python3", wrapperCli, "--help"],
       repair_hint: existsSync(wrapperCli)
         ? null
@@ -548,6 +629,7 @@ function componentReadiness() {
       owner: "EvoZeus-session-signal-skill",
       available: existsSync(officialSkill),
       detected_path: officialRoot,
+      resolution_source: official.source,
       executable_command: null,
       repair_hint: existsSync(officialSkill)
         ? null
@@ -557,9 +639,13 @@ function componentReadiness() {
 }
 
 function infraBackendCommand(options, mode) {
-  const readiness = componentReadiness()["EvoZeus-infra"];
-  const official = componentReadiness()["EvoZeus-session-signal-skill"];
+  const readiness = componentReadiness(options)["EvoZeus-infra"];
+  const official = componentReadiness(options)["EvoZeus-session-signal-skill"];
   const workspace = workspaceInfo(options).root;
+  const active = readActiveChannel(workspaceInfo(options).evozeus_root);
+  const runtimeStateRoot = active
+    ? join(workspaceInfo(options).evozeus_root, "state", active.channel)
+    : null;
   const args =
     mode === "project"
       ? [
@@ -589,18 +675,28 @@ function infraBackendCommand(options, mode) {
     owner: "EvoZeus-infra",
     available: readiness.available,
     detected_path: readiness.detected_path,
-    command: pythonCommandForPackage(readiness.detected_path, "evozeus_runtime.cli.main", args),
+    command: pythonCommandForPackage(readiness.detected_path, "evozeus_runtime.cli.main", args, {
+      ...(active ? { EVOZEUS_ACTIVE_CHANNEL: active.channel } : {}),
+      ...(runtimeStateRoot ? { EVOZEUS_RUNTIME_STATE_ROOT: runtimeStateRoot } : {})
+    }),
     repair_hint: readiness.repair_hint
   };
 }
 
-function wrapperBackendCommand(args) {
-  const readiness = componentReadiness()["EvoZeus-CoEvolve"];
+function wrapperBackendCommand(options, args) {
+  const readiness = componentReadiness(options)["EvoZeus-CoEvolve"];
+  const active = readActiveChannel(workspaceInfo(options).evozeus_root);
+  const runtimeStateRoot = active
+    ? join(workspaceInfo(options).evozeus_root, "state", active.channel)
+    : null;
   return {
     owner: "EvoZeus-CoEvolve",
     available: readiness.available,
     detected_path: readiness.detected_path,
-    command: wrapperCommand(readiness.detected_path, args),
+    command: wrapperCommand(readiness.detected_path, args, {
+      ...(active ? { EVOZEUS_ACTIVE_CHANNEL: active.channel } : {}),
+      ...(runtimeStateRoot ? { EVOZEUS_RUNTIME_STATE_ROOT: runtimeStateRoot } : {})
+    }),
     repair_hint: readiness.repair_hint
   };
 }
@@ -1107,7 +1203,7 @@ function coevolveStatus(options) {
   const targetPath = resolveWorkspacePath(options, options.target);
   const manifestPath = join(targetPath, ".evozeus_evoinfra/wrapper.json");
   const manifest = readJsonFile(manifestPath);
-  const backend = wrapperBackendCommand(["skill", "diagnose", "--target", targetPath, "--json"]);
+  const backend = wrapperBackendCommand(options, ["skill", "diagnose", "--target", targetPath, "--json"]);
 
   return envelope("coevolve.status", options, {
     target,
@@ -1136,7 +1232,7 @@ function coevolveAudit(options) {
 
   const targetPath = resolveWorkspacePath(options, options.target);
   const userInputHash = sha256(options.userInput);
-  const backend = wrapperBackendCommand([
+  const backend = wrapperBackendCommand(options, [
     "loop",
     "audit",
     "--target",
@@ -1271,6 +1367,12 @@ function doctor(options) {
     "scripts/evozeus-cli.mjs"
   ];
   const missing = required.filter((entry) => !existsSync(join(SOURCE_ROOT, entry)));
+  const version = channelSnapshot(workspace.evozeus_root);
+  const componentStatus = version.health === "healthy" && missing.length === 0
+    ? "complete"
+    : version.health === "migration_required"
+      ? "migration_required"
+      : "incomplete";
 
   return envelope("system.doctor", options, {
     install_state: {
@@ -1280,55 +1382,140 @@ function doctor(options) {
     },
     components: {
       source_root: SOURCE_ROOT,
-      status: missing.length === 0 ? "complete" : "incomplete",
+      status: componentStatus,
       missing
     },
-    component_readiness: componentReadiness(),
+    version,
+    component_readiness: componentReadiness(options),
     optional_paths: {
       session_scan: "approval_required",
       infra_runtime: "approval_required",
       wrapper_github_write: "forbidden_in_p0"
     },
-    next_command: "~/.evozeus/bin/evozeus features --json && ~/.evozeus/bin/evozeus capabilities --json"
+    doctor_verdict:
+      version.health === "migration_required"
+        ? "migration_required"
+        : componentStatus === "complete"
+          ? "ready"
+          : "repair_required",
+    next_command:
+      version.health === "migration_required"
+        ? "~/.evozeus/bin/evozeus update --channel stable --dry-run --json"
+        : "~/.evozeus/bin/evozeus features --json && ~/.evozeus/bin/evozeus capabilities --json"
   });
 }
 
-function updatePlan(options) {
-  if (options.approveWrite) {
-    throw new CliError(
-      "UPDATE_APPLY_NOT_IMPLEMENTED_IN_P0",
-      "update --approve-write is not implemented in P0; run the installer reconcile flow after reviewing the dry-run plan.",
-      "system.updateApply",
-      true,
+function versionInfo(options) {
+  return envelope("system.version", options, channelSnapshot(workspaceInfo(options).evozeus_root));
+}
+
+function channelStatus(options) {
+  return envelope("system.channelStatus", options, channelSnapshot(workspaceInfo(options).evozeus_root));
+}
+
+function channelUse(options) {
+  if (!options.channel || !["stable", "uat"].includes(options.channel)) {
+    throw new CliError("INVALID_CHANNEL", "channel use requires stable or uat.", "system.channelUse");
+  }
+  if (!options.approveWrite) {
+    const snapshot = channelSnapshot(workspaceInfo(options).evozeus_root);
+    const installed = Boolean(snapshot.channels?.[options.channel]);
+    return envelope(
+      "system.channelUsePlan",
+      options,
       {
-        required: true,
-        reason: "Local update writes require an approved installer reconcile flow."
-      }
+        channel: options.channel,
+        installed,
+        writes_now: false,
+        auto_refresh: options.channel === "uat" && options.autoRefresh,
+        next_command: installed
+          ? `evozeus channel use ${options.channel} --approve-write${options.autoRefresh ? " --auto-refresh" : ""} --json`
+          : `evozeus update --channel ${options.channel} --dry-run --json`
+      },
+      { required: true, reason: "Changing the active EvoZeus channel writes ~/.evozeus/active-channel.json." }
     );
   }
+  try {
+    const active = activateInstalledChannel(
+      workspaceInfo(options).evozeus_root,
+      options.channel,
+      options.autoRefresh
+    );
+    return envelope("system.channelUse", options, { channel: options.channel, active, writes_now: true });
+  } catch (error) {
+    throw channelCliError(error, "system.channelUse");
+  }
+}
 
-  return envelope(
-    "system.updatePlan",
-    options,
-    {
-      update_plan: {
-        dry_run: true,
+function channelRollback(options) {
+  if (!options.channel || !["stable", "uat"].includes(options.channel)) {
+    throw new CliError("INVALID_CHANNEL", "channel rollback requires stable or uat.", "system.channelRollback");
+  }
+  if (!options.approveWrite) {
+    return envelope(
+      "system.channelRollbackPlan",
+      options,
+      {
+        channel: options.channel,
         writes_now: false,
-        source_root: SOURCE_ROOT,
-        planned_actions: [
-          "reconcile ~/.evozeus/registration.json",
-          "refresh ~/.evozeus/skeleton",
-          "refresh ~/.evozeus/bin/evozeus shim",
-          "update install-manifest.json"
-        ],
-        apply_hint: "After user approval, run node scripts/evozeus-install.mjs --workspace <workspace> --approve-write."
-      }
-    },
-    {
-      required: true,
-      reason: "Updating local EvoZeus writes ~/.evozeus and requires explicit approval."
+        next_command: `evozeus channel rollback ${options.channel} --approve-write --json`
+      },
+      { required: true, reason: `Rolling back ${options.channel} changes the active product installation.` }
+    );
+  }
+  try {
+    return envelope(
+      "system.channelRollback",
+      options,
+      { rollback: rollbackChannel(workspaceInfo(options).evozeus_root, options.channel) }
+    );
+  } catch (error) {
+    throw channelCliError(error, "system.channelRollback");
+  }
+}
+
+function manifestSourceFor(options, channel) {
+  if (options.manifest) return options.manifest;
+  return channel === "stable" ? process.env.EVOZEUS_STABLE_MANIFEST : process.env.EVOZEUS_UAT_MANIFEST;
+}
+
+function channelCliError(error, operation) {
+  if (error instanceof ChannelError) {
+    return new CliError(error.code, `${error.message}${error.details?.issues ? `: ${error.details.issues.join("; ")}` : ""}`, operation);
+  }
+  return new CliError("CHANNEL_OPERATION_FAILED", error.message || "Channel operation failed.", operation);
+}
+
+async function updateChannel(options) {
+  const snapshot = channelSnapshot(workspaceInfo(options).evozeus_root);
+  const channel = options.channel || snapshot.active_channel || "stable";
+  if (!["stable", "uat"].includes(channel)) {
+    throw new CliError("INVALID_CHANNEL", "update --channel must be stable or uat.", "system.updatePlan");
+  }
+  try {
+    if (!options.approveWrite) {
+      const plan = await prepareChannelUpdate({
+        evozeusHome: workspaceInfo(options).evozeus_root,
+        channel,
+        manifestSource: manifestSourceFor(options, channel)
+      });
+      return envelope(
+        "system.updatePlan",
+        options,
+        { update_plan: plan },
+        { required: true, reason: `Updating the ${channel} channel writes isolated EvoZeus component state.` }
+      );
     }
-  );
+    const result = await applyChannelUpdate({
+      evozeusHome: workspaceInfo(options).evozeus_root,
+      channel,
+      manifestSource: manifestSourceFor(options, channel),
+      autoRefresh: channel === "uat" && options.autoRefresh
+    });
+    return envelope("system.updateApply", options, { update: result });
+  } catch (error) {
+    throw channelCliError(error, options.approveWrite ? "system.updateApply" : "system.updatePlan");
+  }
 }
 
 function uninstallPlan(options) {
@@ -1383,6 +1570,10 @@ function printHelp() {
   console.log(`Usage: evozeus <command> [options]
 
 Commands:
+  version --json
+  channel status --json
+  channel use stable|uat [--approve-write] [--auto-refresh] --json
+  channel rollback stable|uat [--approve-write] --json
   features --json
   capabilities --json
   activate --json
@@ -1398,7 +1589,8 @@ Commands:
   coevolve audit --target <path|url> --user-input <feedback> --json
   harness attach --target <path|url> --json
   doctor --json
-  update --dry-run --json
+  update --channel stable|uat [--manifest <path-or-url>] --dry-run --json
+  update --channel stable|uat [--manifest <path-or-url>] --approve-write --json
   uninstall --dry-run --json
 
 Global options:
@@ -1406,17 +1598,39 @@ Global options:
   --evozeus-home <path>
   --json
   --approve-feedback
+  --approve-write
+  --channel stable|uat
+  --manifest <path-or-url>
+  --auto-refresh
   --target-visibility public|private
 `);
 }
 
-function route(parsed) {
+async function route(parsed) {
   const { options, positionals } = parsed;
   const [command, subcommand] = positionals;
 
   if (options.help || !command) {
     printHelp();
     return null;
+  }
+
+  if (command === "version") {
+    return versionInfo(options);
+  }
+
+  if (command === "channel" && subcommand === "status") {
+    return channelStatus(options);
+  }
+
+  if (command === "channel" && subcommand === "use") {
+    options.channel = positionals[2] || options.channel;
+    return channelUse(options);
+  }
+
+  if (command === "channel" && subcommand === "rollback") {
+    options.channel = positionals[2] || options.channel;
+    return channelRollback(options);
   }
 
   if (command === "capabilities") {
@@ -1480,7 +1694,7 @@ function route(parsed) {
   }
 
   if (command === "update") {
-    return updatePlan(options);
+    return updateChannel(options);
   }
 
   if (command === "uninstall") {
@@ -1492,7 +1706,7 @@ function route(parsed) {
 
 async function main() {
   const parsed = parseArgs(process.argv.slice(2));
-  const result = route(parsed);
+  const result = await route(parsed);
   if (result) {
     printResult(await maybeSendActivity(result, parsed.options), parsed.options);
   }
