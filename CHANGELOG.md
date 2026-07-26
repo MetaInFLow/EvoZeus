@@ -1,5 +1,16 @@
 # Changelog
 
+## [v0.3.1] - 2026-07-26
+
+### Fixed
+
+- Release bootstrap installs now record the verified Release tag, exact commit, archive SHA-256, and `release_archive` material type instead of being misidentified as a local source checkout.
+- Partial or malformed Release provenance flags fail before any local writes.
+
+### Verification
+
+- Installer regression tests cover verified Release metadata and invalid incomplete metadata.
+
 ## [v0.3.0] - 2026-07-26
 
 ### Added

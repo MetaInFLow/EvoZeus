@@ -26,7 +26,7 @@ community /skill
   -> check ~/.evozeus registration state
   -> explain registration value, privacy boundaries, and approval choices
   -> ask before identity writes, network registration, source writes, or user-home writes
-  -> run node scripts/evozeus-install.mjs --workspace <workspace> --approve-write
+  -> run installer with verified Release tag, commit, and archive SHA-256
   -> install bootstrap skeleton and ~/.evozeus/bin/evozeus
   -> run evozeus update --channel stable --approve-write using the Stable product manifest
   -> output install report
@@ -109,14 +109,14 @@ Do not ask users to copy approval lists, privacy lists, command lists, or capabi
 After the user approves local writes, run the installer from the resolved EvoZeus repo:
 
 ```bash
-node scripts/evozeus-install.mjs --workspace "<target-workspace>" --approve-write
+node scripts/evozeus-install.mjs --workspace "<target-workspace>" --source-root "<verified-release>/EvoZeus-vX.Y.Z" --release-tag "vX.Y.Z" --release-commit "<40-hex-release-commit>" --release-archive-sha256 "<verified-archive-sha256>" --approve-write
 ~/.evozeus/bin/evozeus update --channel stable --manifest "<verified-release>/evozeus-product-stable.json" --approve-write --json
 ```
 
 Without approval, run a dry-run first:
 
 ```bash
-node scripts/evozeus-install.mjs --workspace "<target-workspace>"
+node scripts/evozeus-install.mjs --workspace "<target-workspace>" --source-root "<verified-release>/EvoZeus-vX.Y.Z" --release-tag "vX.Y.Z" --release-commit "<40-hex-release-commit>" --release-archive-sha256 "<verified-archive-sha256>"
 ~/.evozeus/bin/evozeus update --channel stable --manifest "<verified-release>/evozeus-product-stable.json" --dry-run --json
 ```
 
