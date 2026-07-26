@@ -41,6 +41,9 @@ function parseArgs(argv) {
     workspace: process.cwd(),
     evozeusHome: process.env.EVOZEUS_HOME || join(homedir(), ".evozeus"),
     sourceRoot: resolve(fileURLToPath(new URL("..", import.meta.url))),
+    releaseTag: null,
+    releaseCommit: null,
+    releaseArchiveSha256: null,
     approveWrite: false
   };
 
@@ -52,6 +55,12 @@ function parseArgs(argv) {
       options.evozeusHome = argv[++index];
     } else if (arg === "--source-root") {
       options.sourceRoot = argv[++index];
+    } else if (arg === "--release-tag") {
+      options.releaseTag = argv[++index];
+    } else if (arg === "--release-commit") {
+      options.releaseCommit = argv[++index];
+    } else if (arg === "--release-archive-sha256") {
+      options.releaseArchiveSha256 = argv[++index];
     } else if (arg === "--approve-write") {
       options.approveWrite = true;
     } else if (arg === "--help" || arg === "-h") {
@@ -61,11 +70,25 @@ function parseArgs(argv) {
     }
   }
 
+  const releaseMetadata = [options.releaseTag, options.releaseCommit, options.releaseArchiveSha256];
+  if (releaseMetadata.some(Boolean) && !releaseMetadata.every(Boolean)) {
+    throw new Error("--release-tag, --release-commit, and --release-archive-sha256 must be provided together");
+  }
+  if (options.releaseTag && !/^v\d+\.\d+\.\d+$/.test(options.releaseTag)) {
+    throw new Error("--release-tag must be a semantic version such as v0.3.1");
+  }
+  if (options.releaseCommit && !/^[0-9a-f]{40}$/i.test(options.releaseCommit)) {
+    throw new Error("--release-commit must be a full 40-character Git commit");
+  }
+  if (options.releaseArchiveSha256 && !/^(?:sha256:)?[0-9a-f]{64}$/i.test(options.releaseArchiveSha256)) {
+    throw new Error("--release-archive-sha256 must be a 64-character SHA-256 digest");
+  }
+
   return options;
 }
 
 function printHelp() {
-  console.log(`Usage: node scripts/evozeus-install.mjs [--workspace <path>] [--evozeus-home <path>] [--source-root <path>] [--approve-write]
+  console.log(`Usage: node scripts/evozeus-install.mjs [--workspace <path>] [--evozeus-home <path>] [--source-root <path>] [--release-tag <vX.Y.Z> --release-commit <40-hex> --release-archive-sha256 <64-hex>] [--approve-write]
 
 Creates or reconciles the user-level EvoZeus installation under ~/.evozeus.
 The selected workspace is runtime context only; registration state is not written inside the workspace.
@@ -114,7 +137,23 @@ function gitExactTag(sourceRoot) {
   return result.stdout.trim() || null;
 }
 
-function buildSourceInfo(sourceRoot) {
+function buildSourceInfo(sourceRoot, releaseMetadata = null) {
+  if (releaseMetadata) {
+    const digest = releaseMetadata.archiveSha256.replace(/^sha256:/i, "").toLowerCase();
+    return {
+      repository: "MetaInFLow/EvoZeus",
+      install_material: "release_archive",
+      local_source: false,
+      local_source_path: sourceRoot,
+      resolved_ref: releaseMetadata.tag,
+      resolved_commit: releaseMetadata.commit.toLowerCase(),
+      git_commit: releaseMetadata.commit.toLowerCase(),
+      exact_tag: releaseMetadata.tag,
+      release_archive_sha256: `sha256:${digest}`,
+      release_artifact_downloaded: true
+    };
+  }
+
   const commit = gitCommit(sourceRoot);
   const exactTag = gitExactTag(sourceRoot);
 
@@ -127,6 +166,7 @@ function buildSourceInfo(sourceRoot) {
     resolved_commit: commit,
     git_commit: commit,
     exact_tag: exactTag,
+    release_archive_sha256: null,
     release_artifact_downloaded: false
   };
 }
@@ -324,9 +364,9 @@ function buildRegistration(existingRegistration, workspaceRoot, evozeusRoot, now
   };
 }
 
-function buildManifest(sourceRoot, skillInventory, evozeusRoot, now, existingManifest) {
+function buildManifest(sourceRoot, skillInventory, evozeusRoot, now, existingManifest, releaseMetadata) {
   const cliPath = join(sourceRoot, "scripts/evozeus-cli.mjs");
-  const source = buildSourceInfo(sourceRoot);
+  const source = buildSourceInfo(sourceRoot, releaseMetadata);
 
   return {
     schema_version: REGISTRATION_VERSION,
@@ -385,7 +425,21 @@ function install(options) {
   const filesWritten = [];
   const skillInventory = listSkillInventory(sourceRoot);
   const registration = buildRegistration(existingRegistration, workspaceRoot, evozeusRoot, now);
-  const manifest = buildManifest(sourceRoot, skillInventory, evozeusRoot, now, existingManifest);
+  const releaseMetadata = options.releaseTag
+    ? {
+        tag: options.releaseTag,
+        commit: options.releaseCommit,
+        archiveSha256: options.releaseArchiveSha256
+      }
+    : null;
+  const manifest = buildManifest(
+    sourceRoot,
+    skillInventory,
+    evozeusRoot,
+    now,
+    existingManifest,
+    releaseMetadata
+  );
 
   if (options.approveWrite) {
     mkdirSync(evozeusRoot, { recursive: true });
@@ -431,6 +485,7 @@ function install(options) {
       resolved_ref: manifest.source.resolved_ref,
       resolved_commit: manifest.source.resolved_commit,
       exact_tag: manifest.source.exact_tag,
+      release_archive_sha256: manifest.source.release_archive_sha256,
       release_artifact_downloaded: manifest.source.release_artifact_downloaded
     },
     cli: manifest.cli,
