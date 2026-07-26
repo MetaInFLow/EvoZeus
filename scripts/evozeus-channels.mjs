@@ -754,6 +754,14 @@ export async function applyChannelUpdate({
     .filter(Boolean)
     .map((path) => resolve(path))
     .includes(resolve(installRoot));
+  const referencedRoots = Object.values(stateBefore.channels)
+    .flatMap((entry) => [entry?.install_root, entry?.previous?.install_root])
+    .filter(Boolean)
+    .map((path) => resolve(path));
+  const recoveredInterruptedInstall = existsSync(installRoot) && !referencedRoots.includes(resolve(installRoot));
+  if (recoveredInterruptedInstall) {
+    rmSync(installRoot, { recursive: true, force: true });
+  }
   const reuseExistingRoot = existsSync(installRoot) && knownReusableRoot;
   if (existsSync(installRoot) && !reuseExistingRoot) {
     throw new ChannelError("INSTALL_ROOT_CONFLICT", `target install root already exists: ${installRoot}`);
@@ -839,6 +847,7 @@ export async function applyChannelUpdate({
       ...plan,
       writes_now: true,
       install_root: installRoot,
+      recovered_interrupted_install: recoveredInterruptedInstall,
       component_roots: componentRoots,
       migration_backup: backupPath ? String(backupPath) : null,
       active,
