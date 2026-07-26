@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -319,32 +319,55 @@ describe("evozeus-cli", () => {
       assert.equal(report.data.handoff_plan.target.kind, "skill");
       assert.equal(report.data.handoff_plan.writes_now, false);
       assert.equal(report.data.handoff_plan.global_evozeus_home, "~/.evozeus");
-      assert.equal(report.data.handoff_plan.target_infra_dir, ".evozeus_evoinfra");
-      assert.equal(report.data.handoff_plan.legacy_target_infra_dir, ".evozeus");
-      assert.equal(report.data.handoff_plan.manifest_path, ".evozeus_evoinfra/wrapper.json");
+      assert.equal(report.data.handoff_plan.target_infra_dir, ".evozeus-wrapper");
+      assert.equal(report.data.handoff_plan.legacy_target_infra_dir, ".evozeus_evoinfra");
+      assert.equal(report.data.handoff_plan.oldest_target_infra_dir, ".evozeus");
+      assert.equal(report.data.handoff_plan.manifest_path, ".evozeus-wrapper/wrapper.json");
       assert.equal(existsSync(join(skillRoot, ".evozeus-wrapper")), false);
     }));
 
-  it("reports coevolve status from the target wrapper manifest", () =>
+  it("delegates coevolve status to the installed backend contract", () =>
     withTempWorkspace((workspace) => {
       const skillRoot = join(workspace, "skills/example");
-      const infraRoot = join(skillRoot, ".evozeus_evoinfra");
+      const infraRoot = join(skillRoot, ".evozeus-wrapper");
+      const wrapperRoot = join(workspace, "EvoZeus-CoEvolve");
+      const wrapperScript = join(wrapperRoot, "scripts/evozeus_wrapper.py");
       mkdirSync(infraRoot, { recursive: true });
+      mkdirSync(join(wrapperRoot, "scripts"), { recursive: true });
       writeFileSync(join(skillRoot, "SKILL.md"), "---\nname: example\n---\n");
       writeFileSync(
         join(infraRoot, "wrapper.json"),
-        JSON.stringify({ wrapper_version: "v0.7.0", integration: { mode: "prompt_runtime_check" } }, null, 2)
+        JSON.stringify({ wrapper_version: "v0.12.0", integration: { mode: "prompt_runtime_check" } }, null, 2)
+      );
+      writeFileSync(
+        wrapperScript,
+        [
+          "import json, pathlib, sys",
+          "target = pathlib.Path(sys.argv[sys.argv.index('--target') + 1])",
+          "manifest_path = target / '.evozeus-wrapper' / 'wrapper.json'",
+          "manifest = json.loads(manifest_path.read_text())",
+          "print(json.dumps({'stage': 'target_skill_diagnosis', 'harness': {'state': 'complete', 'wrapper_version': manifest['wrapper_version'], 'active_manifest_path': str(manifest_path), 'active_manifest_relpath': '.evozeus-wrapper/wrapper.json', 'manifest_source': 'current', 'current_manifest_detected': True, 'migration_required': False, 'conflict': False}, 'skill': {'integration': manifest['integration']}}))"
+        ].join("\n")
       );
 
-      const result = runCli(["coevolve", "status", "--target", "skills/example", "--json"], { cwd: workspace });
+      const result = runCli(["coevolve", "status", "--target", "skills/example", "--json"], {
+        cwd: workspace,
+        env: { EVOZEUS_WRAPPER_ROOT: wrapperRoot }
+      });
       const report = parseJson(result);
 
       assert.equal(report.operation, "coevolve.status");
       assert.equal(report.data.target.kind, "skill");
       assert.equal(report.data.wrapper.manifest_exists, true);
-      assert.equal(report.data.wrapper.wrapper_version, "v0.7.0");
+      assert.equal(realpathSync(report.data.wrapper.manifest_path), realpathSync(join(infraRoot, "wrapper.json")));
+      assert.equal(report.data.wrapper.wrapper_version, "v0.12.0");
+      assert.equal(report.data.wrapper.manifest_source, "current");
+      assert.equal(report.data.wrapper.migration_required, false);
+      assert.equal(report.data.execution.runs_backend_now, true);
       assert.equal(report.data.execution.writes_now, false);
       assert.ok(report.data.backend.command.argv.includes("diagnose"));
+      assert.equal(report.data.backend.executed, true);
+      assert.equal(report.data.diagnosis.harness.current_manifest_detected, true);
     }));
 
   it("plans coevolve feedback audit without writing GitHub", () =>

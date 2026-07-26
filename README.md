@@ -249,7 +249,7 @@ GitHub automation is dry-run by default: labeler, proof gate, privacy scan, dirt
 | Version Channels | Stable Release install, single UAT worktree, version/Doctor/update/rollback CLI |
 | Runtime Assembly | Version-pinned Infra, CoEvolve and Session Signal components with channel-isolated state |
 
-Available in the v0.3.2 release set:
+Available in the v0.3.3 release set:
 
 - Local CLI: `version`, `channel status/use`, `update`, `doctor`, feature and capability routing.
 - Stable/UAT isolation under `~/.evozeus/releases`, `~/.evozeus/worktrees`, and `~/.evozeus/state`.
