@@ -1,0 +1,73 @@
+{
+  "schema_version": "evozeus.product-channel.v1",
+  "product_version": "v0.3.0",
+  "channel": "uat",
+  "generated_at": "2026-07-26T07:55:57Z",
+  "components": {
+    "evozeus": {
+      "version": "v0.3.0",
+      "commit": "643afc342104dac5fd31015be4d7354102062f3c",
+      "source": {
+        "kind": "git",
+        "url": "https://github.com/MetaInFLow/EvoZeus.git",
+        "ref": "uat/current"
+      },
+      "required_paths": [
+        "SKILL.md",
+        "scripts/evozeus-cli.mjs",
+        "scripts/evozeus-channels.mjs",
+        "scripts/evozeus-launcher.mjs",
+        "scripts/evozeus-coevolve-dispatcher.py",
+        "schemas/product-channel-manifest.schema.json"
+      ]
+    },
+    "infra": {
+      "version": "v0.2.0",
+      "commit": "00b3e00bdc32b347c25220471454eb580c7a3651",
+      "source": {
+        "kind": "git",
+        "url": "https://github.com/MetaInFLow/EvoZeus-infra.git",
+        "ref": "uat/current"
+      },
+      "required_paths": [
+        "pyproject.toml",
+        "src/evozeus_runtime/cli/main.py",
+        "src/evozeus_runtime/ledger/paths.py"
+      ]
+    },
+    "coevolve": {
+      "version": "v0.12.0",
+      "commit": "ed4eae75e211209bb9fb862b5ff231bfd169b457",
+      "source": {
+        "kind": "git",
+        "url": "https://github.com/MetaInFLow/EvoZeus-CoEvolve.git",
+        "ref": "uat/current"
+      },
+      "required_paths": [
+        "SKILL.md",
+        "scripts/evozeus_wrapper.py",
+        "templates/global/evozeus_wrapper_dispatcher.py",
+        "contracts/v1/manifest.json"
+      ]
+    },
+    "session_signal": {
+      "version": "v0.1.0",
+      "commit": "a9f8fd0308afe8e3b31dfdce2440b0f27b53b548",
+      "source": {
+        "kind": "git",
+        "url": "https://github.com/MetaInFLow/EvoZeus-session-signal-skill.git",
+        "ref": "uat/current"
+      },
+      "required_paths": [
+        "SKILL.md",
+        "scripts/validate_official_factor_spec.py",
+        "factors/task-completion/spec.json"
+      ]
+    }
+  },
+  "compatibility": {
+    "runtime_min_inclusive": "0.2.0",
+    "runtime_max_exclusive": "0.3.0",
+    "coevolve_contract": "v1.0.0"
+  }
+}
