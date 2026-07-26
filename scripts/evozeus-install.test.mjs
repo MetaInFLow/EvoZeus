@@ -48,6 +48,42 @@ function readJson(path) {
 }
 
 describe("evozeus-install", () => {
+  it("records verified Release archive provenance", () =>
+    withTempInstall(({ workspace, evozeusHome }) => {
+      const commit = "0123456789abcdef0123456789abcdef01234567";
+      const digest = "a".repeat(64);
+      const report = parseStdout(
+        runInstall(workspace, evozeusHome, [
+          "--release-tag",
+          "v0.3.1",
+          "--release-commit",
+          commit,
+          "--release-archive-sha256",
+          digest,
+          "--approve-write"
+        ])
+      );
+      const manifest = readJson(join(evozeusHome, "install-manifest.json"));
+
+      assert.equal(report.skeleton_source.install_material, "release_archive");
+      assert.equal(report.skeleton_source.resolved_ref, "v0.3.1");
+      assert.equal(report.skeleton_source.resolved_commit, commit);
+      assert.equal(report.skeleton_source.release_archive_sha256, `sha256:${digest}`);
+      assert.equal(report.skeleton_source.release_artifact_downloaded, true);
+      assert.equal(manifest.source.local_source, false);
+      assert.equal(manifest.source.install_material, "release_archive");
+      assert.equal(manifest.source.exact_tag, "v0.3.1");
+    }));
+
+  it("rejects incomplete Release provenance before writing", () =>
+    withTempInstall(({ workspace, evozeusHome }) => {
+      const result = runInstall(workspace, evozeusHome, ["--release-tag", "v0.3.1", "--approve-write"]);
+
+      assert.notEqual(result.status, 0);
+      assert.match(result.stderr, /must be provided together/);
+      assert.equal(existsSync(evozeusHome), false);
+    }));
+
   it("dry-runs without writing .evozeus", () =>
     withTempInstall(({ workspace, evozeusHome }) => {
       const result = runInstall(workspace, evozeusHome);
