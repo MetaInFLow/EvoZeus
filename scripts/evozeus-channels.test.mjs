@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
 import {
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -417,6 +418,36 @@ describe("channel transactions", () => {
       assert.equal(readActiveChannel(home).channel, "stable");
       assert.ok(applied.install_root.includes("releases/stable/v0.3.0"));
       assert.ok(!applied.install_root.includes("worktrees/uat"));
+    }));
+
+  it("recovers an unreferenced partial Stable install after an interrupted update", async () =>
+    fixture(async (root) => {
+      const home = join(root, "home");
+      const manifest = stableManifest(join(root, "archives"));
+      const manifestPath = writeManifest(root, "stable.json", manifest);
+      const digest = productManifestDigest(manifest);
+      const staleRoot = join(
+        home,
+        "releases",
+        "stable",
+        `${manifest.product_version}-${digest.replace(/^sha256:/, "").slice(0, 16)}`
+      );
+      mkdirSync(join(staleRoot, "evozeus"), { recursive: true });
+      writeFileSync(join(staleRoot, "evozeus", "interrupted.txt"), "partial\n");
+
+      const applied = await applyChannelUpdate({
+        evozeusHome: home,
+        channel: "stable",
+        manifestSource: manifestPath,
+        fetchImpl: fileFetch,
+        smokeRunner: noSmoke
+      });
+
+      assert.equal(applied.status, "installed");
+      assert.equal(applied.install_root, staleRoot);
+      assert.equal(applied.recovered_interrupted_install, true);
+      assert.equal(existsSync(join(staleRoot, "evozeus", "interrupted.txt")), false);
+      assert.equal(readChannelState(home).channels.stable.install_root, staleRoot);
     }));
 
   it("keeps Stable and UAT component roots and runtime state separate", async () =>
