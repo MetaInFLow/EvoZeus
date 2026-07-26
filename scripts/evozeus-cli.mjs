@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { createHash } from "node:crypto";
+import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { homedir } from "node:os";
@@ -17,7 +18,7 @@ import {
 } from "./evozeus-channels.mjs";
 
 const SCHEMA_VERSION = 1;
-const CLI_VERSION = "0.3.2";
+const CLI_VERSION = "0.3.3";
 const SOURCE_ROOT = resolve(fileURLToPath(new URL("..", import.meta.url)));
 
 const CAPABILITIES = [
@@ -701,6 +702,41 @@ function wrapperBackendCommand(options, args) {
   };
 }
 
+function runBackendJson(backend, operation) {
+  if (!backend.available) {
+    throw new CliError(
+      "COEVOLVE_BACKEND_UNAVAILABLE",
+      backend.repair_hint || "EvoZeus-CoEvolve is unavailable. Repair the active product installation and retry.",
+      operation
+    );
+  }
+
+  const [program, ...args] = backend.command.argv;
+  const result = spawnSync(program, args, {
+    cwd: backend.command.cwd,
+    env: { ...process.env, ...backend.command.env },
+    encoding: "utf8"
+  });
+
+  if (result.error) {
+    throw new CliError("COEVOLVE_BACKEND_FAILED", result.error.message, operation);
+  }
+  if (result.status !== 0) {
+    const detail = String(result.stderr || result.stdout || "").trim();
+    throw new CliError(
+      "COEVOLVE_BACKEND_FAILED",
+      detail || `EvoZeus-CoEvolve exited with status ${result.status}.`,
+      operation
+    );
+  }
+
+  try {
+    return JSON.parse(result.stdout);
+  } catch {
+    throw new CliError("COEVOLVE_BACKEND_INVALID_OUTPUT", "EvoZeus-CoEvolve returned invalid JSON.", operation);
+  }
+}
+
 function sha256(value) {
   return createHash("sha256").update(value).digest("hex");
 }
@@ -1168,11 +1204,12 @@ function attachHarness(options) {
         target,
         recommended_route: "EvoZeus-CoEvolve",
         global_evozeus_home: "~/.evozeus",
-        target_infra_dir: ".evozeus_evoinfra",
-        legacy_target_infra_dir: ".evozeus",
-        manifest_path: ".evozeus_evoinfra/wrapper.json",
-        feedback_policy_path: ".evozeus_evoinfra/feedback-policy.json",
-        audit_rule_path: ".evozeus_evoinfra/audit-rule.md",
+        target_infra_dir: ".evozeus-wrapper",
+        legacy_target_infra_dir: ".evozeus_evoinfra",
+        oldest_target_infra_dir: ".evozeus",
+        manifest_path: ".evozeus-wrapper/wrapper.json",
+        feedback_policy_path: ".evozeus-wrapper/feedback-policy.json",
+        audit_rule_path: ".evozeus-wrapper/audit-rule.md",
         source_contract: {
           global_project_pointer: "~/.evozeus/.projects/OWNER/REPO",
           runtime_install: "~/.codex/skills/<skill> or ~/.agents/skills/<skill>",
@@ -1181,7 +1218,7 @@ function attachHarness(options) {
         writes_now: false,
         next_actions: [
           "confirm target owner",
-          "route target repo-local harness files under .evozeus_evoinfra/",
+          "route target repo-local harness files under .evozeus-wrapper/",
           "redact private examples",
           "run EvoZeus-CoEvolve harness upgrade-check",
           "generate feedback issue draft",
@@ -1201,24 +1238,29 @@ function coevolveStatus(options) {
 
   const target = classifyTarget(options.target, options);
   const targetPath = resolveWorkspacePath(options, options.target);
-  const manifestPath = join(targetPath, ".evozeus_evoinfra/wrapper.json");
-  const manifest = readJsonFile(manifestPath);
   const backend = wrapperBackendCommand(options, ["skill", "diagnose", "--target", targetPath, "--json"]);
+  const diagnosis = runBackendJson(backend, "coevolve.status");
+  const harness = diagnosis?.harness || {};
 
   return envelope("coevolve.status", options, {
     target,
     wrapper: {
-      manifest_path: manifestPath,
-      manifest_exists: Boolean(manifest),
-      wrapper_version: manifest?.wrapper_version || manifest?.version || null,
-      integration_mode: manifest?.integration?.mode || null
+      manifest_path: harness.active_manifest_path || null,
+      manifest_exists: Boolean(harness.current_manifest_detected),
+      wrapper_version: harness.wrapper_version || null,
+      integration_mode: diagnosis?.skill?.integration?.mode || null,
+      manifest_source: harness.manifest_source || null,
+      migration_required: Boolean(harness.migration_required),
+      conflict: Boolean(harness.conflict)
     },
     execution: {
+      runs_backend_now: true,
       reads_target_manifest_now: true,
       writes_now: false,
       github_writes_now: false
     },
-    backend
+    backend: { ...backend, executed: true },
+    diagnosis
   });
 }
 

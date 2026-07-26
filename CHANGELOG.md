@@ -1,5 +1,18 @@
 # Changelog
 
+## [v0.3.3] - 2026-07-26
+
+### Fixed
+
+- `evozeus coevolve status` now executes the installed CoEvolve diagnosis and reports its canonical Harness result.
+- Harness attach plans use `.evozeus-wrapper/` as the current layout while retaining both legacy layout names for migration guidance.
+- Core no longer treats the removed `.evozeus_evoinfra/wrapper.json` path as the source of truth.
+
+### Verification
+
+- Regression tests prove the current manifest is detected through the CoEvolve contract and the backend is executed during status checks.
+- Full Core CLI, installer, Doctor, channel transaction and GitHub governance suites pass.
+
 ## [v0.3.2] - 2026-07-26
 
 ### Fixed
