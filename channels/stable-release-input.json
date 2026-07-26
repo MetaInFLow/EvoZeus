@@ -1,7 +1,7 @@
 {
-  "product_version": "v0.3.3",
+  "product_version": "v0.3.4",
   "core": {
-    "archive_url": "https://github.com/MetaInFLow/EvoZeus/releases/download/v0.3.3/evozeus-v0.3.3.tar.gz",
+    "archive_url": "https://github.com/MetaInFLow/EvoZeus/releases/download/v0.3.4/evozeus-v0.3.4.tar.gz",
     "required_paths": [
       "SKILL.md",
       "scripts/evozeus-cli.mjs",

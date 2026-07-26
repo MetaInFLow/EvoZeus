@@ -18,7 +18,7 @@ import {
 } from "./evozeus-channels.mjs";
 
 const SCHEMA_VERSION = 1;
-const CLI_VERSION = "0.3.3";
+const CLI_VERSION = "0.3.4";
 const SOURCE_ROOT = resolve(fileURLToPath(new URL("..", import.meta.url)));
 
 const CAPABILITIES = [

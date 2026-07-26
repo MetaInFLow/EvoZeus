@@ -1,5 +1,17 @@
 # Changelog
 
+## [v0.3.4] - 2026-07-26
+
+### Fixed
+
+- Stable and UAT updates now recover an unreferenced partial install left by an interrupted process.
+- Recovery remains limited to the deterministic target root and never removes the current or rollback installation.
+
+### Verification
+
+- Channel transaction regression covers retrying an interrupted Stable installation.
+- Full Core CLI, installer, Doctor, channel transaction and GitHub governance suites pass.
+
 ## [v0.3.3] - 2026-07-26
 
 ### Fixed
