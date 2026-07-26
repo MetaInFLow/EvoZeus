@@ -355,6 +355,43 @@ describe("channel transactions", () => {
       assert.equal(second.install_root, first.install_root);
     }));
 
+  it("revalidates and reuses the prior UAT root when uat/current points back to it", async () =>
+    fixture(async (root) => {
+      const home = join(root, "home");
+      const components = Object.fromEntries(
+        Object.keys(COMPONENT_PATHS).map((componentId) => [componentId, initComponent(root, componentId)])
+      );
+      const firstPath = writeManifest(root, "uat-one.json", uatManifest(components));
+      const first = await applyChannelUpdate({
+        evozeusHome: home,
+        channel: "uat",
+        manifestSource: firstPath,
+        smokeRunner: noSmoke
+      });
+
+      updateComponent(components.infra, "two");
+      const secondPath = writeManifest(root, "uat-two.json", uatManifest(components, "v0.3.1"));
+      const second = await applyChannelUpdate({
+        evozeusHome: home,
+        channel: "uat",
+        manifestSource: secondPath,
+        smokeRunner: noSmoke
+      });
+
+      const restored = await applyChannelUpdate({
+        evozeusHome: home,
+        channel: "uat",
+        manifestSource: firstPath,
+        smokeRunner: noSmoke
+      });
+      const state = readChannelState(home).channels.uat;
+      assert.equal(restored.status, "reused_verified");
+      assert.equal(restored.install_root, first.install_root);
+      assert.equal(state.install_root, first.install_root);
+      assert.equal(state.previous.install_root, second.install_root);
+      assert.equal(resolve(dirname(join(home, "worktrees", "uat", "current")), readlinkSync(join(home, "worktrees", "uat", "current"))), first.install_root);
+    }));
+
   it("installs stable archives separately and dry-run does not write", async () =>
     fixture(async (root) => {
       const home = join(root, "home");
