@@ -750,10 +750,15 @@ export async function applyChannelUpdate({
   }
 
   const installRoot = installRootFor(home, plan.manifest, plan.manifest_digest);
-  if (existsSync(installRoot)) {
+  const knownReusableRoot = [existing?.install_root, existing?.previous?.install_root]
+    .filter(Boolean)
+    .map((path) => resolve(path))
+    .includes(resolve(installRoot));
+  const reuseExistingRoot = existsSync(installRoot) && knownReusableRoot;
+  if (existsSync(installRoot) && !reuseExistingRoot) {
     throw new ChannelError("INSTALL_ROOT_CONFLICT", `target install root already exists: ${installRoot}`);
   }
-  privateDirectory(installRoot);
+  if (!reuseExistingRoot) privateDirectory(installRoot);
   const installedGit = [];
   const componentRoots = {};
   let backupPath = null;
@@ -767,9 +772,18 @@ export async function applyChannelUpdate({
     for (const componentId of PRODUCT_COMPONENTS) {
       const component = plan.manifest.components[componentId];
       const destination = join(installRoot, componentId);
-      if (plan.manifest.channel === "uat") {
+      if (reuseExistingRoot && plan.manifest.channel === "uat") {
+        const actual = execChecked("git", ["-C", destination, "rev-parse", "HEAD"]).trim();
+        if (actual !== component.commit) {
+          throw new ChannelError("COMMIT_MISMATCH", `${componentId} reusable checkout does not match the manifest commit`);
+        }
+        const changes = execChecked("git", ["-C", destination, "status", "--porcelain"]).trim();
+        if (changes) {
+          throw new ChannelError("REUSABLE_ROOT_DIRTY", `${componentId} reusable checkout contains local changes`);
+        }
+      } else if (plan.manifest.channel === "uat") {
         installedGit.push(installGitComponent({ evozeusHome: home, componentId, component, destination }));
-      } else {
+      } else if (!reuseExistingRoot) {
         await installReleaseComponent({ componentId, component, destination, fetchImpl });
       }
       validateRequiredPaths(componentId, component, destination);
@@ -821,7 +835,7 @@ export async function applyChannelUpdate({
       );
     }
     return {
-      status: "installed",
+      status: reuseExistingRoot ? "reused_verified" : "installed",
       ...plan,
       writes_now: true,
       install_root: installRoot,
@@ -852,7 +866,7 @@ export async function applyChannelUpdate({
       rollbackError = caughtRollbackError;
     }
     cleanupGitWorktrees(installedGit);
-    rmSync(installRoot, { recursive: true, force: true });
+    if (!reuseExistingRoot) rmSync(installRoot, { recursive: true, force: true });
     if (rollbackError) {
       throw new ChannelError("UPDATE_ROLLBACK_FAILED", "channel update failed and automatic rollback could not be completed", {
         update_error: error.message,
