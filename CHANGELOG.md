@@ -1,5 +1,16 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+
+- UAT overwrite and explicit channel activation now reconcile a missing, legacy, or version-mismatched CoEvolve dispatcher with the active channel.
+- Dispatcher repair preserves the previous verified UAT and creates a restorable backup before replacing existing Hook state.
+
+### Verification
+
+- Channel regressions cover repairing a stale dispatcher through both UAT overwrite and `channel use uat` without creating a second UAT.
+
 ## [v0.3.4] - 2026-07-26
 
 ### Fixed

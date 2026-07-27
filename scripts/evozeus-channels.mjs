@@ -424,12 +424,25 @@ export function channelSnapshot(evozeusHome) {
   );
   const dispatcher = dispatcherSnapshot(home);
   const invalid = Object.values(components).some((component) => component.status !== "ready");
+  const expectedDispatcherVersion = entry.manifest.components.coevolve.version;
+  const dispatcherMissing = dispatcher.status === "not_installed";
   const legacyDispatcher = dispatcher.status === "legacy";
+  const dispatcherVersionMismatch = dispatcher.status === "ready"
+    && dispatcher.installed_version !== expectedDispatcherVersion;
+  const invalidDispatcher = dispatcherMissing || legacyDispatcher || dispatcherVersionMismatch;
   return {
     active_channel: active.channel,
     auto_refresh: active.channel === "uat" && active.auto_refresh === true,
-    status: invalid || legacyDispatcher ? "mixed" : "ready",
-    health: invalid ? "component_mismatch" : legacyDispatcher ? "legacy_dispatcher" : "healthy",
+    status: invalid || invalidDispatcher ? "mixed" : "ready",
+    health: invalid
+      ? "component_mismatch"
+      : legacyDispatcher
+        ? "legacy_dispatcher"
+        : dispatcherMissing
+          ? "dispatcher_missing"
+          : dispatcherVersionMismatch
+            ? "dispatcher_version_mismatch"
+            : "healthy",
     product_version: entry.manifest.product_version,
     manifest_digest: entry.manifest_digest,
     manifest_source: entry.manifest_source,
@@ -512,10 +525,46 @@ function installChannelDispatcher(evozeusHome, channel, coevolveVersion, backupP
     command: `/usr/bin/python3 "${target}"`,
     installation_status: "installed",
     trust_status: "verified_by_product_manifest",
-    migration_backup: String(backupPath),
+    migration_backup: backupPath ? String(backupPath) : null,
     installed_at: new Date().toISOString()
   });
   return target;
+}
+
+export function reconcileChannelDispatcher(evozeusHome, channel) {
+  const home = resolve(evozeusHome);
+  const state = readChannelState(home);
+  const entry = state.channels[channel];
+  if (!entry) {
+    throw new ChannelError("CHANNEL_NOT_INSTALLED", `${channel} is not installed`);
+  }
+  const expectedVersion = entry.manifest.components.coevolve.version;
+  const before = dispatcherSnapshot(home);
+  if (before.status === "ready" && before.installed_version === expectedVersion) {
+    return { status: "ready", repaired: false, backup_path: null, expected_version: expectedVersion };
+  }
+
+  const dispatcherPath = join(home, "hooks", "evozeus_wrapper_dispatcher.py");
+  const statePath = join(home, "hooks", "state.json");
+  const dispatcherExisted = existsSync(dispatcherPath);
+  const stateExisted = existsSync(statePath);
+  const backupPath = backupLegacyState(home);
+  try {
+    installChannelDispatcher(home, channel, expectedVersion, backupPath);
+  } catch (error) {
+    if (backupPath) restoreLegacyState(home, backupPath);
+    if (!dispatcherExisted) rmSync(dispatcherPath, { force: true });
+    if (!stateExisted) rmSync(statePath, { force: true });
+    throw error;
+  }
+  return {
+    status: "repaired",
+    repaired: true,
+    backup_path: backupPath ? String(backupPath) : null,
+    previous_status: before.status,
+    previous_version: before.installed_version ?? null,
+    expected_version: expectedVersion
+  };
 }
 
 function execChecked(command, args, options = {}) {
@@ -691,15 +740,25 @@ export function activateInstalledChannel(evozeusHome, channel, autoRefresh = fal
   if (!state.channels[channel]) {
     throw new ChannelError("CHANNEL_NOT_INSTALLED", `${channel} is not installed`);
   }
-  privateDirectory(join(resolve(evozeusHome), "state", channel));
+  const home = resolve(evozeusHome);
+  const activeBefore = readActiveChannel(home);
+  const activePath = join(home, "active-channel.json");
+  privateDirectory(join(home, "state", channel));
   const active = {
     schema_version: "evozeus.active-channel.v1",
     channel,
     auto_refresh: channel === "uat" && autoRefresh === true,
     activated_at: new Date().toISOString()
   };
-  atomicWriteJson(join(resolve(evozeusHome), "active-channel.json"), active);
-  return active;
+  atomicWriteJson(activePath, active);
+  try {
+    const dispatcherReconciliation = reconcileChannelDispatcher(home, channel);
+    return { ...active, dispatcher_reconciliation: dispatcherReconciliation };
+  } catch (error) {
+    if (activeBefore) atomicWriteJson(activePath, activeBefore);
+    else rmSync(activePath, { force: true });
+    throw error;
+  }
 }
 
 export async function prepareChannelUpdate({
@@ -800,13 +859,6 @@ export async function applyChannelUpdate({
     }
     validateInstalledCompatibility(plan.manifest, componentRoots);
 
-    if (!readActiveChannel(home) && legacySnapshot(home)) {
-      backupPath = backupLegacyState(home);
-      if (!backupPath) {
-        throw new ChannelError("LEGACY_BACKUP_FAILED", "legacy state exists but no backup was created");
-      }
-    }
-
     replaceSymlink(currentLink, installRoot);
     linkSwitched = true;
     const now = new Date().toISOString();
@@ -833,14 +885,11 @@ export async function applyChannelUpdate({
     atomicWriteJson(join(home, "channel-state.json"), nextState);
     stateWritten = true;
     const active = activateInstalledChannel(home, channel, autoRefresh);
+    backupPath = active.dispatcher_reconciliation?.backup_path ?? null;
+    hookMigrationStarted = active.dispatcher_reconciliation?.repaired === true;
     if (backupPath) {
-      hookMigrationStarted = true;
-      installChannelDispatcher(
-        home,
-        channel,
-        plan.manifest.components.coevolve.version,
-        backupPath
-      );
+      nextEntry.migration_backup = backupPath;
+      atomicWriteJson(join(home, "channel-state.json"), nextState);
     }
     return {
       status: reuseExistingRoot ? "reused_verified" : "installed",
