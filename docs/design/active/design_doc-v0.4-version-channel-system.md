@@ -135,7 +135,7 @@ Stable清单作为EvoZeus Release资产发布。UAT清单从唯一`uat/current`�
 - dispatcher来源为旧Repo、临时目录或无法验证路径。
 - 已安装CLI缺少正式文档声明命令。
 
-迁移先把`install-manifest.json`、`hooks/state.json`和相关dispatcher复制到`backups/channel-migrations/<timestamp>/`，再安装目标渠道。失败时保留原文件和恢复说明。
+迁移先把`install-manifest.json`、`hooks/state.json`和相关dispatcher复制到`backups/channel-migrations/<timestamp>/`，再安装目标渠道。UAT覆盖更新和显式渠道切换都必须核对dispatcher是否缺失、仍为旧来源或版本不匹配，并自动修复到当前渠道。失败时恢复原文件、活动渠道和上一版已验证UAT。
 
 ## 12. CLI Contract
 

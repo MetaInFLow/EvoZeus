@@ -234,7 +234,7 @@ GitHub automation is dry-run by default: labeler、proof gate、privacy scan、d
 | Version Channels | Stable Release 安装、唯一 UAT worktree、version/Doctor/update/rollback CLI |
 | Runtime Assembly | 按版本固定 Infra、CoEvolve、Session Signal，并隔离渠道 state |
 
-v0.3.4 发布组合已提供：
+v0.3.5 发布组合已提供：
 
 - 本地 CLI：`version`、`channel status/use`、`update`、`doctor`、feature 和 capability router。
 - `~/.evozeus/releases`、`worktrees`、`state` 下的 Stable/UAT 隔离。
