@@ -514,6 +514,68 @@ describe("channel transactions", () => {
       assert.equal(channelSnapshot(home).health, "healthy");
     }));
 
+  it("repairs a stale dispatcher when the single UAT candidate is overwritten", async () =>
+    fixture(async (root) => {
+      const home = join(root, "home");
+      const components = Object.fromEntries(
+        Object.keys(COMPONENT_PATHS).map((componentId) => [componentId, initComponent(root, componentId)])
+      );
+      const first = await applyChannelUpdate({
+        evozeusHome: home,
+        channel: "uat",
+        manifestSource: writeManifest(root, "uat-one.json", uatManifest(components)),
+        smokeRunner: noSmoke
+      });
+
+      mkdirSync(join(home, "hooks"), { recursive: true });
+      writeFileSync(join(home, "hooks", "evozeus_wrapper_dispatcher.py"), "# stale dispatcher\n");
+      writeFileSync(
+        join(home, "hooks", "state.json"),
+        `${JSON.stringify({ installed_version: "v0.11.4", wrapper_source: "/private/tmp/stale-uat" })}\n`
+      );
+      updateComponent(components.coevolve, "uat-fix");
+
+      const replaced = await applyChannelUpdate({
+        evozeusHome: home,
+        channel: "uat",
+        manifestSource: writeManifest(root, "uat-two.json", uatManifest(components, "v0.3.1")),
+        smokeRunner: noSmoke
+      });
+
+      const hookState = readJsonReport(join(home, "hooks", "state.json"));
+      assert.equal(replaced.status, "installed");
+      assert.equal(readChannelState(home).channels.uat.previous.install_root, first.install_root);
+      assert.equal(hookState.wrapper_source, "channel-managed");
+      assert.equal(hookState.installed_version, "v0.12.0");
+      assert.ok(readFileSync(join(home, "hooks", "evozeus_wrapper_dispatcher.py"), "utf8").includes("evozeus.channel-coevolve-dispatcher.v1"));
+      assert.equal(channelSnapshot(home).health, "healthy");
+    }));
+
+  it("repairs a stale dispatcher when an installed UAT is explicitly activated", async () =>
+    fixture(async (root) => {
+      const home = join(root, "home");
+      const components = Object.fromEntries(
+        Object.keys(COMPONENT_PATHS).map((componentId) => [componentId, initComponent(root, componentId)])
+      );
+      await applyChannelUpdate({
+        evozeusHome: home,
+        channel: "uat",
+        manifestSource: writeManifest(root, "uat.json", uatManifest(components)),
+        smokeRunner: noSmoke
+      });
+      mkdirSync(join(home, "hooks"), { recursive: true });
+      writeFileSync(join(home, "hooks", "evozeus_wrapper_dispatcher.py"), "# stale dispatcher\n");
+      writeFileSync(
+        join(home, "hooks", "state.json"),
+        `${JSON.stringify({ installed_version: "v0.11.4", wrapper_source: "/private/tmp/stale-uat" })}\n`
+      );
+
+      activateInstalledChannel(home, "uat");
+
+      assert.equal(readJsonReport(join(home, "hooks", "state.json")).wrapper_source, "channel-managed");
+      assert.equal(channelSnapshot(home).health, "healthy");
+    }));
+
   it("auto-refreshes the same active UAT and continues the previous UAT when a later refresh fails", async () =>
     fixture(async (root) => {
       const home = join(root, "home");
