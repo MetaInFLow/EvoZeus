@@ -2,7 +2,7 @@
   "schema_version": "evozeus.product-channel.v1",
   "product_version": "v0.3.5",
   "channel": "uat",
-  "generated_at": "2026-07-27T03:39:54Z",
+  "generated_at": "2026-07-27T11:17:58Z",
   "components": {
     "evozeus": {
       "version": "v0.3.4",
@@ -36,8 +36,8 @@
       ]
     },
     "coevolve": {
-      "version": "v0.12.1",
-      "commit": "f26f20ddf6ac4264a24350c33747d30174ed1da3",
+      "version": "v0.13.0",
+      "commit": "c70f93c6214c422a15a90b1074ea678155fb58dc",
       "source": {
         "kind": "git",
         "url": "https://github.com/MetaInFLow/EvoZeus-CoEvolve.git",
@@ -46,7 +46,9 @@
       "required_paths": [
         "SKILL.md",
         "scripts/evozeus_wrapper.py",
+        "scripts/evozeus_notice.py",
         "templates/global/evozeus_wrapper_dispatcher.py",
+        "templates/target/.evozeus_evoinfra/notice-policy.json",
         "contracts/v1/manifest.json"
       ]
     },
