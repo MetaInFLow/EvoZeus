@@ -2,14 +2,24 @@
 
 ## [Unreleased]
 
+- None yet.
+
+## [v0.3.5] - 2026-07-27
+
+### Added
+
+- Stable product assembly now includes EvoZeus-CoEvolve `v0.13.0`, which gives upgraded target Skills a configurable, read-only EvoZeus Notice policy and CLI.
+
 ### Fixed
 
 - UAT overwrite and explicit channel activation now reconcile a missing, legacy, or version-mismatched CoEvolve dispatcher with the active channel.
 - Dispatcher repair preserves the previous verified UAT and creates a restorable backup before replacing existing Hook state.
+- Updated the lockfile to `fast-uri 3.1.4`, removing the published host-confusion advisories from the release dependency audit.
 
 ### Verification
 
 - Channel regressions cover repairing a stale dispatcher through both UAT overwrite and `channel use uat` without creating a second UAT.
+- The exact EvoZeus `v0.3.5` and CoEvolve `v0.13.0` commits passed the single-UAT product channel, local Doctor, and component integrity checks before Stable promotion.
 
 ## [v0.3.4] - 2026-07-26
 

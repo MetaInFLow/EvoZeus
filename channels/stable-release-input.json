@@ -1,7 +1,7 @@
 {
-  "product_version": "v0.3.4",
+  "product_version": "v0.3.5",
   "core": {
-    "archive_url": "https://github.com/MetaInFLow/EvoZeus/releases/download/v0.3.4/evozeus-v0.3.4.tar.gz",
+    "archive_url": "https://github.com/MetaInFLow/EvoZeus/releases/download/v0.3.5/evozeus-v0.3.5.tar.gz",
     "required_paths": [
       "SKILL.md",
       "scripts/evozeus-cli.mjs",
@@ -28,18 +28,20 @@
       ]
     },
     "coevolve": {
-      "version": "v0.12.0",
-      "commit": "ed4eae75e211209bb9fb862b5ff231bfd169b457",
+      "version": "v0.13.0",
+      "commit": "c414a8dc7a3cdc4c1ca3b2766d82a230420381e1",
       "source": {
         "kind": "release_archive",
-        "url": "https://github.com/MetaInFLow/EvoZeus-CoEvolve/releases/download/v0.12.0/evozeus-coevolve-v0.12.0.tar.gz",
-        "ref": "v0.12.0",
-        "sha256": "sha256:a5985ea37ca263cd79321f841f88a453f1bd7d19c5c1a0fcbc1984967ac57d6e"
+        "url": "https://github.com/MetaInFLow/EvoZeus-CoEvolve/releases/download/v0.13.0/evozeus-coevolve-v0.13.0.tar.gz",
+        "ref": "v0.13.0",
+        "sha256": "sha256:f687d2eeead62367ad6a673cfe55106dceb1e1d930c60357e21721d44f2d455d"
       },
       "required_paths": [
         "SKILL.md",
         "scripts/evozeus_wrapper.py",
+        "scripts/evozeus_notice.py",
         "templates/global/evozeus_wrapper_dispatcher.py",
+        "templates/target/.evozeus_evoinfra/notice-policy.json",
         "contracts/v1/manifest.json"
       ]
     },
