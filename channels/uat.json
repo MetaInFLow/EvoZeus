@@ -2,11 +2,11 @@
   "schema_version": "evozeus.product-channel.v1",
   "product_version": "v0.3.5",
   "channel": "uat",
-  "generated_at": "2026-07-27T11:36:36Z",
+  "generated_at": "2026-07-29T06:23:12Z",
   "components": {
     "evozeus": {
       "version": "v0.3.5",
-      "commit": "b45e277a7dc6d2fcc2b61c15d333a9e0f27ceb45",
+      "commit": "07c5e9f1a2264aaaa78b8d43f4232c16b9ab79d3",
       "source": {
         "kind": "git",
         "url": "https://github.com/MetaInFLow/EvoZeus.git",
@@ -36,8 +36,8 @@
       ]
     },
     "coevolve": {
-      "version": "v0.13.0",
-      "commit": "c70f93c6214c422a15a90b1074ea678155fb58dc",
+      "version": "v0.13.1",
+      "commit": "d8de27a8432baabf5a2ce3277f53a9c2ce45c258",
       "source": {
         "kind": "git",
         "url": "https://github.com/MetaInFLow/EvoZeus-CoEvolve.git",
@@ -46,6 +46,7 @@
       "required_paths": [
         "SKILL.md",
         "scripts/evozeus_wrapper.py",
+        "scripts/evozeus_harness_publish.py",
         "scripts/evozeus_notice.py",
         "templates/global/evozeus_wrapper_dispatcher.py",
         "templates/target/.evozeus_evoinfra/notice-policy.json",
