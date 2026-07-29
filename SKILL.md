@@ -32,6 +32,8 @@ User-facing local scenario skill names must start with `EvoZeus-`. Keep the fron
 
 Development requests such as changing docs, scripts, templates, PR rules, branch rules, `SKILL.md`, or `skills/` must read `EvoZeus-Development` at `skills/evozeus-development/SKILL.md` first. Changes to `SKILL.md`, `skills/`, prompts, or agent-facing instructions must also read `EvoZeus-Skill Proposal` at `skills/evozeus-skill-proposal/SKILL.md`.
 
+For bulk Harness maintenance, run `evozeus harness upgrade-all --json` first. Only a user who explicitly adds `--publish` and has live GitHub `ADMIN` permission on a target repo may create its isolated upgrade branch and Pull Request. Never write a target default branch directly.
+
 ## Core Rule
 
 Do not score sessions. Produce evidence-backed tags, cases, verdicts, artifacts, and suggestions.

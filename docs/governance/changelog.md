@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-07-29
+
+- Added `maintain.harness-upgrade-all` to the user-facing Feature Registry.
+- Added read-only `harness.upgradeAllPlan` and admin-gated `harness.upgradeAllPublish` capabilities.
+- Routed `evozeus harness upgrade-all [--publish]` to the active Product Manifest's EvoZeus-CoEvolve component.
+- Required explicit `--publish`, live per-repo GitHub `ADMIN` permission, isolated upgrade worktrees, and Pull Requests instead of default-branch writes.
+
 ## 2026-07-05
 
 - Tightened the install handoff boundary: identity writes, network registration, source writes, and workspace writes now require explicit approval before action.
