@@ -181,6 +181,30 @@ const CAPABILITIES = [
     examples: ["evozeus harness attach --target ./skills/my-skill --json"]
   },
   {
+    name: "harness.upgradeAllPlan",
+    domain: "harness",
+    summary: "Plan upgrades for every outdated registered Skill Harness without changing local repos or GitHub.",
+    input_schema: { type: "object", properties: {} },
+    output_schema: { type: "object", required: ["backend_report"] },
+    write_mode: "read_only",
+    risk_level: "medium",
+    required_permissions: ["system.read", "repo.inspectTarget"],
+    requires_approval: false,
+    examples: ["evozeus harness upgrade-all --json"]
+  },
+  {
+    name: "harness.upgradeAllPublish",
+    domain: "harness",
+    summary: "Upgrade eligible registered Harnesses in isolated worktrees and publish one PR per GitHub-administered repo.",
+    input_schema: { type: "object", properties: { publish: { const: true } } },
+    output_schema: { type: "object", required: ["backend_report"] },
+    write_mode: "approved_write",
+    risk_level: "high",
+    required_permissions: ["repo.admin", "repo.writeBranch", "repo.createPullRequest"],
+    requires_approval: true,
+    examples: ["evozeus harness upgrade-all --publish --json"]
+  },
+  {
     name: "preserve.draft",
     domain: "preserve",
     summary: "Create a privacy-preserving artifact draft from an existing local report.",
@@ -334,6 +358,19 @@ const PRODUCT_FEATURES = [
     aliases: ["evozeus update --dry-run --json", "evozeus channel rollback uat --json"]
   },
   {
+    id: "maintain.harness-upgrade-all",
+    title: "Upgrade all registered Skill Harnesses",
+    title_zh: "批量升级全部已注册 Skill Harness",
+    lifecycle_stage: "maintain",
+    user_goal: "检查全部已注册 Skill，并由具备 GitHub ADMIN 权限的管理员逐 repo 发布 Harness 升级 PR。",
+    command: "evozeus harness upgrade-all --json",
+    backend_owner: "EvoZeus-CoEvolve",
+    status: "available",
+    approval_boundary: "Planning is read-only; --publish requires live GitHub ADMIN permission for every modified repo.",
+    related_capabilities: ["harness.upgradeAllPlan", "harness.upgradeAllPublish"],
+    aliases: ["evozeus harness upgrade-all --publish --json"]
+  },
+  {
     id: "uninstall",
     title: "Uninstall or archive EvoZeus",
     title_zh: "卸载或归档 EvoZeus 本地状态",
@@ -385,7 +422,8 @@ function parseArgs(argv) {
     checkNetwork: false,
     channel: null,
     manifest: null,
-    autoRefresh: false
+    autoRefresh: false,
+    publish: false
   };
   const positionals = [];
 
@@ -443,6 +481,8 @@ function parseArgs(argv) {
       options.manifest = argv[++index];
     } else if (arg === "--auto-refresh") {
       options.autoRefresh = true;
+    } else if (arg === "--publish") {
+      options.publish = true;
     } else if (arg === "--help" || arg === "-h") {
       options.help = true;
     } else if (arg.startsWith("--")) {
@@ -1302,6 +1342,91 @@ function coevolveAudit(options) {
   });
 }
 
+function coevolveHarnessVersionAt(root, operation = "harness.upgradeAllPlan") {
+  const changelogPath = join(root, "CHANGELOG.md");
+  if (!existsSync(changelogPath)) {
+    throw new CliError(
+      "COEVOLVE_VERSION_UNKNOWN",
+      "EvoZeus-CoEvolve CHANGELOG.md is missing; repair the Harness source channel before upgrading targets.",
+      operation
+    );
+  }
+  const match = readFileSync(changelogPath, "utf8").match(/^## \[(v\d+\.\d+\.\d+)\]/m);
+  if (!match) {
+    throw new CliError(
+      "COEVOLVE_VERSION_UNKNOWN",
+      "EvoZeus-CoEvolve has no valid vMAJOR.MINOR.PATCH release entry.",
+      operation
+    );
+  }
+  return match[1];
+}
+
+function stableHarnessSource(options, operation) {
+  const home = workspaceInfo(options).evozeus_root;
+  const snapshot = channelSnapshot(home);
+  const stable = snapshot.channels?.stable;
+
+  if (!stable) {
+    const readiness = componentReadiness(options)["EvoZeus-CoEvolve"];
+    return {
+      channel: "development",
+      version: coevolveHarnessVersionAt(readiness.detected_path, operation),
+      root: readiness.detected_path
+    };
+  }
+
+  const root = stable.component_roots?.coevolve;
+  const version = stable.manifest?.components?.coevolve?.version;
+  if (!root || !existsSync(root) || !/^v\d+\.\d+\.\d+$/.test(String(version ?? ""))) {
+    throw new CliError(
+      "STABLE_HARNESS_SOURCE_INVALID",
+      "The installed Stable CoEvolve Harness source is incomplete; repair or reinstall Stable before upgrading target Skills.",
+      operation
+    );
+  }
+  const changelogVersion = coevolveHarnessVersionAt(root, operation);
+  if (changelogVersion !== version) {
+    throw new CliError(
+      "STABLE_HARNESS_SOURCE_MISMATCH",
+      `Stable CoEvolve manifest ${version} does not match its source CHANGELOG ${changelogVersion}.`,
+      operation
+    );
+  }
+  return { channel: "stable", version, root };
+}
+
+function harnessUpgradeAll(options) {
+  const operation = options.publish ? "harness.upgradeAllPublish" : "harness.upgradeAllPlan";
+  const snapshot = channelSnapshot(workspaceInfo(options).evozeus_root);
+  const source = stableHarnessSource(options, operation);
+  const backend = wrapperBackendCommand(options, [
+    "harness",
+    "upgrade-all",
+    "--latest-version",
+    source.version,
+    "--wrapper-root",
+    source.root,
+    options.publish ? "--publish" : "--dry-run",
+    "--json"
+  ]);
+  const backendReport = runBackendJson(backend, operation);
+  return envelope(operation, options, {
+    executor_channel: snapshot.active_channel ?? "development",
+    harness_source_channel: source.channel,
+    harness_source_version: source.version,
+    execution: {
+      runs_backend_now: true,
+      writes_now: options.publish && backendReport.writes === true,
+      github_writes_now: options.publish && backendReport.writes === true,
+      requires_live_repo_admin: options.publish,
+      direct_default_branch_writes: false
+    },
+    backend: { ...backend, executed: true },
+    backend_report: backendReport
+  });
+}
+
 function summarizeReportForDraft(report) {
   const projects = reportProjects(report);
   const candidates = [];
@@ -1630,6 +1755,7 @@ Commands:
   coevolve status --target <path|url> --json
   coevolve audit --target <path|url> --user-input <feedback> --json
   harness attach --target <path|url> --json
+  harness upgrade-all [--publish] --json
   doctor --json
   update --channel stable|uat [--manifest <path-or-url>] --dry-run --json
   update --channel stable|uat [--manifest <path-or-url>] --approve-write --json
@@ -1641,6 +1767,7 @@ Global options:
   --json
   --approve-feedback
   --approve-write
+  --publish
   --channel stable|uat
   --manifest <path-or-url>
   --auto-refresh
@@ -1717,6 +1844,10 @@ async function route(parsed) {
 
   if (command === "harness" && subcommand === "attach") {
     return attachHarness(options);
+  }
+
+  if (command === "harness" && subcommand === "upgrade-all") {
+    return harnessUpgradeAll(options);
   }
 
   if (command === "coevolve" && subcommand === "attach") {

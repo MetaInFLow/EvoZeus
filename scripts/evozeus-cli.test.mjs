@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import { describe, it } from "node:test";
 
 const SCRIPT = fileURLToPath(new URL("./evozeus-cli.mjs", import.meta.url));
+const REPO_ROOT = fileURLToPath(new URL("..", import.meta.url));
 
 function stableManifest() {
   const versions = { evozeus: "v0.3.0", infra: "v0.2.0", coevolve: "v0.12.0", session_signal: "v0.1.0" };
@@ -66,6 +67,18 @@ function parseJson(result, expectedStatus = 0) {
 }
 
 describe("evozeus-cli", () => {
+  it("documents the admin Harness fleet protocol in the root Skill", () => {
+    const skill = readFileSync(join(REPO_ROOT, "SKILL.md"), "utf8");
+
+    assert.match(skill, /Harness Fleet Maintenance/);
+    assert.match(skill, /harness upgrade-all --json/);
+    assert.match(skill, /harness upgrade-all --publish --json/);
+    assert.match(skill, /only exact `ADMIN` may publish/);
+    assert.match(skill, /verified Stable CoEvolve component/);
+    assert.match(skill, /Never distribute UAT or development Harness files/);
+    assert.match(skill, /Never merge target PRs or publish target Skill Releases/);
+  });
+
   it("describes P0 capabilities as JSON", () => {
     const result = runCli(["capabilities", "--json"]);
     const report = parseJson(result);
@@ -75,6 +88,8 @@ describe("evozeus-cli", () => {
     assert.equal(report.operation, "capabilities.describe");
     assert.ok(names.includes("session.analyze"));
     assert.ok(names.includes("harness.attachPlan"));
+    assert.ok(names.includes("harness.upgradeAllPlan"));
+    assert.ok(names.includes("harness.upgradeAllPublish"));
     assert.ok(names.includes("system.updatePlan"));
     assert.ok(names.includes("system.uninstallPlan"));
     assert.equal(
@@ -94,6 +109,7 @@ describe("evozeus-cli", () => {
     assert.ok(features.has("insights.sessions"));
     assert.ok(features.has("preserve.artifact"));
     assert.ok(features.has("coevolve.target"));
+    assert.ok(features.has("maintain.harness-upgrade-all"));
     assert.equal(features.get("review.session").command, "evozeus review session --input <path|-> --json");
     assert.equal(features.get("insights.sessions").backend_owner, "EvoZeus-infra");
     assert.equal(features.get("insights.sessions").command, "evozeus insights plan --source codex --json");
@@ -101,6 +117,10 @@ describe("evozeus-cli", () => {
     assert.equal(features.get("preserve.artifact").command, "evozeus preserve draft --from-report <path> --json");
     assert.equal(features.get("coevolve.target").backend_owner, "EvoZeus-CoEvolve");
     assert.ok(features.get("coevolve.target").related_capabilities.includes("harness.attachPlan"));
+    assert.equal(features.get("maintain.harness-upgrade-all").command, "evozeus harness upgrade-all --json");
+    assert.ok(
+      features.get("maintain.harness-upgrade-all").related_capabilities.includes("harness.upgradeAllPublish")
+    );
   });
 
   it("prints a human-readable product feature menu", () => {
@@ -124,6 +144,7 @@ describe("evozeus-cli", () => {
     assert.match(result.stdout, /insights plan/);
     assert.match(result.stdout, /preserve draft/);
     assert.match(result.stdout, /coevolve attach/);
+    assert.match(result.stdout, /harness upgrade-all/);
     assert.match(result.stdout, /session analyze/);
     assert.match(result.stdout, /approve-feedback/);
   });
@@ -324,6 +345,110 @@ describe("evozeus-cli", () => {
       assert.equal(report.data.handoff_plan.oldest_target_infra_dir, ".evozeus");
       assert.equal(report.data.handoff_plan.manifest_path, ".evozeus-wrapper/wrapper.json");
       assert.equal(existsSync(join(skillRoot, ".evozeus-wrapper")), false);
+    }));
+
+  it("plans an admin-gated harness upgrade-all through the installed CoEvolve backend", () =>
+    withTempWorkspace((workspace) => {
+      const wrapperRoot = join(workspace, "EvoZeus-CoEvolve");
+      const wrapperScript = join(wrapperRoot, "scripts/evozeus_wrapper.py");
+      mkdirSync(join(wrapperRoot, "scripts"), { recursive: true });
+      writeFileSync(join(wrapperRoot, "CHANGELOG.md"), "# Changelog\n\n## [v0.13.0] - 2026-07-27\n");
+      writeFileSync(
+        wrapperScript,
+        [
+          "import json, sys",
+          "print(json.dumps({'stage': 'harness_upgrade_all', 'status': 'planned', 'writes': False, 'argv': sys.argv[1:]}))"
+        ].join("\n")
+      );
+
+      const result = runCli(["harness", "upgrade-all", "--json"], {
+        cwd: workspace,
+        env: { EVOZEUS_WRAPPER_ROOT: wrapperRoot }
+      });
+      const report = parseJson(result);
+
+      assert.equal(report.operation, "harness.upgradeAllPlan");
+      assert.equal(report.data.execution.writes_now, false);
+      assert.equal(report.data.execution.github_writes_now, false);
+      assert.ok(report.data.backend_report.argv.includes("--dry-run"));
+      assert.ok(report.data.backend_report.argv.includes("v0.13.0"));
+    }));
+
+  it("uses the active UAT executor with the installed Stable Harness source", () =>
+    withTempWorkspace((workspace) => {
+      const home = join(workspace, "home/.evozeus");
+      const stableRoot = join(home, "releases/stable/coevolve");
+      const uatRoot = join(home, "releases/uat/coevolve");
+      mkdirSync(join(stableRoot, "scripts"), { recursive: true });
+      mkdirSync(join(uatRoot, "scripts"), { recursive: true });
+      writeFileSync(join(stableRoot, "CHANGELOG.md"), "# Changelog\n\n## [v0.13.0] - 2026-07-27\n");
+      writeFileSync(join(stableRoot, "scripts/evozeus_wrapper.py"), "raise SystemExit('stable must not execute')\n");
+      writeFileSync(join(uatRoot, "CHANGELOG.md"), "# Changelog\n\n## [v0.13.1] - 2026-07-29\n");
+      writeFileSync(
+        join(uatRoot, "scripts/evozeus_wrapper.py"),
+        [
+          "import json, sys",
+          "print(json.dumps({'stage': 'harness_upgrade_all', 'status': 'planned', 'writes': False, 'executor': 'uat', 'argv': sys.argv[1:]}))"
+        ].join("\n")
+      );
+      writeFileSync(
+        join(home, "channel-state.json"),
+        `${JSON.stringify({
+          schema_version: "evozeus.channel-state.v1",
+          channels: {
+            stable: {
+              component_roots: { coevolve: stableRoot },
+              manifest: { components: { coevolve: { version: "v0.13.0", required_paths: [] } } }
+            },
+            uat: {
+              component_roots: { coevolve: uatRoot },
+              manifest: { components: { coevolve: { version: "v0.13.1", required_paths: [] } } }
+            }
+          }
+        }, null, 2)}\n`
+      );
+      writeFileSync(join(home, "active-channel.json"), `${JSON.stringify({ channel: "uat", auto_refresh: true })}\n`);
+
+      const result = runCli(["harness", "upgrade-all", "--json"], { cwd: workspace, evozeusHome: home });
+      const report = parseJson(result);
+
+      assert.equal(report.runtime.channel, "uat");
+      assert.equal(report.data.executor_channel, "uat");
+      assert.equal(report.data.harness_source_channel, "stable");
+      assert.equal(report.data.harness_source_version, "v0.13.0");
+      assert.equal(report.data.backend.detected_path, uatRoot);
+      assert.equal(report.data.backend_report.executor, "uat");
+      assert.ok(report.data.backend_report.argv.includes("v0.13.0"));
+      assert.ok(report.data.backend_report.argv.includes(stableRoot));
+      assert.equal(report.data.backend_report.argv.includes("v0.13.1"), false);
+      assert.equal(report.data.backend_report.argv.includes(uatRoot), false);
+    }));
+
+  it("publishes harness upgrade PRs only through the explicit publish command", () =>
+    withTempWorkspace((workspace) => {
+      const wrapperRoot = join(workspace, "EvoZeus-CoEvolve");
+      const wrapperScript = join(wrapperRoot, "scripts/evozeus_wrapper.py");
+      mkdirSync(join(wrapperRoot, "scripts"), { recursive: true });
+      writeFileSync(join(wrapperRoot, "CHANGELOG.md"), "# Changelog\n\n## [v0.13.0] - 2026-07-27\n");
+      writeFileSync(
+        wrapperScript,
+        [
+          "import json, sys",
+          "print(json.dumps({'stage': 'harness_upgrade_all_publish', 'status': 'published', 'writes': True, 'published_count': 1, 'argv': sys.argv[1:]}))"
+        ].join("\n")
+      );
+
+      const result = runCli(["harness", "upgrade-all", "--publish", "--json"], {
+        cwd: workspace,
+        env: { EVOZEUS_WRAPPER_ROOT: wrapperRoot }
+      });
+      const report = parseJson(result);
+
+      assert.equal(report.operation, "harness.upgradeAllPublish");
+      assert.equal(report.data.execution.writes_now, true);
+      assert.equal(report.data.execution.github_writes_now, true);
+      assert.ok(report.data.backend_report.argv.includes("--publish"));
+      assert.equal(report.data.backend_report.argv.includes("--dry-run"), false);
     }));
 
   it("delegates coevolve status to the installed backend contract", () =>

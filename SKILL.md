@@ -1,6 +1,6 @@
 ---
 name: evozeus
-description: Use when an agent is asked to join EvoZeus, review a session with evidence, submit a case, or decide what from a session should be preserved, fixed, promoted, or rejected.
+description: Use when an agent is asked to join EvoZeus, review a session with evidence, submit a case, decide what should be preserved or fixed, or administer and align EvoZeus Harness versions across registered Skill repositories.
 ---
 
 # EvoZeus（宙斯）
@@ -31,6 +31,49 @@ This root skill is the stable protocol entry for manual judgment. If the user st
 User-facing local scenario skill names must start with `EvoZeus-`. Keep the frontmatter `name` and folder paths lowercase `evozeus-*` so Codex skill validation and routing continue to work.
 
 Development requests such as changing docs, scripts, templates, PR rules, branch rules, `SKILL.md`, or `skills/` must read `EvoZeus-Development` at `skills/evozeus-development/SKILL.md` first. Changes to `SKILL.md`, `skills/`, prompts, or agent-facing instructions must also read `EvoZeus-Skill Proposal` at `skills/evozeus-skill-proposal/SKILL.md`.
+
+## Harness Fleet Maintenance
+
+Use this protocol when the user asks to inspect, align, or upgrade Harness versions across all Skills registered under `~/.evozeus`.
+
+### Read-only plan
+
+Always begin with:
+
+```text
+~/.evozeus/bin/evozeus harness upgrade-all --json
+```
+
+Report the executor channel, Stable Harness source version, registered target count, upgradeable targets, permission skips, preflight failures, and `writes: false`. Planning does not authorize GitHub writes.
+
+### Source and channel boundary
+
+- Run orchestration through the currently active Stable or UAT executor.
+- Source every target Harness update from the installed, verified Stable CoEvolve component.
+- Never distribute UAT or development Harness files to target Skill repositories.
+- Stop when the installed Stable source is missing or its manifest version differs from its source `CHANGELOG.md`.
+
+### Admin publication
+
+Run publication only when the user explicitly authorizes creating Harness upgrade Pull Requests in the current request:
+
+```text
+~/.evozeus/bin/evozeus harness upgrade-all --publish --json
+```
+
+For each target repository:
+
+1. Query live GitHub `viewerPermission`; only exact `ADMIN` may publish.
+2. Skip unauthorized targets without granting, requesting, or inferring permission.
+3. Create an isolated worktree from the remote default branch.
+4. Refresh only Harness-managed files and preserve Skill business instructions and user changes.
+5. Validate the declared migration file set and repository gates.
+6. Create or reuse one upgrade branch and Pull Request for the target Harness version.
+7. Keep the canonical checkout and target default branch unchanged.
+
+Treat each repository as an independent result so one failure does not block other authorized targets. Keep failed worktrees for recovery; clean successful temporary worktrees. Record the run under `~/.evozeus/skills/runs/` and append its event to `~/.evozeus/skills/events.jsonl`.
+
+After execution, report created or reused PR URLs, skipped repositories, failures, Run ID, and ledger path. Never merge target PRs or publish target Skill Releases without separate explicit authorization.
 
 ## Core Rule
 
