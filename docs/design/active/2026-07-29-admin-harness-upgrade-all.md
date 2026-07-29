@@ -17,7 +17,14 @@ evozeus harness upgrade-all
 evozeus harness upgrade-all --publish
 ```
 
-第一条命令运行只读计划；第二条命令代表明确的本次 GitHub 发布授权。EvoZeus 将当前 Product Manifest 中的 CoEvolve 版本与路径传给后端，禁止从临时目录或未绑定通道的实现执行。
+第一条命令运行只读计划；第二条命令代表明确的本次 GitHub 发布授权。
+
+执行器与发布源分开解析：
+
+- 执行器跟随当前激活频道，使 UAT 可以验证新的批量编排能力。
+- Harness 发布源固定为本机已验证 Stable CoEvolve，目标版本与 Stable Product Manifest 一致。
+- Stable 已安装但来源缺失、版本不一致时立即阻断，禁止回退到 UAT。
+- 仅在无频道状态的本地开发环境中，允许使用显式开发源完成测试。
 
 ## Feature 与 Capability
 
@@ -37,6 +44,7 @@ evozeus harness upgrade-all --publish
 - 权限不足目标
 - 验证失败目标
 - Run ID和本地审计路径
+- 执行器频道、Harness 发布源频道与版本
 
 ## 非目标
 
@@ -44,4 +52,3 @@ evozeus harness upgrade-all --publish
 - 不自动发布Skill Release。
 - 不修改Skill业务规则。
 - 不把UAT Harness发布到目标默认分支。
-

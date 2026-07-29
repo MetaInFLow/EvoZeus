@@ -361,6 +361,56 @@ describe("evozeus-cli", () => {
       assert.ok(report.data.backend_report.argv.includes("v0.13.0"));
     }));
 
+  it("uses the active UAT executor with the installed Stable Harness source", () =>
+    withTempWorkspace((workspace) => {
+      const home = join(workspace, "home/.evozeus");
+      const stableRoot = join(home, "releases/stable/coevolve");
+      const uatRoot = join(home, "releases/uat/coevolve");
+      mkdirSync(join(stableRoot, "scripts"), { recursive: true });
+      mkdirSync(join(uatRoot, "scripts"), { recursive: true });
+      writeFileSync(join(stableRoot, "CHANGELOG.md"), "# Changelog\n\n## [v0.13.0] - 2026-07-27\n");
+      writeFileSync(join(stableRoot, "scripts/evozeus_wrapper.py"), "raise SystemExit('stable must not execute')\n");
+      writeFileSync(join(uatRoot, "CHANGELOG.md"), "# Changelog\n\n## [v0.13.1] - 2026-07-29\n");
+      writeFileSync(
+        join(uatRoot, "scripts/evozeus_wrapper.py"),
+        [
+          "import json, sys",
+          "print(json.dumps({'stage': 'harness_upgrade_all', 'status': 'planned', 'writes': False, 'executor': 'uat', 'argv': sys.argv[1:]}))"
+        ].join("\n")
+      );
+      writeFileSync(
+        join(home, "channel-state.json"),
+        `${JSON.stringify({
+          schema_version: "evozeus.channel-state.v1",
+          channels: {
+            stable: {
+              component_roots: { coevolve: stableRoot },
+              manifest: { components: { coevolve: { version: "v0.13.0", required_paths: [] } } }
+            },
+            uat: {
+              component_roots: { coevolve: uatRoot },
+              manifest: { components: { coevolve: { version: "v0.13.1", required_paths: [] } } }
+            }
+          }
+        }, null, 2)}\n`
+      );
+      writeFileSync(join(home, "active-channel.json"), `${JSON.stringify({ channel: "uat", auto_refresh: true })}\n`);
+
+      const result = runCli(["harness", "upgrade-all", "--json"], { cwd: workspace, evozeusHome: home });
+      const report = parseJson(result);
+
+      assert.equal(report.runtime.channel, "uat");
+      assert.equal(report.data.executor_channel, "uat");
+      assert.equal(report.data.harness_source_channel, "stable");
+      assert.equal(report.data.harness_source_version, "v0.13.0");
+      assert.equal(report.data.backend.detected_path, uatRoot);
+      assert.equal(report.data.backend_report.executor, "uat");
+      assert.ok(report.data.backend_report.argv.includes("v0.13.0"));
+      assert.ok(report.data.backend_report.argv.includes(stableRoot));
+      assert.equal(report.data.backend_report.argv.includes("v0.13.1"), false);
+      assert.equal(report.data.backend_report.argv.includes(uatRoot), false);
+    }));
+
   it("publishes harness upgrade PRs only through the explicit publish command", () =>
     withTempWorkspace((workspace) => {
       const wrapperRoot = join(workspace, "EvoZeus-CoEvolve");

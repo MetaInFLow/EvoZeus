@@ -1342,14 +1342,13 @@ function coevolveAudit(options) {
   });
 }
 
-function coevolveHarnessVersion(options) {
-  const readiness = componentReadiness(options)["EvoZeus-CoEvolve"];
-  const changelogPath = join(readiness.detected_path, "CHANGELOG.md");
+function coevolveHarnessVersionAt(root, operation = "harness.upgradeAllPlan") {
+  const changelogPath = join(root, "CHANGELOG.md");
   if (!existsSync(changelogPath)) {
     throw new CliError(
       "COEVOLVE_VERSION_UNKNOWN",
-      "EvoZeus-CoEvolve CHANGELOG.md is missing; repair the active product channel before upgrading targets.",
-      "harness.upgradeAllPlan"
+      "EvoZeus-CoEvolve CHANGELOG.md is missing; repair the Harness source channel before upgrading targets.",
+      operation
     );
   }
   const match = readFileSync(changelogPath, "utf8").match(/^## \[(v\d+\.\d+\.\d+)\]/m);
@@ -1357,15 +1356,50 @@ function coevolveHarnessVersion(options) {
     throw new CliError(
       "COEVOLVE_VERSION_UNKNOWN",
       "EvoZeus-CoEvolve has no valid vMAJOR.MINOR.PATCH release entry.",
-      "harness.upgradeAllPlan"
+      operation
     );
   }
-  return { version: match[1], root: readiness.detected_path };
+  return match[1];
+}
+
+function stableHarnessSource(options, operation) {
+  const home = workspaceInfo(options).evozeus_root;
+  const snapshot = channelSnapshot(home);
+  const stable = snapshot.channels?.stable;
+
+  if (!stable) {
+    const readiness = componentReadiness(options)["EvoZeus-CoEvolve"];
+    return {
+      channel: "development",
+      version: coevolveHarnessVersionAt(readiness.detected_path, operation),
+      root: readiness.detected_path
+    };
+  }
+
+  const root = stable.component_roots?.coevolve;
+  const version = stable.manifest?.components?.coevolve?.version;
+  if (!root || !existsSync(root) || !/^v\d+\.\d+\.\d+$/.test(String(version ?? ""))) {
+    throw new CliError(
+      "STABLE_HARNESS_SOURCE_INVALID",
+      "The installed Stable CoEvolve Harness source is incomplete; repair or reinstall Stable before upgrading target Skills.",
+      operation
+    );
+  }
+  const changelogVersion = coevolveHarnessVersionAt(root, operation);
+  if (changelogVersion !== version) {
+    throw new CliError(
+      "STABLE_HARNESS_SOURCE_MISMATCH",
+      `Stable CoEvolve manifest ${version} does not match its source CHANGELOG ${changelogVersion}.`,
+      operation
+    );
+  }
+  return { channel: "stable", version, root };
 }
 
 function harnessUpgradeAll(options) {
-  const source = coevolveHarnessVersion(options);
   const operation = options.publish ? "harness.upgradeAllPublish" : "harness.upgradeAllPlan";
+  const snapshot = channelSnapshot(workspaceInfo(options).evozeus_root);
+  const source = stableHarnessSource(options, operation);
   const backend = wrapperBackendCommand(options, [
     "harness",
     "upgrade-all",
@@ -1378,6 +1412,9 @@ function harnessUpgradeAll(options) {
   ]);
   const backendReport = runBackendJson(backend, operation);
   return envelope(operation, options, {
+    executor_channel: snapshot.active_channel ?? "development",
+    harness_source_channel: source.channel,
+    harness_source_version: source.version,
     execution: {
       runs_backend_now: true,
       writes_now: options.publish && backendReport.writes === true,
