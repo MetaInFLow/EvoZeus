@@ -2,7 +2,7 @@
   "schema_version": "evozeus.product-channel.v1",
   "product_version": "v0.3.5",
   "channel": "uat",
-  "generated_at": "2026-07-29T11:39:43Z",
+  "generated_at": "2026-07-29T13:00:16Z",
   "components": {
     "evozeus": {
       "version": "v0.3.5",
@@ -37,7 +37,7 @@
     },
     "coevolve": {
       "version": "v0.13.1",
-      "commit": "d8de27a8432baabf5a2ce3277f53a9c2ce45c258",
+      "commit": "c7be008f501c251c92dc1f0a88c7872bd2e2ac23",
       "source": {
         "kind": "git",
         "url": "https://github.com/MetaInFLow/EvoZeus-CoEvolve.git",
