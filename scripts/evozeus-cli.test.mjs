@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import { describe, it } from "node:test";
 
 const SCRIPT = fileURLToPath(new URL("./evozeus-cli.mjs", import.meta.url));
+const REPO_ROOT = fileURLToPath(new URL("..", import.meta.url));
 
 function stableManifest() {
   const versions = { evozeus: "v0.3.0", infra: "v0.2.0", coevolve: "v0.12.0", session_signal: "v0.1.0" };
@@ -66,6 +67,18 @@ function parseJson(result, expectedStatus = 0) {
 }
 
 describe("evozeus-cli", () => {
+  it("documents the admin Harness fleet protocol in the root Skill", () => {
+    const skill = readFileSync(join(REPO_ROOT, "SKILL.md"), "utf8");
+
+    assert.match(skill, /Harness Fleet Maintenance/);
+    assert.match(skill, /harness upgrade-all --json/);
+    assert.match(skill, /harness upgrade-all --publish --json/);
+    assert.match(skill, /only exact `ADMIN` may publish/);
+    assert.match(skill, /verified Stable CoEvolve component/);
+    assert.match(skill, /Never distribute UAT or development Harness files/);
+    assert.match(skill, /Never merge target PRs or publish target Skill Releases/);
+  });
+
   it("describes P0 capabilities as JSON", () => {
     const result = runCli(["capabilities", "--json"]);
     const report = parseJson(result);
