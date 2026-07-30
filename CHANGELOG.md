@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+No changes yet.
+
+## [v0.4.0] - 2026-07-30
+
 ### Changed
 
 - Channel alignment now refreshes the local launcher bootstrap from the verified EvoZeus component, so an older installation can read the current manifest schema and auto-refresh the single UAT.
