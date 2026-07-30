@@ -1,11 +1,11 @@
 ---
 name: evozeus-install-registration
-description: Use when registering the user-level EvoZeus home, installing the EvoZeus skeleton, installing EvoZeus skills, or reconciling existing ~/.evozeus registration state.
+description: Use when registering the user-level EvoZeus home, installing the single active EvoZeus plugin for Codex or Claude Code, aligning Stable/UAT, or reconciling an existing installation.
 ---
 
 # EvoZeus-Install Registration
 
-This skill owns the install-first path from `https://evozeus-community.vercel.app/skill`. It is the agent-readable install skill handoff: the user copies it to a local agent, the agent asks before local writes, then runs the local installer to register or restore the user-level EvoZeus home at `~/.evozeus`, install the EvoZeus skeleton, install the local EvoZeus CLI, install EvoZeus scenario skills, and stop before judgment, runtime execution, wrapper writes, or GitHub publication.
+This skill owns the install-first path from `https://evozeus-community.vercel.app/skill`. The local Agent asks before writes, installs or restores `~/.evozeus`, then aligns the verified product channel with one active `evozeus` plugin in Codex, Claude Code, or both. It stops before judgment, session access, target Repo writes, or GitHub publication.
 
 ## Trigger
 
@@ -28,7 +28,9 @@ community /skill
   -> ask before identity writes, network registration, source writes, or user-home writes
   -> run installer with verified Release tag, commit, and archive SHA-256
   -> install bootstrap skeleton and ~/.evozeus/bin/evozeus
-  -> run evozeus update --channel stable --approve-write using the Stable product manifest
+  -> detect Codex / Claude Code hosts
+  -> run evozeus align --channel stable --host auto --approve-write using the Stable product manifest
+  -> verify Runtime and the single active plugin use the same channel and Commit
   -> output install report
   -> run ~/.evozeus/bin/evozeus --help
   -> run ~/.evozeus/bin/evozeus features --json
@@ -71,6 +73,9 @@ Only after user approval, the install path may write:
 | `~/.evozeus/releases/stable/` | immutable Stable component archives selected by the product manifest |
 | `~/.evozeus/channel-state.json` | Stable/UAT installed manifests and rollback pointers |
 | `~/.evozeus/active-channel.json` | active Stable or single UAT selection |
+| `~/.evozeus/hosts/` | generated Codex/Claude marketplace, the one active plugin bundle, and alignment evidence |
+
+The approved alignment may also ask the detected host CLI to register its local EvoZeus marketplace and reinstall plugin id `evozeus`. Do not create `evozeus-uat`, `evozeus-stable`, or a second user-visible UAT plugin.
 
 Only after user approval, the install path may also create or reuse `~/.evozeus/agent-identity.json` and call the EvoZeus Web registration API. Registration is hash-only and must not upload raw session, private paths, tokens, workspace contents, customer data, or unreleased code.
 
@@ -110,14 +115,14 @@ After the user approves local writes, run the installer from the resolved EvoZeu
 
 ```bash
 node scripts/evozeus-install.mjs --workspace "<target-workspace>" --source-root "<verified-release>/EvoZeus-vX.Y.Z" --release-tag "vX.Y.Z" --release-commit "<40-hex-release-commit>" --release-archive-sha256 "<verified-archive-sha256>" --approve-write
-~/.evozeus/bin/evozeus update --channel stable --manifest "<verified-release>/evozeus-product-stable.json" --approve-write --json
+~/.evozeus/bin/evozeus align --channel stable --host auto --manifest "<verified-release>/evozeus-product-stable.json" --approve-write --json
 ```
 
 Without approval, run a dry-run first:
 
 ```bash
 node scripts/evozeus-install.mjs --workspace "<target-workspace>" --source-root "<verified-release>/EvoZeus-vX.Y.Z" --release-tag "vX.Y.Z" --release-commit "<40-hex-release-commit>" --release-archive-sha256 "<verified-archive-sha256>"
-~/.evozeus/bin/evozeus update --channel stable --manifest "<verified-release>/evozeus-product-stable.json" --dry-run --json
+~/.evozeus/bin/evozeus align --channel stable --host auto --manifest "<verified-release>/evozeus-product-stable.json" --json
 ```
 
 The dry-run must not write `~/.evozeus/`; it only reports planned files and the approval needed.
@@ -140,6 +145,8 @@ After install, run local help and the product feature router before asking for t
 ~/.evozeus/bin/evozeus doctor --json
 ```
 
+Doctor must report `ready` or `ready_after_new_session`. When a new session is required, tell the user to open one before testing EvoZeus discovery; do not claim the current chat reloaded the plugin.
+
 Use CLI help as the installed command surface. Then run:
 
 ```bash
@@ -161,7 +168,7 @@ Use `capabilities --json` as the source of write mode, risk level, approval, and
 | Preserve Artifact Draft | Available through `evozeus preserve draft --from-report <path> --json`; does not upload or publish |
 | Attach Co-evolution Harness | Available as a plan through `evozeus coevolve attach --target <path|url> --json`; do not write repos or GitHub by default |
 | Check / Repair EvoZeus | Available through `evozeus doctor --json` |
-| Update EvoZeus | Dry-run plan available through `evozeus update --dry-run --json`; writes require approval |
+| Align or update EvoZeus | Dry-run plan available through `evozeus align --channel <stable|uat> --host auto --json`; one approved transaction aligns Runtime and the active plugin |
 | Uninstall / Archive EvoZeus | Dry-run plan available through `evozeus uninstall --dry-run --json`; deletion requires approval |
 | Workspace scan, runtime execution, factor execution on user data, report files, artifact preservation, GitHub issue/PR/public artifact | Not enabled by install; ask for explicit user approval and route to the matching scenario skill first |
 

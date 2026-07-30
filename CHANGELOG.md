@@ -4,6 +4,9 @@
 
 ### Changed
 
+- Added one-command `evozeus align` transactions that synchronize the selected Stable/UAT product with the single active Codex/Claude plugin.
+- Added host-specific local marketplaces, channel-visible plugin versions, plugin/runtime mismatch checks, and new-session verification guidance.
+- Defined and documented the complete user-visible EvoZeus lifecycle marker catalog, with regression coverage keeping README and Plugin Skill wording aligned.
 - Adopted a plugin-first product architecture with five default user-task Skills; historical maintainer Skills moved out of the default plugin surface.
 - Defined and enforced the Repo-scoped Harness rule: only an independent Git Repo root may own an active Harness.
 - Embedded Runtime and Session Signal in the EvoZeus main Repo while keeping CoEvolve independent.
@@ -13,9 +16,13 @@
 - Added a read-only Claude Code `SessionStart` adapter that quietly loads the Lesson-check contract; Codex remains explicit or semantic Skill selection until its plugin manifest supports a session hook.
 - Replaced the component-heavy README with a user outcome, example, privacy, Stable/UAT, and maintainer entry.
 - Pinned the optional CoEvolve extension to the verified `v0.14.0` Release, including the Repo-root Harness and GitHub `ADMIN` mutation boundary.
+- Moved versioned Release Notes from the repository root to `docs/releases/` and made that directory the tag workflow's canonical notes source.
 
 ### Verification
 
+- Codex/Claude host alignment tests cover dry-run planning, single-plugin staging, exact provenance, and stale-channel rejection.
+- Isolated real-host smoke checks registered the generated marketplace, installed `evozeus`, and discovered it through both Codex and Claude Code without touching the user's active host configuration.
+- The official Web `/skill` handoff now routes installation and UAT switching through `align`; its tests, lint, and production build pass.
 - Codex plugin manifest, Claude plugin hook contract, and all default user Skills pass their validators.
 - Harness boundary tests reject nested and legacy Harness layouts.
 - Main Node suites, Runtime tests, Session Signal tests, channel v2 generation, Stable/UAT isolation, and rollback pass.
