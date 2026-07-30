@@ -1,6 +1,6 @@
 # EvoZeus Mega Repo 退役执行方案
 
-- 状态：执行中
+- 状态：已完成
 - 日期：2026-07-30
 - Owner：Anthony.F / MetaInFlow
 - 决策记录：[`ADR-0004`](../decisions/ADR-0004-retire-mega-repo.md)
@@ -74,15 +74,24 @@
 
 ## 6. 验收标准
 
-- [ ] 主仓库包含唯一 Repo 拓扑和退役 ADR。
-- [ ] 主仓库无活动文档依赖 Mega Repo 才能解释版本频道。
-- [ ] Mega Repo README 与 GitHub description 均显示 archived。
-- [ ] Mega Repo 无 `.gitmodules` 和 gitlink。
-- [ ] Mega Repo 归档校验不访问组件源码。
-- [ ] 两个迁移 PR 的 CI/门禁通过并合并。
-- [ ] GitHub Repo `archived=true`。
-- [ ] `evozeus version --json` 与 `doctor --json` 仍健康。
+- [x] 主仓库包含唯一 Repo 拓扑和退役 ADR。
+- [x] 主仓库无活动文档依赖 Mega Repo 才能解释版本频道。
+- [x] Mega Repo README 与 GitHub description 均显示 archived。
+- [x] Mega Repo 无 `.gitmodules` 和 gitlink。
+- [x] Mega Repo 归档校验不访问组件源码。
+- [x] 两个迁移 PR 的 CI/门禁通过并合并。
+- [x] GitHub Repo `archived=true`。
+- [x] `evozeus version --json` 与 `doctor --json` 仍健康。
 
 ## 7. 执行记录
 
-执行完成后回填主仓库 PR、Mega Repo PR、merge commit、归档时间和最终验证结果。
+| 项目 | 结果 |
+| --- | --- |
+| EvoZeus 主仓治理迁移 | [PR #25](https://github.com/MetaInFLow/EvoZeus/pull/25) 已合并，merge commit `367c7c0793cc26e15205e2354315e062a8fba308` |
+| Mega Repo 冻结 | [PR #19](https://github.com/MetaInFLow/EvoZeus-MegaRepo/pull/19) 已合并，merge commit `d4b087b06ae96d8562ee022583db8083b5283ef2` |
+| GitHub 归档 | `MetaInFLow/EvoZeus-MegaRepo` 于 2026-07-30 10:47（Asia/Shanghai）确认 `archived=true` |
+| 主仓门禁 | GitHub gates、PR readiness、privacy scan、proof gate、product checks 与 Vercel 全部通过 |
+| Mega Repo 门禁 | 归档契约校验、Python 编译、diff check、无 `.gitmodules`、无 mode `160000` gitlink 全部通过 |
+| 本地产品健康 | `evozeus version --json` 返回 UAT `v0.3.5`、`health=healthy`；`doctor --json` 返回 `doctor_verdict=ready` |
+
+退役完成后，`MetaInFLow/EvoZeus` 承担持续治理，Mega Repo 仅保留历史检索价值。任何新架构、版本频道、Repo 拓扑或跨组件决策都进入 EvoZeus 主仓。
