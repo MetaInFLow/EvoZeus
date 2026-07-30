@@ -15,6 +15,7 @@
   <a href="#适用场景">适用场景</a> ·
   <a href="#观看演示">演示</a> ·
   <a href="#安装-evozeus">安装</a> ·
+  <a href="#evozeus-何时会显示标记">可见标记</a> ·
   <a href="#工作方式">工作方式</a> ·
   <a href="#安全边界">安全</a> ·
   <a href="CHANGELOG.md">Changelog</a>
@@ -84,7 +85,8 @@ EvoZeus 当前优先解决两类高频问题：产品需要尽快进入真实使
 
 1. 解析最新不可变 Stable Release，并校验正式安装物；
 2. 说明本地写入和联网行为，在安装与注册前取得批准；
-3. 安装 Stable，并核验当前渠道、版本、产品清单和 Doctor 结果。
+3. 自动识别 Codex、Claude Code 或两者，并注册唯一的 `evozeus` Plugin；
+4. 同步 Runtime 与 Plugin 到同一 Stable/UAT 渠道，完成 Doctor 后提示开启新会话。
 
 官网是唯一公开安装交接入口，README 不复制第二套安装命令。Stable 健康后，用户可以单独选择是否进入唯一 UAT。
 
@@ -131,6 +133,27 @@ EvoZeus 在正常聊天中给出结果。生命周期事件使用紧凑标记：
 
 正常 Lesson 提示不会输出内部 JSON，用户确认前不会写入记录。
 
+## EvoZeus 何时会显示标记
+
+这些是 EvoZeus 的完整用户可见生命周期标记。它们出现在正常聊天中，用来说明 EvoZeus 何时介入、当前处于哪个阶段、是否已经获得验证；普通分析和每次工具调用不会刷标记。
+
+| 你看到的标记 | 代表什么 | 什么时候出现 |
+| --- | --- | --- |
+| `🧙 EvoZeus · 已启动｜复盘这次 Agent 执行` | EvoZeus 已被显式调用 | 开始一次 EvoZeus 任务 |
+| `👁️ EvoZeus · 受管运行｜企业场景地图 Skill · UAT` | 当前 Skillware 已进入受管生命周期 | Repo、Harness、渠道身份均已核验 |
+| `🧙 EvoZeus · 捕捉到一条 Lesson｜证据不足时不能直接报完成。要记录下来吗？` | 发现了值得复用的改进 | 业务结果完成后，记录前先询问 |
+| `📝 EvoZeus · Lesson 已记录｜Feedback Issue #12` | 已按授权保存 Lesson | 本地记录或 Issue 创建成功后 |
+| `🔐 EvoZeus · 等待确认｜创建 Feedback Issue` | 下一动作会写入或影响外部系统 | 需要新的具体授权时 |
+| `🧭 EvoZeus · 版本状态｜Stable v0.4.0 → UAT v0.4.1` | 正在判断安装或渠道变化 | 对齐、升级、切换前 |
+| `🛠️ EvoZeus · 进化中｜example-skill · 修复验收门禁` | 已开始实施获批修改 | 修改授权已取得后 |
+| `🧪 EvoZeus · UAT 就绪｜example-skill · abc1234` | 唯一 UAT 候选已经通过门禁 | 测试和候选更新完成后 |
+| `🚀 EvoZeus · 已发布｜example-skill · v1.2.0` | Stable Release 已真实存在 | 正式发布完成后 |
+| `↩️ EvoZeus · 已回滚｜Stable v1.1.0` | 已恢复上一份可用版本 | 回滚并通过 Doctor 后 |
+| `🛡️ EvoZeus · 暂停｜缺少可脱敏的验证证据` | 当前安全或证据条件不足 | 继续执行会越过边界时 |
+| `✅ EvoZeus · 已验证｜Plugin、Runtime 与渠道一致` | 声明完成所需检查已通过 | 最终交付前 |
+
+标记只反映真实状态：计划不会显示成完成，UAT 不会显示成 Stable。完整合同见[用户可见生命周期标记](docs/reference/user-visible-events.md)。
+
 启动方式取决于 Agent 宿主：
 
 | 宿主 | 行为 |
@@ -169,6 +192,15 @@ Runtime 与 Session Signal 是主仓内部模块，随 EvoZeus 产品版本一�
 - UAT 修复覆盖当前候选，不产生第二个用户可见 UAT。
 - Stable 与 UAT 的代码和本地状态隔离。
 - 正式发布使用已经验证的同一份 UAT 源码。
+- Codex/Claude 中始终只有一个活动 `evozeus` Plugin；切换渠道会覆盖重装它，不会生成第二个 UAT Plugin。
+
+用户批准后，官网安装流程调用同一个对齐事务：
+
+```bash
+evozeus align --channel stable --host auto --approve-write --json
+```
+
+进入测试时把 `stable` 改为 `uat`。普通用户不需要手工维护 marketplace、worktree 或 Plugin 缓存。
 
 详细语义见 [ADR-0003](docs/decisions/ADR-0003-stable-single-uat-channel-model.md)；产品架构见 [ADR-0005](docs/decisions/ADR-0005-plugin-first-monorepo-and-repo-scoped-harness.md)。
 

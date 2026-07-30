@@ -17,6 +17,14 @@ Runtime and Session Signal are built into EvoZeus and share its version. CoEvolv
 
 Prefer one product operation that resolves the selected channel, verifies all managed paths, updates transactionally, runs Doctor, and switches the active pointer only after checks pass. Do not require users to update repositories manually.
 
+The canonical command is:
+
+```text
+evozeus align --channel <stable|uat> --host auto --approve-write --json
+```
+
+It must align the Runtime and the single active Codex/Claude plugin together. A failed host registration restores the prior verified channel when a rollback target exists.
+
 Before writes, report:
 
 ```text
@@ -41,4 +49,3 @@ An old Skill invocation may perform a read-only compatibility check and explain 
 - Doctor passes after alignment.
 - Rollback target remains available.
 - No internal Web deployment appears as a local product component.
-

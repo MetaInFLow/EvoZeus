@@ -145,6 +145,10 @@ describe("evozeus-install", () => {
       assert.ok(manifest.skills_inventory.some((skill) => skill.name === "maintain-evozeus"));
       assert.ok(existsSync(join(evozeusHome, "skeleton/SKILL.md")));
       assert.ok(existsSync(join(evozeusHome, "skeleton/skills/using-evozeus/SKILL.md")));
+      assert.ok(existsSync(join(evozeusHome, "skeleton/.codex-plugin/plugin.json")));
+      assert.ok(existsSync(join(evozeusHome, "skeleton/.claude-plugin/plugin.json")));
+      assert.ok(existsSync(join(evozeusHome, "skeleton/hooks/hooks.json")));
+      assert.ok(existsSync(join(evozeusHome, "skeleton/scripts/evozeus-hosts.mjs")));
       assert.ok(existsSync(join(evozeusHome, "skeleton/packages/runtime/src/evozeus_runtime/cli/main.py")));
       assert.ok(existsSync(join(evozeusHome, "skeleton/packs/session-signal/scripts/validate_official_factor_spec.py")));
       assert.ok(existsSync(join(evozeusHome, "skeleton/scripts/evozeus-cli.mjs")));
@@ -154,7 +158,7 @@ describe("evozeus-install", () => {
       assert.ok(report.files_written.includes(join(evozeusHome, "bin/evozeus")));
       assert.ok(report.files_written.includes(join(evozeusHome, "install-manifest.json")));
       assert.match(report.approval_needed, /Ask before session analysis/);
-      assert.match(report.next_command, /tell the EvoZeus plugin what you want/i);
+      assert.match(report.next_command, /evozeus align --channel stable --host auto/i);
     }));
 
   it("installs a local CLI shim that can describe features and capabilities", () =>

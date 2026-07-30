@@ -1,0 +1,17 @@
+{
+  "name": "evozeus",
+  "owner": {
+    "name": "MetaInFlow"
+  },
+  "metadata": {
+    "description": "Install the EvoZeus Agent co-evolution plugin for Claude Code."
+  },
+  "plugins": [
+    {
+      "name": "evozeus",
+      "source": "./",
+      "description": "Turn real Agent work into verified improvements.",
+      "version": "0.4.0-dev.0"
+    }
+  ]
+}

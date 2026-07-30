@@ -16,6 +16,7 @@
 5. CI 能阻止 monorepo 子目录创建独立 Harness。
 6. Stable 与唯一 UAT 的覆盖更新、隔离和回滚语义保持不变。
 7. README 让首次访问者在一分钟内理解价值、开始方法和隐私边界。
+8. 一个 `align` 事务同时对齐 Runtime、Stable/UAT 与宿主中唯一的 `evozeus` Plugin。
 
 ## 2. 目标架构
 
@@ -87,6 +88,20 @@ CI 读取 Git 跟踪和待提交文件路径；发现 Harness 目录位于 Repo 
 
 用户确认前不创建 Issue、不修改目标 Repo。Claude Code 通过插件根 `hooks/hooks.json` 自动发现只读 `SessionStart` 适配器；该适配器只注入 Lesson 检查合同，不写状态、不显示横幅。Codex 当前插件 manifest 不声明 session hook，通过显式或语义匹配选择 EvoZeus，不能宣称所有聊天自动捕捉。
 
+### 5.3 宿主安装与渠道对齐
+
+官网 `/skill` 仍是公开安装入口。正式 Release 内的 installer 建立 `~/.evozeus`，随后统一调用：
+
+```text
+evozeus align --channel <stable|uat> --host auto --approve-write --json
+```
+
+`align` 解析并验证渠道清单，安装或复用目标渠道，生成 Codex/Claude 本地 marketplace，覆盖重装同一个 Plugin id `evozeus`，最后由 Doctor 对比 Runtime 与 Plugin 的 channel、version 和 Commit。宿主中不得并存 Stable/UAT 两个 EvoZeus Plugin；UAT 修复覆盖唯一候选并触发同一 Plugin 重装。
+
+### 5.4 用户可见生命周期标记
+
+用户只看到有意义的生命周期变化，不看到内部 capture JSON 或逐工具日志。启动、受管运行、Lesson、确认、版本、进化、UAT、发布、回滚、暂停和验证的完整格式由 [`user-visible-events.md`](../../reference/user-visible-events.md) 统一定义，并由 README 与入口 Skill 的一致性测试守卫。
+
 ## 6. 版本模型
 
 | 发布单元 | 版本来源 | 用户是否单独选择 |
@@ -136,14 +151,14 @@ UAT 永远只有一个活动候选。UAT 修复覆盖 `uat/current`，不得创�
 
 | 范围 | 必须证明 |
 | --- | --- |
-| Plugin | manifest validator 通过；默认 Skill 可被发现；Claude SessionStart 适配器输出合法、只读且不显示横幅 |
+| Plugin | manifest validator 通过；Codex/Claude marketplace 可注册；默认 Skill 可被发现；Claude SessionStart 适配器输出合法、只读且不显示横幅 |
 | Harness | 根 Harness 允许；任意嵌套 Harness 被 CI 拒绝 |
-| Install | 新装、旧版升级、重复对齐均成功 |
+| Install | 新装、旧版升级、重复对齐均成功；Runtime 与唯一活动 Plugin 同渠道同 Commit |
 | Channel | stable 与 uat 隔离；UAT 修复覆盖同一候选 |
 | Runtime | 内嵌路径可运行，不要求外部 Infra Repo |
 | Signal pack | 内嵌 Factor 可发现、校验、执行 |
 | CoEvolve | 独立合同可解析；无权限时只给计划 |
-| README | 首屏说明价值、安装、示例和隐私；不出现 Web 产品组件 |
+| README | 首屏说明价值、安装、示例和隐私；完整展示用户可见生命周期标记；不出现 Web 产品组件 |
 | Regression | 全量自动测试通过；旧正式版仍可回滚 |
 
 ## 9. 退役门禁

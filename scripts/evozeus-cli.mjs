@@ -13,9 +13,17 @@ import {
   channelSnapshot,
   prepareChannelUpdate,
   readActiveChannel,
+  readChannelState,
   rollbackChannel,
   resolveInstalledComponentRoot
 } from "./evozeus-channels.mjs";
+import {
+  alignPluginHosts,
+  detectPluginHosts,
+  inspectPluginHosts,
+  planPluginAlignment,
+  selectPluginHosts
+} from "./evozeus-hosts.mjs";
 
 const SCHEMA_VERSION = 1;
 const CLI_VERSION = "0.4.0-dev.0";
@@ -33,6 +41,25 @@ const CAPABILITIES = [
     required_permissions: ["system.read"],
     requires_approval: false,
     examples: ["evozeus version --json"]
+  },
+  {
+    name: "system.align",
+    domain: "system",
+    summary: "Align one verified Stable or UAT product with the single active Codex/Claude EvoZeus plugin.",
+    input_schema: {
+      type: "object",
+      required: ["channel"],
+      properties: {
+        channel: { enum: ["stable", "uat"] },
+        host: { enum: ["auto", "all", "codex", "claude"] }
+      }
+    },
+    output_schema: { type: "object", required: ["channel", "plugin"] },
+    write_mode: "approved_write",
+    risk_level: "medium",
+    required_permissions: ["system.writeLocal"],
+    requires_approval: true,
+    examples: ["evozeus align --channel stable --host auto --approve-write --json"]
   },
   {
     name: "system.channelStatus",
@@ -330,8 +357,8 @@ const PRODUCT_FEATURES = [
     backend_owner: "evozeus",
     status: "available",
     approval_boundary: "Doctor is read-only; update writes require explicit approval.",
-    related_capabilities: ["system.doctor", "system.updatePlan", "system.channelRollback"],
-    aliases: ["evozeus update --dry-run --json", "evozeus channel rollback uat --json"]
+    related_capabilities: ["system.align", "system.doctor", "system.updatePlan", "system.channelRollback"],
+    aliases: ["evozeus align --channel stable --host auto --json", "evozeus channel rollback uat --json"]
   },
   {
     id: "uninstall",
@@ -385,7 +412,8 @@ function parseArgs(argv) {
     checkNetwork: false,
     channel: null,
     manifest: null,
-    autoRefresh: false
+    autoRefresh: false,
+    host: "auto"
   };
   const positionals = [];
 
@@ -443,6 +471,8 @@ function parseArgs(argv) {
       options.manifest = argv[++index];
     } else if (arg === "--auto-refresh") {
       options.autoRefresh = true;
+    } else if (arg === "--host") {
+      options.host = argv[++index];
     } else if (arg === "--help" || arg === "-h") {
       options.help = true;
     } else if (arg.startsWith("--")) {
@@ -1482,7 +1512,11 @@ function doctor(options) {
     "packs/session-signal/scripts/validate_official_factor_spec.py",
     "scripts/evozeus-install.mjs",
     "scripts/evozeus-doctor.mjs",
-    "scripts/evozeus-cli.mjs"
+    "scripts/evozeus-cli.mjs",
+    "scripts/evozeus-hosts.mjs",
+    ".codex-plugin/plugin.json",
+    ".claude-plugin/plugin.json",
+    "hooks/hooks.json"
   ];
   const missing = required.filter((entry) => !existsSync(join(SOURCE_ROOT, entry)));
   const version = channelSnapshot(workspace.evozeus_root);
@@ -1491,6 +1525,29 @@ function doctor(options) {
     : version.health === "migration_required"
       ? "migration_required"
       : "incomplete";
+  const availableHosts = detectPluginHosts();
+  const activeState = readChannelState(workspace.evozeus_root).channels?.[version.active_channel];
+  const pluginHosts = activeState
+    ? inspectPluginHosts({
+        evozeusHome: workspace.evozeus_root,
+        channel: version.active_channel,
+        productVersion: activeState.manifest.product_version,
+        commit: activeState.manifest.components.evozeus.commit,
+        availableHosts
+      })
+    : {
+        status: availableHosts.length === 0 ? "not_applicable" : "plugin_install_required",
+        hosts: Object.fromEntries(availableHosts.map((host) => [host, { status: "not_installed" }]))
+      };
+  const doctorVerdict = version.health === "migration_required"
+    ? "migration_required"
+    : componentStatus !== "complete"
+      ? "repair_required"
+      : ["plugin_mismatch", "plugin_install_required"].includes(pluginHosts.status)
+        ? "align_required"
+        : pluginHosts.status === "ready_after_new_session"
+          ? "ready_after_new_session"
+          : "ready";
 
   return envelope("system.doctor", options, {
     install_state: {
@@ -1504,22 +1561,22 @@ function doctor(options) {
       missing
     },
     version,
+    plugin_hosts: pluginHosts,
     component_readiness: componentReadiness(options),
     optional_paths: {
       session_scan: "approval_required",
       built_in_runtime_execution: "approval_required",
       wrapper_github_write: "forbidden_in_p0"
     },
-    doctor_verdict:
-      version.health === "migration_required"
-        ? "migration_required"
-        : componentStatus === "complete"
-          ? "ready"
-          : "repair_required",
+    doctor_verdict: doctorVerdict,
     next_command:
       version.health === "migration_required"
-        ? "~/.evozeus/bin/evozeus update --channel stable --dry-run --json"
-        : "Tell the EvoZeus plugin what you want to review, preserve, evolve, or maintain."
+        ? "~/.evozeus/bin/evozeus align --channel stable --host auto --json"
+        : doctorVerdict === "align_required"
+          ? `~/.evozeus/bin/evozeus align --channel ${version.active_channel || "stable"} --host auto --json`
+          : doctorVerdict === "ready_after_new_session"
+            ? "Start a new Agent chat so the aligned EvoZeus plugin is loaded."
+            : "Tell the EvoZeus plugin what you want to review, preserve, evolve, or maintain."
   });
 }
 
@@ -1529,6 +1586,36 @@ function versionInfo(options) {
 
 function channelStatus(options) {
   return envelope("system.channelStatus", options, channelSnapshot(workspaceInfo(options).evozeus_root));
+}
+
+function installedChannelEntry(options, channel) {
+  return readChannelState(workspaceInfo(options).evozeus_root).channels?.[channel] ?? null;
+}
+
+function requestedPluginHosts(options) {
+  return selectPluginHosts(options.host, detectPluginHosts());
+}
+
+function pluginPlanFromEntry(options, entry, hosts) {
+  return planPluginAlignment({
+    evozeusHome: workspaceInfo(options).evozeus_root,
+    sourceRoot: entry.component_roots.evozeus,
+    channel: entry.manifest.channel,
+    productVersion: entry.manifest.product_version,
+    commit: entry.manifest.components.evozeus.commit,
+    hosts
+  });
+}
+
+function alignEntryPlugin(options, entry, hosts) {
+  return alignPluginHosts({
+    evozeusHome: workspaceInfo(options).evozeus_root,
+    sourceRoot: entry.component_roots.evozeus,
+    channel: entry.manifest.channel,
+    productVersion: entry.manifest.product_version,
+    commit: entry.manifest.components.evozeus.commit,
+    hosts
+  });
 }
 
 function channelUse(options) {
@@ -1546,6 +1633,7 @@ function channelUse(options) {
         installed,
         writes_now: false,
         auto_refresh: options.channel === "uat" && options.autoRefresh,
+        host: options.host,
         next_command: installed
           ? `evozeus channel use ${options.channel} --approve-write${options.autoRefresh ? " --auto-refresh" : ""} --json`
           : `evozeus update --channel ${options.channel} --dry-run --json`
@@ -1553,14 +1641,27 @@ function channelUse(options) {
       { required: true, reason: "Changing the active EvoZeus channel writes ~/.evozeus/active-channel.json." }
     );
   }
+  const activeBefore = readActiveChannel(workspaceInfo(options).evozeus_root);
+  const entryBefore = activeBefore?.channel ? installedChannelEntry(options, activeBefore.channel) : null;
   try {
+    const hosts = requestedPluginHosts(options);
     const active = activateInstalledChannel(
       workspaceInfo(options).evozeus_root,
       options.channel,
       options.autoRefresh
     );
-    return envelope("system.channelUse", options, { channel: options.channel, active, writes_now: true });
+    const entry = installedChannelEntry(options, options.channel);
+    const plugin = alignEntryPlugin(options, entry, hosts);
+    return envelope("system.channelUse", options, { channel: options.channel, active, plugin, writes_now: true });
   } catch (error) {
+    if (activeBefore?.channel && activeBefore.channel !== options.channel) {
+      try {
+        activateInstalledChannel(workspaceInfo(options).evozeus_root, activeBefore.channel, activeBefore.auto_refresh);
+        if (entryBefore) alignEntryPlugin(options, entryBefore, requestedPluginHosts(options));
+      } catch {
+        // Keep the original failure; Doctor will expose any remaining mismatch.
+      }
+    }
     throw channelCliError(error, "system.channelUse");
   }
 }
@@ -1582,13 +1683,115 @@ function channelRollback(options) {
     );
   }
   try {
-    return envelope(
-      "system.channelRollback",
-      options,
-      { rollback: rollbackChannel(workspaceInfo(options).evozeus_root, options.channel) }
-    );
+    const hosts = requestedPluginHosts(options);
+    const rollback = rollbackChannel(workspaceInfo(options).evozeus_root, options.channel);
+    try {
+      const entry = installedChannelEntry(options, options.channel);
+      return envelope(
+        "system.channelRollback",
+        options,
+        { rollback, plugin: alignEntryPlugin(options, entry, hosts) }
+      );
+    } catch (pluginError) {
+      rollbackChannel(workspaceInfo(options).evozeus_root, options.channel);
+      const restored = installedChannelEntry(options, options.channel);
+      try {
+        alignEntryPlugin(options, restored, hosts);
+      } catch {
+        // Keep the original plugin failure; Doctor will expose any remaining mismatch.
+      }
+      throw pluginError;
+    }
   } catch (error) {
     throw channelCliError(error, "system.channelRollback");
+  }
+}
+
+async function alignProduct(options) {
+  const channel = options.channel || channelSnapshot(workspaceInfo(options).evozeus_root).active_channel || "stable";
+  if (!["stable", "uat"].includes(channel)) {
+    throw new CliError("INVALID_CHANNEL", "align --channel must be stable or uat.", "system.align");
+  }
+  const availableHosts = detectPluginHosts();
+  let hosts;
+  try {
+    hosts = selectPluginHosts(options.host, availableHosts);
+  } catch (error) {
+    throw new CliError("PLUGIN_HOST_UNAVAILABLE", error.message, "system.align");
+  }
+
+  try {
+    if (!options.approveWrite) {
+      const updatePlan = await prepareChannelUpdate({
+        evozeusHome: workspaceInfo(options).evozeus_root,
+        channel,
+        manifestSource: manifestSourceFor(options, channel)
+      });
+      const pluginPlan = planPluginAlignment({
+        evozeusHome: workspaceInfo(options).evozeus_root,
+        sourceRoot: SOURCE_ROOT,
+        channel,
+        productVersion: updatePlan.manifest.product_version,
+        commit: updatePlan.manifest.components.evozeus.commit,
+        hosts
+      });
+      return envelope(
+        "system.alignPlan",
+        options,
+        { channel, update: updatePlan, plugin: pluginPlan, writes_now: false },
+        {
+          required: true,
+          reason: `Aligning ${channel} writes isolated EvoZeus channel state and reinstalls the single active host plugin.`
+        }
+      );
+    }
+
+    const activeBefore = readActiveChannel(workspaceInfo(options).evozeus_root);
+    const entryBefore = activeBefore?.channel ? installedChannelEntry(options, activeBefore.channel) : null;
+    const update = await applyChannelUpdate({
+      evozeusHome: workspaceInfo(options).evozeus_root,
+      channel,
+      manifestSource: manifestSourceFor(options, channel),
+      autoRefresh: channel === "uat" && options.autoRefresh
+    });
+    const entry = installedChannelEntry(options, channel);
+    try {
+      const plugin = alignEntryPlugin(options, entry, hosts);
+      const verification = inspectPluginHosts({
+        evozeusHome: workspaceInfo(options).evozeus_root,
+        channel,
+        productVersion: entry.manifest.product_version,
+        commit: entry.manifest.components.evozeus.commit,
+        availableHosts: hosts
+      });
+      return envelope("system.align", options, { channel, update, plugin, verification, writes_now: true });
+    } catch (pluginError) {
+      if (update.rollback) {
+        rollbackChannel(workspaceInfo(options).evozeus_root, channel);
+      } else if (activeBefore?.channel && activeBefore.channel !== channel) {
+        activateInstalledChannel(
+          workspaceInfo(options).evozeus_root,
+          activeBefore.channel,
+          activeBefore.auto_refresh
+        );
+      }
+      if (entryBefore) {
+        try {
+          const restored = installedChannelEntry(options, activeBefore.channel);
+          alignEntryPlugin(options, restored || entryBefore, hosts);
+        } catch {
+          // Keep the original failure; Doctor will report any residual host mismatch.
+        }
+      }
+      throw new CliError(
+        "PLUGIN_ALIGNMENT_FAILED",
+        `${pluginError.message}. The prior verified channel was restored when available.`,
+        "system.align"
+      );
+    }
+  } catch (error) {
+    if (error instanceof CliError) throw error;
+    throw channelCliError(error, options.approveWrite ? "system.align" : "system.alignPlan");
   }
 }
 
@@ -1689,6 +1892,7 @@ function printHelp() {
 
 Commands:
   version --json
+  align --channel stable|uat [--host auto|all|codex|claude] [--approve-write] --json
   channel status --json
   channel use stable|uat [--approve-write] [--auto-refresh] --json
   channel rollback stable|uat [--approve-write] --json
@@ -1720,6 +1924,7 @@ Global options:
   --channel stable|uat
   --manifest <path-or-url>
   --auto-refresh
+  --host auto|all|codex|claude
   --target-visibility public|private
 `);
 }
@@ -1735,6 +1940,10 @@ async function route(parsed) {
 
   if (command === "version") {
     return versionInfo(options);
+  }
+
+  if (command === "align") {
+    return alignProduct(options);
   }
 
   if (command === "channel" && subcommand === "status") {

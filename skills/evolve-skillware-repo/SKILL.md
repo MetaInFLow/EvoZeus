@@ -32,6 +32,8 @@ Use this lifecycle tag for version decisions:
 🧭 EvoZeus · 版本状态｜<repo> · <stable|uat|development> · <current → target>
 ```
 
+After authorized edits start, use `🛠️ EvoZeus · 进化中`. Use `🧪 EvoZeus · UAT 就绪` only after the unique UAT candidate passes its gates, and `🚀 EvoZeus · 已发布` only after the Stable Release exists.
+
 ## Verification target
 
 - Target is an independent Git Repo root.

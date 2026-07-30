@@ -37,13 +37,20 @@ Use an EvoZeus tag only when EvoZeus itself performs a recognizable lifecycle ac
 | Event | Format |
 | --- | --- |
 | Explicit activation | `🧙 EvoZeus · 已启动｜<task>` |
+| Managed Skillware run | `👁️ EvoZeus · 受管运行｜<target Skillware> · <stable|uat|development>` |
 | Lesson candidate detected | `🧙 EvoZeus · 捕捉到一条 Lesson｜<one-sentence summary>。要记录下来吗？` |
+| Confirmed Lesson persisted | `📝 EvoZeus · Lesson 已记录｜<local record or Issue link>` |
 | Permission required | `🔐 EvoZeus · 等待确认｜<specific write or external action>` |
 | Stable/UAT decision | `🧭 EvoZeus · 版本状态｜<channel and exact next action>` |
+| Approved evolution executing | `🛠️ EvoZeus · 进化中｜<Repo> · <approved change>` |
+| Single UAT candidate verified | `🧪 EvoZeus · UAT 就绪｜<Repo> · <candidate Commit>` |
+| Stable Release published | `🚀 EvoZeus · 已发布｜<Repo> · <Release>` |
+| Verified rollback completed | `↩️ EvoZeus · 已回滚｜<restored channel/version>` |
 | Privacy or evidence blocker | `🛡️ EvoZeus · 暂停｜<missing/redaction reason>` |
 | Verified completion | `✅ EvoZeus · 已验证｜<what passed>` |
 
 Do not show the tag for ordinary domain analysis, every tool call, or every paragraph. Never emit a raw capture JSON block to the user.
+The canonical trigger and wording contract is `../../docs/reference/user-visible-events.md`.
 
 ## Lesson signal
 
