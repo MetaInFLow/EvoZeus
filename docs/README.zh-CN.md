@@ -2,7 +2,7 @@
 
 **把真实 Agent 工作转化为经过验证的改进。**
 
-[English](../README.md) · [快速开始](#快速开始) · [工作方式](#工作方式) · [安全边界](#安全边界)
+[English](../README.md) · [业务演示](#业务演示) · [快速开始](#快速开始) · [工作方式](#工作方式) · [安全边界](#安全边界)
 
 EvoZeus 复盘一次真实 Agent 任务中发生了什么，识别能改善下一次执行的 Lesson，并把用户确认后的变化路由为可复用、可验证、可治理的产物。它适用于 Skill、plugin、Agent workflow 和其他 Skillware 的建设团队。
 
@@ -21,6 +21,33 @@ EvoZeus 提供完整判断闭环：
 - 发现可复用 Lesson 时先询问是否记录；
 - 把 Lesson 保存为 Case、规则、习惯、Skill 修改或环境修复；
 - 为独立 Skillware Repo 接入可治理的进化生命周期。
+
+## 业务演示
+
+下面两段短视频覆盖一条完整业务闭环：先让已有 Skill 进入可维护的生命周期，再把用户不满意转化为团队可检查、可授权的改进输入。
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <a href="../assets/demos/skill-evolution-harness.mp4">
+        <img src="../assets/demos/skill-evolution-harness-poster.png" alt="为独立 Skill Repo 接入 EvoZeus 进化 Harness" width="100%">
+      </a>
+      <br>
+      <strong>1. 让 Skill 进入受管生命周期</strong><br>
+      在保留业务规则的前提下，为独立 Skill Repo 补齐源头、版本、验证、反馈和发布治理。<br>
+      <a href="../assets/demos/skill-evolution-harness.mp4">观看 50 秒演示 →</a>
+    </td>
+    <td width="50%" valign="top">
+      <a href="../assets/demos/managed-feedback-loop.mp4">
+        <img src="../assets/demos/managed-feedback-loop-poster.png" alt="把用户不满意记录为经过授权的 Skill Feedback Issue" width="100%">
+      </a>
+      <br>
+      <strong>2. 把不满意转化为可追踪改进</strong><br>
+      正常聊天保持简洁；发现可复用 Lesson 后先征得授权，再创建可评审的 Feedback Issue，修复仍需独立授权。<br>
+      <a href="../assets/demos/managed-feedback-loop.mp4">观看 39 秒演示 →</a>
+    </td>
+  </tr>
+</table>
 
 ## 快速开始
 

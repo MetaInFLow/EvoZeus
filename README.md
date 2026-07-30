@@ -9,6 +9,7 @@
 
 <p align="center">
   <a href="docs/README.zh-CN.md">简体中文</a> ·
+  <a href="#see-evozeus-in-action">Demos</a> ·
   <a href="#start-here">Start here</a> ·
   <a href="#how-it-works">How it works</a> ·
   <a href="#safety">Safety</a> ·
@@ -42,6 +43,33 @@ EvoZeus provides that judgment loop:
 - ask before recording a reusable Lesson;
 - preserve the Lesson as a Case, rule, habit, Skill change, or environment fix;
 - connect an independent Skillware repository to a governed evolution lifecycle.
+
+## See EvoZeus in action
+
+These two short demos show the complete business loop: first make a useful Skill maintainable, then turn a dissatisfied user response into an improvement that the team can review.
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <a href="assets/demos/skill-evolution-harness.mp4">
+        <img src="assets/demos/skill-evolution-harness-poster.png" alt="Attach an EvoZeus evolution Harness to an independent Skill repository" width="100%">
+      </a>
+      <br>
+      <strong>1. Give a Skill a governed lifecycle</strong><br>
+      Connect an independent Skill repository to source, version, validation, feedback, and release governance while preserving its business behavior.<br>
+      <a href="assets/demos/skill-evolution-harness.mp4">Watch the 50-second demo →</a>
+    </td>
+    <td width="50%" valign="top">
+      <a href="assets/demos/managed-feedback-loop.mp4">
+        <img src="assets/demos/managed-feedback-loop-poster.png" alt="Capture user dissatisfaction as an authorized Skill Feedback Issue" width="100%">
+      </a>
+      <br>
+      <strong>2. Turn dissatisfaction into traceable improvement</strong><br>
+      Keep the normal conversation intact, ask before recording the reusable Lesson, and create a reviewable Feedback Issue without silently starting a fix.<br>
+      <a href="assets/demos/managed-feedback-loop.mp4">Watch the 39-second demo →</a>
+    </td>
+  </tr>
+</table>
 
 ## Start here
 
