@@ -5,11 +5,15 @@
     "required_paths": [
       "SKILL.md",
       ".codex-plugin/plugin.json",
+      ".claude-plugin/plugin.json",
+      ".claude-plugin/marketplace.json",
       "skills/using-evozeus/SKILL.md",
       "scripts/evozeus-cli.mjs",
       "scripts/evozeus-channels.mjs",
+      "scripts/evozeus-hosts.mjs",
       "scripts/evozeus-launcher.mjs",
       "scripts/evozeus-coevolve-dispatcher.py",
+      "docs/reference/user-visible-events.md",
       "schemas/product-channel-manifest.schema.json",
       "packages/runtime/src/evozeus_runtime/cli/main.py",
       "packs/session-signal/scripts/validate_official_factor_spec.py"
