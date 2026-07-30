@@ -2,11 +2,11 @@
   "schema_version": "evozeus.product-channel.v2",
   "product_version": "v0.4.0",
   "channel": "uat",
-  "generated_at": "2026-07-30T05:32:32Z",
+  "generated_at": "2026-07-30T15:18:07Z",
   "components": {
     "evozeus": {
       "version": "v0.4.0",
-      "commit": "816b209d4a40bcb8751981e8b855549f2962a5bd",
+      "commit": "047453f745d33899114ef70693a81046b034daf3",
       "source": {
         "kind": "git",
         "url": "https://github.com/MetaInFLow/EvoZeus.git",
@@ -15,11 +15,15 @@
       "required_paths": [
         "SKILL.md",
         ".codex-plugin/plugin.json",
+        ".claude-plugin/plugin.json",
+        ".claude-plugin/marketplace.json",
         "skills/using-evozeus/SKILL.md",
         "scripts/evozeus-cli.mjs",
         "scripts/evozeus-channels.mjs",
+        "scripts/evozeus-hosts.mjs",
         "scripts/evozeus-launcher.mjs",
         "scripts/evozeus-coevolve-dispatcher.py",
+        "docs/reference/user-visible-events.md",
         "schemas/product-channel-manifest.schema.json",
         "packages/runtime/src/evozeus_runtime/cli/main.py",
         "packs/session-signal/scripts/validate_official_factor_spec.py"
