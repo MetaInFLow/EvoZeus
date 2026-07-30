@@ -13,6 +13,8 @@ This repository follows the Engineering Everything document layout.
 | Repository development rules | [EvoZeus-Development](../skills/evozeus-development/SKILL.md) |
 | Product and protocol design | [design/active/design_doc-v0.1-agent-session-judgment-layer.md](design/active/design_doc-v0.1-agent-session-judgment-layer.md) |
 | Architecture decision history | [decisions/](decisions/) |
+| Active repository topology | [governance/repository-topology.md](governance/repository-topology.md) |
+| Mega Repo retirement plan | [governance/mega-repo-retirement-plan.md](governance/mega-repo-retirement-plan.md) |
 | Privacy and redaction rules | [governance/privacy-and-redaction.md](governance/privacy-and-redaction.md) |
 | PR rules | [governance/pr-guidelines.md](governance/pr-guidelines.md) |
 | PR routing state machine | [governance/pr-routing-policy.md](governance/pr-routing-policy.md) |

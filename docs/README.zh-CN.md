@@ -210,6 +210,8 @@ GitHub automation is dry-run by default: labeler、proof gate、privacy scan、d
 | Need | Read |
 | --- | --- |
 | 文档总入口 | [docs/README.md](README.md) |
+| 当前 Repo 拓扑 | [docs/governance/repository-topology.md](governance/repository-topology.md) |
+| Mega Repo 退役方案 | [docs/governance/mega-repo-retirement-plan.md](governance/mega-repo-retirement-plan.md) |
 | Evidence 等级 | [docs/reference/evidence-grading.md](reference/evidence-grading.md) |
 | Review contract | [docs/reference/review-contract.md](reference/review-contract.md) |
 | Verdict 类型 | [docs/reference/verdicts.md](reference/verdicts.md) |

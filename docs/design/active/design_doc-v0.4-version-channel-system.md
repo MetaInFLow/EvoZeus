@@ -4,7 +4,7 @@
 - Date: 2026-07-26
 - Owner: Anthony.F / MetaInFlow
 - Linked ADR: [`../../decisions/ADR-0003-stable-single-uat-channel-model.md`](../../decisions/ADR-0003-stable-single-uat-channel-model.md)
-- Cross-repo plan: `EvoZeus-MegaRepo/00-global/evozeus-version-channel-execution-plan.md`
+- Cross-repo ownership: [`../../governance/repository-topology.md`](../../governance/repository-topology.md)
 
 ## 1. Goal
 
@@ -190,4 +190,4 @@ evozeus doctor --json
 
 ## 16. Completion Gate
 
-完成标准以Mega Repo方案中的V1-V8为准。代码合并、Release、部署和线上对账均属于完成条件。
+完成标准以本文件第14节、ADR-0003和Release policy为准。代码合并、Release、部署和线上对账均属于完成条件。

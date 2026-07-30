@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-07-30
+
+- Accepted ADR-0004 to retire EvoZeus-MegaRepo as an active coordination and version source.
+- Moved canonical repository topology, cross-component ownership, and retirement governance into EvoZeus.
+- Removed active version-channel documentation dependencies on Mega Repo.
+
 ## 2026-07-05
 
 - Tightened the install handoff boundary: identity writes, network registration, source writes, and workspace writes now require explicit approval before action.

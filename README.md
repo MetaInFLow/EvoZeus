@@ -225,6 +225,8 @@ GitHub automation is dry-run by default: labeler, proof gate, privacy scan, dirt
 | Need | Read |
 | --- | --- |
 | Docs home | [docs/README.md](docs/README.md) |
+| Active repository topology | [docs/governance/repository-topology.md](docs/governance/repository-topology.md) |
+| Mega Repo retirement | [docs/governance/mega-repo-retirement-plan.md](docs/governance/mega-repo-retirement-plan.md) |
 | Evidence levels | [docs/reference/evidence-grading.md](docs/reference/evidence-grading.md) |
 | Review contract | [docs/reference/review-contract.md](docs/reference/review-contract.md) |
 | Verdict types | [docs/reference/verdicts.md](docs/reference/verdicts.md) |
