@@ -1,0 +1,10 @@
+{
+  "schema_version": "evozeus.coevolve.target-template-inventory.v1",
+  "inventory_version": "v1.0.0",
+  "modes": {
+    "external-sidecar": {
+      "target_writes": false,
+      "files": []
+    }
+  }
+}

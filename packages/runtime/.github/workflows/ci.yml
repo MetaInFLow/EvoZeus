@@ -1,0 +1,29 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main, "uat/current"]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: MetaInFLow/EvoZeus-session-signal-skill
+          path: EvoZeus-session-signal-skill
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install --upgrade pip build
+      - run: python -m pip install -e ".[dev]"
+      - name: Test
+        env:
+          EVOZEUS_OFFICIAL_REPO_ROOT: ${{ github.workspace }}/EvoZeus-session-signal-skill
+        run: python -m pytest -q
+      - run: python -m build
