@@ -493,7 +493,7 @@ function install(options) {
     files_written: filesWritten,
     files_planned: options.approveWrite ? [] : plannedFiles(evozeusRoot),
     next_command:
-      "Run ~/.evozeus/bin/evozeus version --json and ~/.evozeus/bin/evozeus doctor --json first. After channel health is ready, run ~/.evozeus/bin/evozeus features --json and ~/.evozeus/bin/evozeus capabilities --json. Do not scan local sessions, write files, or submit to GitHub unless the user explicitly approves the specific action.",
+      "Run ~/.evozeus/bin/evozeus version --json and ~/.evozeus/bin/evozeus doctor --json once, then tell the EvoZeus plugin what you want to review, preserve, evolve, or maintain. Do not scan local sessions, write files, or submit to GitHub unless the user explicitly approves the specific action.",
     approval_needed: options.approveWrite
       ? "Ask before session analysis, runtime, scanner, factor execution, report file generation, wrapper handoff writes, GitHub issue/PR/public artifact, update, or uninstall."
       : "Ask the user before writing ~/.evozeus, then rerun with --approve-write.",

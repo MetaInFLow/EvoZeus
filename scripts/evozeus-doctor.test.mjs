@@ -22,8 +22,8 @@ const READY_CHECKS = {
 
 const COMPLETE_COMPONENTS = [
   "SKILL.md",
-  "skills/index/SKILL.md",
-  "skills/evozeus-install-registration/SKILL.md",
+  "skills/using-evozeus/SKILL.md",
+  "skills/maintain-evozeus/SKILL.md",
   "scripts/evozeus-cli.mjs",
   "scripts/evozeus-install.mjs",
   "scripts/evozeus-doctor.mjs"
@@ -100,8 +100,7 @@ describe("evozeus-doctor", () => {
     assert.match(result.stdout, /available_capabilities: .*fixture-only official factor runner smoke/);
     assert.match(result.stdout, /approval_required_capabilities: .*workspace scan/);
     assert.match(result.stdout, /approval_required_capabilities: .*factor execution on user data/);
-    assert.match(result.stdout, /evozeus features --json/);
-    assert.match(result.stdout, /evozeus capabilities --json/);
+    assert.match(result.stdout, /ask for the user's real task in normal language/);
   });
 
   it("reports complete component downloads before protocol judgment", () => {
@@ -136,7 +135,7 @@ describe("evozeus-doctor", () => {
 
     assert.equal(result.status, 0, result.stderr);
     assert.match(result.stdout, /components_status: incomplete/);
-    assert.match(result.stdout, /missing_components: skills\/index\/SKILL\.md, skills\/evozeus-install-registration\/SKILL\.md, scripts\/evozeus-cli\.mjs, scripts\/evozeus-install\.mjs/);
+    assert.match(result.stdout, /missing_components: skills\/using-evozeus\/SKILL\.md, skills\/maintain-evozeus\/SKILL\.md, scripts\/evozeus-cli\.mjs, scripts\/evozeus-install\.mjs/);
     assert.match(result.stdout, /doctor_verdict: install_or_update/);
     assert.doesNotMatch(result.stdout, /ready_for_protocol_judgment/);
   });

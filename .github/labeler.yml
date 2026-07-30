@@ -22,6 +22,9 @@ type:skill-instruction:
       - any-glob-to-any-file:
           - "SKILL.md"
           - "skills/**"
+          - "maintainer/skills/**"
+          - ".codex-plugin/**"
+          - ".claude-plugin/**"
 
 type:governance:
   - changed-files:

@@ -1402,8 +1402,8 @@ function doctor(options) {
   const manifest = readJsonFile(join(workspace.evozeus_root, "install-manifest.json"));
   const required = [
     "SKILL.md",
-    "skills/index/SKILL.md",
-    "skills/evozeus-install-registration/SKILL.md",
+    "skills/using-evozeus/SKILL.md",
+    "skills/maintain-evozeus/SKILL.md",
     "scripts/evozeus-install.mjs",
     "scripts/evozeus-doctor.mjs",
     "scripts/evozeus-cli.mjs"
@@ -1443,7 +1443,7 @@ function doctor(options) {
     next_command:
       version.health === "migration_required"
         ? "~/.evozeus/bin/evozeus update --channel stable --dry-run --json"
-        : "~/.evozeus/bin/evozeus features --json && ~/.evozeus/bin/evozeus capabilities --json"
+        : "Tell the EvoZeus plugin what you want to review, preserve, evolve, or maintain."
   });
 }
 

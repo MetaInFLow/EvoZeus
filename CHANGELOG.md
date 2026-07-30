@@ -2,7 +2,16 @@
 
 ## [Unreleased]
 
-- None yet.
+### Changed
+
+- Adopted a plugin-first product architecture with five default user-task Skills; historical maintainer Skills moved out of the default plugin surface.
+- Defined and enforced the Repo-scoped Harness rule: only an independent Git Repo root may own an active Harness.
+- Accepted the migration of Runtime and Session Signal into the EvoZeus main Repo while keeping CoEvolve independent.
+
+### Verification
+
+- Codex plugin manifest and all default user Skills pass their official validators.
+- Harness boundary tests reject nested and legacy Harness layouts.
 
 ## [v0.3.5] - 2026-07-27
 

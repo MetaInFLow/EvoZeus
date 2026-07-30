@@ -4,8 +4,8 @@ import { existsSync, readFileSync } from "node:fs";
 
 const REQUIRED_COMPONENTS = [
   "SKILL.md",
-  "skills/index/SKILL.md",
-  "skills/evozeus-install-registration/SKILL.md",
+  "skills/using-evozeus/SKILL.md",
+  "skills/maintain-evozeus/SKILL.md",
   "scripts/evozeus-cli.mjs",
   "scripts/evozeus-install.mjs",
   "scripts/evozeus-doctor.mjs"
@@ -224,7 +224,7 @@ function diagnose(report) {
       doctor_verdict: "ready_for_protocol_judgment",
       requires_user_approval: true,
       next_step:
-        "Show available_capabilities and approval_required_capabilities, then run ~/.evozeus/bin/evozeus features --json and ~/.evozeus/bin/evozeus capabilities --json if installed. Ask the user whether to review a session, plan insights, co-evolve a target, or run maintenance. Do not scan local sessions or write files without approval."
+        "Report that EvoZeus is ready, then ask for the user's real task in normal language. Do not scan local sessions or write files without approval."
     };
   }
 

@@ -59,7 +59,7 @@ Detailed review rules live in:
 
 PRs should be small and reviewable.
 
-Each PR should have one primary purpose, one primary layer, and one review target. Use [PR Guidelines](docs/governance/pr-guidelines.md) for the full contract. If an agent is helping with repository work, read [skills/evozeus-development/SKILL.md](skills/evozeus-development/SKILL.md) before editing.
+Each PR should have one primary purpose, one primary layer, and one review target. Use [PR Guidelines](docs/governance/pr-guidelines.md) for the full contract. If an agent is helping with repository work, read [maintainer/skills/evozeus-development/SKILL.md](maintainer/skills/evozeus-development/SKILL.md) before editing.
 
 PR routing follows [PR Routing Policy](docs/governance/pr-routing-policy.md). Labels, CODEOWNERS, dry-run proof gates, privacy scan, dirty PR check, queue guard, and Candidate schema validation are part of the review surface, not decorative metadata.
 
