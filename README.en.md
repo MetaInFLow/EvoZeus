@@ -40,38 +40,13 @@ Agent work → Evidence → Judgment → Lesson → Verified improvement
 
 EvoZeus is designed for teams that need to ship Agent products early and improve them through real use. Two scenarios define the current product boundary.
 
-<table>
-  <tr>
-    <td width="50%" valign="top">
-      <h3>OPC · From fast MVP to engineered product</h3>
-      <p><strong>For</strong><br>A One Person Company building products with Agents.</p>
-      <p><strong>Core problem</strong><br>The MVP can launch quickly, but real-user issues scatter and the product stays at the “it runs” stage.</p>
-      <p><strong>Improvement loop</strong><br><code>Fast MVP → Real use → Lesson → Fix → UAT → Stable</code></p>
-      <p><strong>How EvoZeus helps</strong></p>
-      <ul>
-        <li>Launch early and expose boundaries through real use;</li>
-        <li>turn corrections and failures into reusable Lessons;</li>
-        <li>separate product, Skill, environment, and execution problems;</li>
-        <li>route approved changes through verification, one UAT, and release.</li>
-      </ul>
-      <p><strong>Outcome</strong><br>Keep MVP speed while building verifiable, maintainable, and reversible engineering quality.</p>
-    </td>
-    <td width="50%" valign="top">
-      <h3>FDE · From customer delivery to continuous improvement</h3>
-      <p><strong>For</strong><br>Forward Deployed Engineers and teams delivering Skills into customer workflows.</p>
-      <p><strong>Core problem</strong><br>Feedback spreads across chats, support messages, demos, and acceptance sessions after delivery.</p>
-      <p><strong>Improvement loop</strong><br><code>Deliver Skill → Customer use → Confirm Lesson → Repo change → Customer UAT → Release</code></p>
-      <p><strong>How EvoZeus helps</strong></p>
-      <ul>
-        <li>Attach a governed evolution Harness to the independent Skill repository;</li>
-        <li>surface reusable Lessons inside the normal working conversation;</li>
-        <li>ask and redact before recording while raw sessions stay local by default;</li>
-        <li>connect feedback, changes, verification, UAT, release, and rollback.</li>
-      </ul>
-      <p><strong>Outcome</strong><br>Turn one-off delivery into a maintainable, verifiable, and transferable Skill product.</p>
-    </td>
-  </tr>
-</table>
+| **OPC · From fast MVP to engineered product** | **FDE · From customer delivery to continuous improvement** |
+| --- | --- |
+| **For**<br>A One Person Company building products with Agents. | **For**<br>Forward Deployed Engineers and teams delivering Skills into customer workflows. |
+| **Core problem**<br>The MVP can launch quickly, but real-user issues scatter and the product stays at the “it runs” stage. | **Core problem**<br>Feedback spreads across chats, support messages, demos, and acceptance sessions after delivery. |
+| **Improvement loop**<br>`Fast MVP → Real use → Lesson → Fix → UAT → Stable` | **Improvement loop**<br>`Deliver Skill → Customer use → Confirm Lesson → Repo change → Customer UAT → Release` |
+| **How EvoZeus helps**<br>① Launch early and expose boundaries through real use.<br>② Turn corrections and failures into reusable Lessons.<br>③ Separate product, Skill, environment, and execution problems.<br>④ Route approved changes through verification, one UAT, and release. | **How EvoZeus helps**<br>① Attach a governed evolution Harness to the independent Skill repository.<br>② Surface reusable Lessons inside the normal working conversation.<br>③ Ask and redact before recording while raw sessions stay local by default.<br>④ Connect feedback, changes, verification, UAT, release, and rollback. |
+| **Outcome**<br>Keep MVP speed while building verifiable, maintainable, and reversible engineering quality. | **Outcome**<br>Turn one-off delivery into a maintainable, verifiable, and transferable Skill product. |
 
 ## Why EvoZeus
 

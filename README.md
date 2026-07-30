@@ -40,38 +40,13 @@ EvoZeus 复盘真实 Agent 任务中发生了什么，识别值得改善下一�
 
 EvoZeus 当前优先解决两类高频问题：产品需要尽快进入真实使用，以及交付后的 Skill 需要持续吸收客户反馈。
 
-<table>
-  <tr>
-    <td width="50%" valign="top">
-      <h3>OPC · 从快速 MVP 到工程化产品</h3>
-      <p><strong>适合谁</strong><br>借助 Agent 独立构建产品的 One Person Company。</p>
-      <p><strong>核心问题</strong><br>MVP 可以快速上线，但真实用户暴露的问题容易散落，产品长期停留在“能跑”的状态。</p>
-      <p><strong>改进链路</strong><br><code>快速 MVP → 真实使用 → Lesson → 修复 → UAT → Stable</code></p>
-      <p><strong>EvoZeus 如何帮助</strong></p>
-      <ul>
-        <li>先让 MVP 上线，在真实场景中暴露边界；</li>
-        <li>把用户纠正和失败案例提炼成可复用 Lesson；</li>
-        <li>区分产品、Skill、环境与执行问题；</li>
-        <li>让确认后的变化进入验证、唯一 UAT 和正式发布。</li>
-      </ul>
-      <p><strong>结果</strong><br>保留 MVP 的上线速度，逐步获得可验证、可维护、可回滚的工程质量。</p>
-    </td>
-    <td width="50%" valign="top">
-      <h3>FDE · 从客户交付到持续迭代</h3>
-      <p><strong>适合谁</strong><br>向客户交付 Skill 的 Forward Deployed Engineer 与项目团队。</p>
-      <p><strong>核心问题</strong><br>Skill 进入客户工作流后，反馈分散在群聊、私信、演示与验收中，难以追踪和复用。</p>
-      <p><strong>改进链路</strong><br><code>交付 Skill → 客户使用 → 确认 Lesson → Repo 修改 → 客户 UAT → 发布</code></p>
-      <p><strong>EvoZeus 如何帮助</strong></p>
-      <ul>
-        <li>为独立 Skill Repo 接入受治理的进化 Harness；</li>
-        <li>在正常业务对话中提示可复用 Lesson；</li>
-        <li>记录前先确认并脱敏，raw session 默认留在本地；</li>
-        <li>把反馈、修改、验证、UAT、发布和回滚连成一条链。</li>
-      </ul>
-      <p><strong>结果</strong><br>把一次性交付转化为可持续维护、可验收、可交接的 Skill 产品。</p>
-    </td>
-  </tr>
-</table>
+| **OPC · 从快速 MVP 到工程化产品** | **FDE · 从客户交付到持续迭代** |
+| --- | --- |
+| **适合谁**<br>借助 Agent 独立构建产品的 One Person Company。 | **适合谁**<br>向客户交付 Skill 的 Forward Deployed Engineer 与项目团队。 |
+| **核心问题**<br>MVP 可以快速上线，但真实用户暴露的问题容易散落，产品长期停留在“能跑”的状态。 | **核心问题**<br>Skill 进入客户工作流后，反馈分散在群聊、私信、演示与验收中，难以追踪和复用。 |
+| **改进链路**<br>`快速 MVP → 真实使用 → Lesson → 修复 → UAT → Stable` | **改进链路**<br>`交付 Skill → 客户使用 → 确认 Lesson → Repo 修改 → 客户 UAT → 发布` |
+| **EvoZeus 如何帮助**<br>① 先让 MVP 上线，在真实场景中暴露边界。<br>② 把用户纠正和失败案例提炼成可复用 Lesson。<br>③ 区分产品、Skill、环境与执行问题。<br>④ 让确认后的变化进入验证、唯一 UAT 和正式发布。 | **EvoZeus 如何帮助**<br>① 为独立 Skill Repo 接入受治理的进化 Harness。<br>② 在正常业务对话中提示可复用 Lesson。<br>③ 记录前先确认并脱敏，raw session 默认留在本地。<br>④ 把反馈、修改、验证、UAT、发布和回滚连成一条链。 |
+| **结果**<br>保留 MVP 的上线速度，逐步获得可验证、可维护、可回滚的工程质量。 | **结果**<br>把一次性交付转化为可持续维护、可验收、可交接的 Skill 产品。 |
 
 ## 观看演示
 
