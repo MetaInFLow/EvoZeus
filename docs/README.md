@@ -30,6 +30,7 @@ This repository follows the Engineering Everything document layout.
 | GitHub settings checklist | [governance/github-settings.md](governance/github-settings.md) |
 | Candidate lifecycle | [governance/candidate-lifecycle.md](governance/candidate-lifecycle.md) |
 | Release and promotion policy | [governance/release-and-promotion-policy.md](governance/release-and-promotion-policy.md) |
+| Release notes | [releases/](releases/) |
 | Third-party Factor extension history | [governance/factor-registry-governance.md](governance/factor-registry-governance.md) |
 | Launch readiness criteria | [governance/launch-readiness-criteria.md](governance/launch-readiness-criteria.md) |
 | Folder ownership | [governance/folder-declaration-v0.md](governance/folder-declaration-v0.md) |
@@ -48,6 +49,7 @@ This repository follows the Engineering Everything document layout.
 - Design docs live in `docs/design/{backlog,active,done}/`.
 - ADRs use continuous numbering: `ADR-0001-*.md`.
 - Governance docs live in `docs/governance/`.
+- Release notes live in `docs/releases/vMAJOR.MINOR.PATCH.md`; the repository root must remain free of versioned release-note files.
 - Stable reference docs live in `docs/reference/`.
 - Runtime output must not be committed; local runtime state belongs under `.evozeus/`.
 - Scenario skills live under `../skills/`; user-facing names use `EvoZeus-...`, while machine names and folder paths stay lowercase `evozeus-*`.
