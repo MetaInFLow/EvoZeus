@@ -1,10 +1,31 @@
 #!/usr/bin/env node
 
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  statSync,
+  writeFileSync
+} from "node:fs";
 import { join, resolve } from "node:path";
 import { homedir } from "node:os";
 import { spawnSync } from "node:child_process";
-import { applyChannelUpdate, DEFAULT_MANIFEST_SOURCES } from "./evozeus-channels.mjs";
+import {
+  activateInstalledChannel,
+  applyChannelUpdate,
+  DEFAULT_MANIFEST_SOURCES,
+  prepareChannelUpdate,
+  readActiveChannel,
+  readChannelState,
+  rollbackChannel
+} from "./evozeus-channels.mjs";
+import { alignPluginHosts, detectPluginHosts, inspectPluginHosts } from "./evozeus-hosts.mjs";
+
+const DEFAULT_CHECK_INTERVAL_SECONDS = 3600;
+const LOCK_STALE_SECONDS = 900;
+const UPDATE_POLICY_SCHEMA = "evozeus.update-policy.v1";
 
 function readJson(path) {
   try {
@@ -19,40 +40,229 @@ let active = readJson(join(home, "active-channel.json"));
 let state = readJson(join(home, "channel-state.json"));
 let channel = ["stable", "uat"].includes(active?.channel) ? active.channel : null;
 
-function writeRefreshReport(payload) {
-  const directory = join(home, "state", "uat");
+function atomicWriteJson(target, payload) {
+  const directory = resolve(target, "..");
   mkdirSync(directory, { recursive: true });
-  const target = join(directory, "auto-refresh-last.json");
   const temporary = `${target}.tmp`;
   writeFileSync(temporary, `${JSON.stringify(payload, null, 2)}\n`, { mode: 0o600 });
   renameSync(temporary, target);
 }
 
-const command = process.argv[2] || "";
-const skipRefresh = ["update", "channel"].includes(command);
-if (channel === "uat" && active.auto_refresh === true && !skipRefresh) {
-  try {
-    const update = await applyChannelUpdate({
-      evozeusHome: home,
-      channel: "uat",
-      manifestSource: process.env.EVOZEUS_UAT_MANIFEST || DEFAULT_MANIFEST_SOURCES.uat,
-      autoRefresh: true
-    });
-    writeRefreshReport({
+function updatePolicy() {
+  const path = join(home, "update-policy.json");
+  const current = readJson(path);
+  const intervalOverride = Number(process.env.EVOZEUS_UPDATE_CHECK_INTERVAL_SECONDS);
+  const interval = Number.isFinite(intervalOverride) && intervalOverride >= 0
+    ? intervalOverride
+    : Number(current?.check_interval_seconds ?? DEFAULT_CHECK_INTERVAL_SECONDS);
+  const policy = {
+    schema_version: UPDATE_POLICY_SCHEMA,
+    enabled: process.env.EVOZEUS_AUTO_UPDATE !== "0" && current?.enabled !== false,
+    check_interval_seconds: Number.isFinite(interval) && interval >= 0 ? interval : DEFAULT_CHECK_INTERVAL_SECONDS,
+    channels: {
+      stable: current?.channels?.stable !== false,
+      uat: current?.channels?.uat !== false
+    }
+  };
+  if (!current) atomicWriteJson(path, policy);
+  return policy;
+}
+
+function reportPath(channel) {
+  return join(home, "state", channel, "auto-update-last.json");
+}
+
+function writeUpdateReport(channel, payload) {
+  const report = {
+    schema_version: "evozeus.auto-update-report.v1",
+    channel,
+    checked_at: new Date().toISOString(),
+    ...payload
+  };
+  atomicWriteJson(reportPath(channel), report);
+  if (channel === "uat") {
+    atomicWriteJson(join(home, "state", "uat", "auto-refresh-last.json"), {
       schema_version: "evozeus.uat-auto-refresh.v1",
-      checked_at: new Date().toISOString(),
-      status: update.status,
-      manifest_digest: update.manifest_digest
+      checked_at: report.checked_at,
+      status: report.status,
+      ...(report.manifest_digest ? { manifest_digest: report.manifest_digest } : {}),
+      ...(report.error ? { error: report.error } : {})
+    });
+  }
+  return report;
+}
+
+function recentlyChecked(channel, intervalSeconds) {
+  if (intervalSeconds === 0) return false;
+  const report = readJson(reportPath(channel));
+  const checkedAt = Date.parse(String(report?.checked_at ?? ""));
+  return Number.isFinite(checkedAt) && Date.now() - checkedAt < intervalSeconds * 1000;
+}
+
+function acquireUpdateLock() {
+  const lock = join(home, "state", "auto-update.lock");
+  mkdirSync(join(home, "state"), { recursive: true });
+  if (existsSync(lock)) {
+    try {
+      if (Date.now() - statSync(lock).mtimeMs > LOCK_STALE_SECONDS * 1000) rmSync(lock, { recursive: true, force: true });
+    } catch {
+      return null;
+    }
+  }
+  try {
+    mkdirSync(lock);
+    return lock;
+  } catch {
+    return null;
+  }
+}
+
+function visibleLog(message) {
+  console.error(message);
+}
+
+function channelLabel(value) {
+  return value === "uat" ? "UAT" : "Stable";
+}
+
+function availablePluginHosts() {
+  return detectPluginHosts();
+}
+
+function pluginStatus(entry, hosts) {
+  if (!entry || hosts.length === 0) return { status: "not_applicable", hosts: {} };
+  return inspectPluginHosts({
+    evozeusHome: home,
+    channel: entry.manifest.channel,
+    productVersion: entry.manifest.product_version,
+    commit: entry.manifest.components.evozeus.commit,
+    availableHosts: hosts
+  });
+}
+
+function alignEntryPlugin(entry, hosts) {
+  if (!entry || hosts.length === 0) return { status: "not_applicable", hosts: {} };
+  return alignPluginHosts({
+    evozeusHome: home,
+    sourceRoot: entry.component_roots.evozeus,
+    channel: entry.manifest.channel,
+    productVersion: entry.manifest.product_version,
+    commit: entry.manifest.components.evozeus.commit,
+    hosts
+  });
+}
+
+async function autoUpdateActiveChannel() {
+  const currentActive = readActiveChannel(home);
+  const currentChannel = currentActive?.channel;
+  if (!currentChannel) return;
+  const policy = updatePolicy();
+  if (!policy.enabled || policy.channels[currentChannel] === false) return;
+
+  const currentState = readChannelState(home);
+  const currentEntry = currentState.channels[currentChannel];
+  const hosts = availablePluginHosts();
+  const localPlugin = pluginStatus(currentEntry, hosts);
+  const pluginNeedsAlignment = ["plugin_mismatch", "plugin_install_required"].includes(localPlugin.status);
+  if (recentlyChecked(currentChannel, policy.check_interval_seconds) && !pluginNeedsAlignment) return;
+
+  const lock = acquireUpdateLock();
+  if (!lock) return;
+
+  const beforeVersion = currentEntry?.manifest?.product_version ?? "unknown";
+  let update = null;
+  try {
+    const manifestSource = currentChannel === "stable"
+      ? process.env.EVOZEUS_STABLE_MANIFEST || DEFAULT_MANIFEST_SOURCES.stable
+      : process.env.EVOZEUS_UAT_MANIFEST || DEFAULT_MANIFEST_SOURCES.uat;
+    const plan = await prepareChannelUpdate({
+      evozeusHome: home,
+      channel: currentChannel,
+      manifestSource
+    });
+
+    if (!plan.update_available) {
+      update = await applyChannelUpdate({
+        evozeusHome: home,
+        channel: currentChannel,
+        manifestSource,
+        autoRefresh: currentChannel === "uat"
+      });
+      const entry = readChannelState(home).channels[currentChannel];
+      const refreshedPlugin = pluginStatus(entry, hosts);
+      if (["plugin_mismatch", "plugin_install_required"].includes(refreshedPlugin.status)) {
+        visibleLog(`🛠️ EvoZeus · 自动更新中｜${channelLabel(currentChannel)} ${plan.target_product_version} · Plugin对齐`);
+        alignEntryPlugin(entry, hosts);
+        visibleLog(`✅ EvoZeus · 自动更新完成｜${channelLabel(currentChannel)} ${plan.target_product_version} · Plugin已对齐`);
+      }
+      writeUpdateReport(currentChannel, {
+        status: "current",
+        product_version: plan.target_product_version,
+        latest_product_version: plan.target_product_version,
+        manifest_digest: plan.manifest_digest,
+        components: ["evozeus", "plugin", "runtime", "session_signal", "coevolve"]
+      });
+      return;
+    }
+
+    visibleLog(`🧭 EvoZeus · 发现更新｜${channelLabel(currentChannel)} ${beforeVersion} → ${plan.target_product_version}`);
+    visibleLog("🛠️ EvoZeus · 自动更新中｜正在对齐Plugin、Runtime、Session Signal与CoEvolve");
+    const activeBefore = currentActive;
+    const entryBefore = currentEntry;
+    try {
+      update = await applyChannelUpdate({
+        evozeusHome: home,
+        channel: currentChannel,
+        manifestSource,
+        autoRefresh: currentChannel === "uat"
+      });
+      const entry = readChannelState(home).channels[currentChannel];
+      alignEntryPlugin(entry, hosts);
+      const verification = pluginStatus(entry, hosts);
+      if (!["ready", "ready_after_new_session", "not_applicable"].includes(verification.status)) {
+        throw new Error(`plugin verification failed: ${verification.status}`);
+      }
+    } catch (error) {
+      if (update?.rollback) {
+        rollbackChannel(home, currentChannel);
+      } else if (activeBefore?.channel && activeBefore.channel !== currentChannel) {
+        activateInstalledChannel(home, activeBefore.channel, activeBefore.auto_refresh);
+      }
+      if (entryBefore) {
+        try {
+          alignEntryPlugin(readChannelState(home).channels[activeBefore.channel] || entryBefore, hosts);
+        } catch {
+          // The original update error remains authoritative; Doctor exposes residual host mismatch.
+        }
+      }
+      throw error;
+    }
+
+    visibleLog(`✅ EvoZeus · 自动更新完成｜${channelLabel(currentChannel)} ${plan.target_product_version} · 新会话加载Plugin`);
+    writeUpdateReport(currentChannel, {
+      status: "updated",
+      previous_product_version: beforeVersion,
+      product_version: plan.target_product_version,
+      latest_product_version: plan.target_product_version,
+      manifest_digest: plan.manifest_digest,
+      components: ["evozeus", "plugin", "runtime", "session_signal", "coevolve"]
     });
   } catch (error) {
-    writeRefreshReport({
-      schema_version: "evozeus.uat-auto-refresh.v1",
-      checked_at: new Date().toISOString(),
+    visibleLog(`🛡️ EvoZeus · 自动更新失败｜继续使用${channelLabel(currentChannel)} ${beforeVersion} · ${error.message}`);
+    writeUpdateReport(currentChannel, {
       status: "failed_continuing_previous",
-      error: { code: error.code || "UAT_REFRESH_FAILED", message: error.message }
+      product_version: beforeVersion,
+      error: { code: error.code || "AUTO_UPDATE_FAILED", message: error.message }
     });
-    console.error(`[EvoZeus UAT] refresh failed; continuing the previous verified UAT: ${error.message}`);
+  } finally {
+    rmSync(lock, { recursive: true, force: true });
   }
+}
+
+const command = process.argv[2] || "";
+const skipRefresh = ["update", "channel", "align"].includes(command) || process.env.EVOZEUS_AUTO_UPDATE_CHILD === "1";
+if (channel && !skipRefresh) {
+  await autoUpdateActiveChannel();
   active = readJson(join(home, "active-channel.json"));
   state = readJson(join(home, "channel-state.json"));
   channel = ["stable", "uat"].includes(active?.channel) ? active.channel : null;

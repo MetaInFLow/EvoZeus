@@ -28,6 +28,7 @@ community /skill
   -> ask before identity writes, network registration, source writes, or user-home writes
   -> run installer with verified Release tag, commit, and archive SHA-256
   -> install bootstrap skeleton and ~/.evozeus/bin/evozeus
+  -> create update-policy.json with Stable/UAT automatic checks enabled
   -> detect Codex / Claude Code hosts
   -> run evozeus align --channel stable --host auto --approve-write using the Stable product manifest
   -> verify Runtime and the single active plugin use the same channel and Commit
@@ -68,6 +69,7 @@ Only after user approval, the install path may write:
 | --- | --- |
 | `~/.evozeus/registration.json` | user-level registration status, registration id, agent identity pointer |
 | `~/.evozeus/install-manifest.json` | skeleton source, resolved commit, installed skills inventory, last checked time |
+| `~/.evozeus/update-policy.json` | automatic update enablement, one-hour interval, and per-channel subscriptions |
 | `~/.evozeus/skeleton/` | local copy of the EvoZeus root `SKILL.md`, scenario skills, reference docs, and install / doctor scripts |
 | `~/.evozeus/bin/evozeus` | local CLI shim for capability discovery and approved P0 operations |
 | `~/.evozeus/releases/stable/` | immutable Stable component archives selected by the product manifest |
@@ -76,6 +78,8 @@ Only after user approval, the install path may write:
 | `~/.evozeus/hosts/` | generated Codex/Claude marketplace, the one active plugin bundle, and alignment evidence |
 
 The approved alignment may also ask the detected host CLI to register its local EvoZeus marketplace and reinstall plugin id `evozeus`. Do not create `evozeus-uat`, `evozeus-stable`, or a second user-visible UAT plugin.
+
+The first approved installation also enables future verified automatic updates inside the active channel. Explain this before approval. Stable follows the latest immutable Release; UAT follows the single mutable `uat/current`. Automatic updates never switch channels, publish repositories, or upload user data. The user may disable or configure the behavior in `~/.evozeus/update-policy.json`.
 
 Only after user approval, the install path may also create or reuse `~/.evozeus/agent-identity.json` and call the EvoZeus Web registration API. Registration is hash-only and must not upload raw session, private paths, tokens, workspace contents, customer data, or unreleased code.
 

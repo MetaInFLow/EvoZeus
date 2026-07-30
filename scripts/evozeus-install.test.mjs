@@ -99,6 +99,7 @@ describe("evozeus-install", () => {
       assert.equal(typeof report.skeleton_source.resolved_ref, "string");
       assert.equal(typeof report.skeleton_source.resolved_commit, "string");
       assert.ok(report.files_planned.includes(join(evozeusHome, "registration.json")));
+      assert.ok(report.files_planned.includes(join(evozeusHome, "update-policy.json")));
       assert.ok(report.files_planned.includes(join(evozeusHome, "bin/evozeus")));
       assert.equal(existsSync(evozeusHome), false);
       assert.equal(existsSync(join(workspace, ".evozeus")), false);
@@ -110,6 +111,7 @@ describe("evozeus-install", () => {
       const report = parseStdout(result);
       const registration = readJson(join(evozeusHome, "registration.json"));
       const manifest = readJson(join(evozeusHome, "install-manifest.json"));
+      const updatePolicy = readJson(join(evozeusHome, "update-policy.json"));
 
       assert.equal(report.write_mode, "approved_write");
       assert.equal(report.registration_status, "created");
@@ -140,6 +142,12 @@ describe("evozeus-install", () => {
       assert.equal(manifest.cli.command, "~/.evozeus/bin/evozeus");
       assert.equal(manifest.cli.path, join(evozeusHome, "bin/evozeus"));
       assert.equal(manifest.cli.script, "scripts/evozeus-cli.mjs");
+      assert.deepEqual(updatePolicy, {
+        schema_version: "evozeus.update-policy.v1",
+        enabled: true,
+        check_interval_seconds: 3600,
+        channels: { stable: true, uat: true }
+      });
       assert.equal(typeof manifest.cli.capabilities_hash, "string");
       assert.ok(manifest.skills_inventory.some((skill) => skill.name === "using-evozeus"));
       assert.ok(manifest.skills_inventory.some((skill) => skill.name === "maintain-evozeus"));
@@ -155,6 +163,7 @@ describe("evozeus-install", () => {
       assert.ok(existsSync(join(evozeusHome, "bin/evozeus")));
       assert.equal(existsSync(join(workspace, ".evozeus")), false);
       assert.ok(report.files_written.includes(join(evozeusHome, "registration.json")));
+      assert.ok(report.files_written.includes(join(evozeusHome, "update-policy.json")));
       assert.ok(report.files_written.includes(join(evozeusHome, "bin/evozeus")));
       assert.ok(report.files_written.includes(join(evozeusHome, "install-manifest.json")));
       assert.match(report.approval_needed, /Ask before session analysis/);
