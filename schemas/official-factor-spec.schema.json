@@ -1,0 +1,216 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://evozeus.dev/schemas/official-factor-spec.schema.json",
+  "title": "EvoZeus Official Factor Spec",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "stability",
+    "factor_id",
+    "version",
+    "title",
+    "summary",
+    "title_i18n",
+    "summary_i18n",
+    "compatibility",
+    "governance",
+    "input_contract",
+    "evidence_contract",
+    "output_contract",
+    "test_vectors"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string"
+    },
+    "stability": {
+      "type": "string",
+      "const": "official"
+    },
+    "factor_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+([.-][a-z0-9]+)*$"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^v?[0-9]+\\.[0-9]+\\.[0-9]+(-[A-Za-z0-9.-]+)?$"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 3
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 10
+    },
+    "title_i18n": {
+      "$ref": "#/$defs/localized_title"
+    },
+    "summary_i18n": {
+      "$ref": "#/$defs/localized_summary"
+    },
+    "compatibility": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["evozeus_protocol"],
+      "properties": {
+        "evozeus_protocol": {
+          "type": "string"
+        }
+      }
+    },
+    "governance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["owner"],
+      "properties": {
+        "owner": {
+          "type": "string"
+        }
+      }
+    },
+    "input_contract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event_model", "required_fields", "accepted_input_kinds", "target_types", "record_types"],
+      "properties": {
+        "event_model": {
+          "type": "string"
+        },
+        "required_fields": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        },
+        "accepted_input_kinds": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        },
+        "target_types": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        },
+        "record_types": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        },
+        "prior_result_policy": {
+          "type": "string"
+        }
+      }
+    },
+    "evidence_contract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ref_format", "privacy"],
+      "properties": {
+        "ref_format": {
+          "type": "string"
+        },
+        "privacy": {
+          "type": "string"
+        }
+      }
+    },
+    "output_contract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["statuses", "fields", "dataset_semantic_types", "presentation_components"],
+      "properties": {
+        "statuses": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "enum": ["matched", "not_matched", "skipped", "error"]
+          }
+        },
+        "fields": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        },
+        "dataset_semantic_types": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        },
+        "presentation_components": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "test_vectors": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["name", "input", "expected_status"],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "input": {
+            "type": "string"
+          },
+          "expected_status": {
+            "type": "string",
+            "enum": ["matched", "not_matched", "skipped", "error"]
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "localized_title": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["zh-CN", "en-US"],
+      "properties": {
+        "zh-CN": {
+          "type": "string",
+          "minLength": 3
+        },
+        "en-US": {
+          "type": "string",
+          "minLength": 3
+        }
+      }
+    },
+    "localized_summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["zh-CN", "en-US"],
+      "properties": {
+        "zh-CN": {
+          "type": "string",
+          "minLength": 10
+        },
+        "en-US": {
+          "type": "string",
+          "minLength": 10
+        }
+      }
+    }
+  }
+}
