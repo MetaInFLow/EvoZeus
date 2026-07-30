@@ -13,6 +13,16 @@ test("Claude plugin auto-discovers one read-only SessionStart Lesson check", () 
   assert.match(entries[0].hooks[0].command, /session-start\.mjs/);
 });
 
+test("Claude marketplace exposes the root EvoZeus plugin", () => {
+  const marketplace = JSON.parse(
+    readFileSync(new URL("../.claude-plugin/marketplace.json", import.meta.url), "utf8")
+  );
+  assert.equal(marketplace.name, "evozeus");
+  assert.equal(marketplace.plugins.length, 1);
+  assert.equal(marketplace.plugins[0].name, "evozeus");
+  assert.equal(marketplace.plugins[0].source, "./");
+});
+
 test("SessionStart adapter injects the Lesson contract without user-visible output", () => {
   const result = spawnSync(
     process.execPath,

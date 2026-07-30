@@ -24,7 +24,11 @@ const DEFAULT_RUNTIME_FAMILY = "codex";
 const DEFAULT_SKELETON_ENTRIES = [
   "SKILL.md",
   "README.md",
+  ".codex-plugin",
+  ".claude-plugin",
   "skills",
+  "hooks",
+  "assets/icons",
   "packages/runtime",
   "packs/session-signal",
   "docs/reference",
@@ -32,6 +36,7 @@ const DEFAULT_SKELETON_ENTRIES = [
   "docs/governance/terminology-glossary.md",
   "scripts/evozeus-cli.mjs",
   "scripts/evozeus-channels.mjs",
+  "scripts/evozeus-hosts.mjs",
   "scripts/evozeus-coevolve-dispatcher.py",
   "scripts/evozeus-launcher.mjs",
   "scripts/evozeus-doctor.mjs",
@@ -495,7 +500,7 @@ function install(options) {
     files_written: filesWritten,
     files_planned: options.approveWrite ? [] : plannedFiles(evozeusRoot),
     next_command:
-      "Run ~/.evozeus/bin/evozeus version --json and ~/.evozeus/bin/evozeus doctor --json once, then tell the EvoZeus plugin what you want to review, preserve, evolve, or maintain. Do not scan local sessions, write files, or submit to GitHub unless the user explicitly approves the specific action.",
+      "Run ~/.evozeus/bin/evozeus align --channel stable --host auto --json, ask for approval, rerun it with --approve-write, then start a new Agent chat. Do not scan local sessions, write project files, or submit to GitHub unless the user explicitly approves the specific action.",
     approval_needed: options.approveWrite
       ? "Ask before session analysis, runtime, scanner, factor execution, report file generation, wrapper handoff writes, GitHub issue/PR/public artifact, update, or uninstall."
       : "Ask the user before writing ~/.evozeus, then rerun with --approve-write.",

@@ -14,6 +14,7 @@
   <a href="#use-cases">Use Cases</a> ·
   <a href="#see-evozeus-in-action">Demos</a> ·
   <a href="#install-evozeus">Install</a> ·
+  <a href="#user-visible-lifecycle-markers">Visible markers</a> ·
   <a href="#try-a-concrete-demo-skill">Demo Skill</a> ·
   <a href="#how-it-works">How it works</a> ·
   <a href="#safety">Safety</a> ·
@@ -96,7 +97,8 @@ The [official Install Skill](https://evozeus-community.vercel.app/skill) will:
 
 1. resolve the latest immutable Stable release and verify its checksum;
 2. explain the local writes and ask for approval before installation or registration;
-3. install Stable, then verify the active channel, version, product manifest, and Doctor result.
+3. detect Codex, Claude Code, or both and register the single active `evozeus` plugin;
+4. align Runtime and plugin to one Stable/UAT channel, run Doctor, and request a new chat when the host must reload.
 
 The website remains the canonical installation handoff, so this README does not duplicate a second set of installer commands. UAT remains a separate, explicit choice after Stable is healthy.
 
@@ -142,6 +144,27 @@ EvoZeus responds inside the normal conversation. Lifecycle events use a compact 
 ```
 
 No raw JSON block is shown for a normal Lesson prompt, and nothing is recorded before confirmation.
+
+## User-visible lifecycle markers
+
+EvoZeus shows one compact line only when its lifecycle state changes. Ordinary analysis and individual tool calls do not produce markers.
+
+| Marker | Meaning |
+| --- | --- |
+| `🧙 EvoZeus · 已启动｜<task>` | EvoZeus was explicitly activated |
+| `👁️ EvoZeus · 受管运行｜<Skillware> · <channel>` | A verified managed Skillware target is running |
+| `🧙 EvoZeus · 捕捉到一条 Lesson｜<summary>。要记录下来吗？` | A reusable Lesson is proposed, not persisted |
+| `📝 EvoZeus · Lesson 已记录｜<record>` | The approved Lesson was persisted |
+| `🔐 EvoZeus · 等待确认｜<action>` | A specific write or external action needs approval |
+| `🧭 EvoZeus · 版本状态｜<current → target>` | An install, alignment, or channel decision is pending |
+| `🛠️ EvoZeus · 进化中｜<Repo> · <change>` | An approved evolution change is executing |
+| `🧪 EvoZeus · UAT 就绪｜<Repo> · <Commit>` | The single UAT candidate passed its gates |
+| `🚀 EvoZeus · 已发布｜<Repo> · <Release>` | A Stable Release was published |
+| `↩️ EvoZeus · 已回滚｜<channel/version>` | A verified previous version was restored |
+| `🛡️ EvoZeus · 暂停｜<blocker>` | Evidence, privacy, or permission blocks progress |
+| `✅ EvoZeus · 已验证｜<checks>` | Completion evidence passed |
+
+See the [canonical event contract](docs/reference/user-visible-events.md) for exact triggers and safety rules.
 
 Host support determines how the Lesson check starts:
 
@@ -192,6 +215,13 @@ Runtime and Session Signal are internal modules of this repository. They share t
 - A UAT fix replaces the current UAT candidate; it never creates a second user-visible UAT.
 - Stable and UAT use isolated code and local state.
 - Promotion publishes the exact verified UAT source as Stable.
+- Codex and Claude expose only one active `evozeus` plugin; switching channels overwrites that plugin rather than creating a second UAT plugin.
+
+The approved transaction used by the official installer is:
+
+```bash
+evozeus align --channel stable --host auto --approve-write --json
+```
 
 Read [ADR-0003](docs/decisions/ADR-0003-stable-single-uat-channel-model.md) for channel semantics and [ADR-0005](docs/decisions/ADR-0005-plugin-first-monorepo-and-repo-scoped-harness.md) for the product architecture.
 

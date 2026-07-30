@@ -66,6 +66,7 @@ function runCli(args, options = {}) {
     encoding: "utf8",
     env: {
       ...process.env,
+      EVOZEUS_HOSTS_AVAILABLE: "none",
       ...options.env,
       EVOZEUS_HOME: evozeusHome
     }
@@ -492,6 +493,33 @@ describe("evozeus-cli", () => {
       assert.equal(uninstall.operation, "system.uninstallPlan");
       assert.equal(uninstall.approval.required, true);
       assert.equal(uninstall.data.uninstall_plan.writes_now, false);
+      assert.equal(existsSync(join(workspace, "home", ".evozeus")), false);
+    }));
+
+  it("plans one-command product and Codex plugin alignment without writing", () =>
+    withTempWorkspace((workspace) => {
+      const manifestPath = join(workspace, "stable.json");
+      writeFileSync(manifestPath, `${JSON.stringify(stableManifest(), null, 2)}\n`);
+      const result = runCli(
+        [
+          "align",
+          "--channel",
+          "stable",
+          "--host",
+          "codex",
+          "--manifest",
+          manifestPath,
+          "--json"
+        ],
+        { cwd: workspace, env: { EVOZEUS_HOSTS_AVAILABLE: "codex" } }
+      );
+      const report = parseJson(result);
+
+      assert.equal(report.operation, "system.alignPlan");
+      assert.equal(report.data.channel, "stable");
+      assert.equal(report.data.writes_now, false);
+      assert.equal(report.data.plugin.plugin_id, "evozeus");
+      assert.deepEqual(Object.keys(report.data.plugin.hosts), ["codex"]);
       assert.equal(existsSync(join(workspace, "home", ".evozeus")), false);
     }));
 
