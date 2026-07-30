@@ -61,6 +61,6 @@ EvoZeus当前跨多个Repo交付。正式Release、UAT分支、Web部署、本�
 
 ## Validation
 
-- Mega Repo方案V1-V8全部通过。
+- `design_doc-v0.4-version-channel-system.md` 的完整渠道、事务、回滚和发布门禁全部通过。
 - 任何出现第二个用户可见UAT的实现触发ADR重审。
 - 任何Stable自动写入行为触发ADR重审。
