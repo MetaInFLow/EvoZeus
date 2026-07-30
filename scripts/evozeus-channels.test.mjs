@@ -59,6 +59,14 @@ const EMBEDDED = {
   }
 };
 const LAUNCHER = fileURLToPath(new URL("./evozeus-launcher.mjs", import.meta.url));
+const REAL_BOOTSTRAP = new Map(
+  [
+    "scripts/evozeus-channels.mjs",
+    "scripts/evozeus-hosts.mjs",
+    "scripts/evozeus-coevolve-dispatcher.py",
+    "scripts/evozeus-launcher.mjs"
+  ].map((entry) => [entry, readFileSync(new URL(`../${entry}`, import.meta.url), "utf8")])
+);
 
 function git(cwd, ...args) {
   return execFileSync("git", args, { cwd, encoding: "utf8" }).trim();
@@ -73,7 +81,9 @@ function initComponent(root, componentId, marker = "one") {
   for (const entry of COMPONENT_PATHS[componentId]) {
     const path = join(repo, entry);
     mkdirSync(dirname(path), { recursive: true });
-    const content = entry === "contracts/v1/manifest.json"
+    const content = REAL_BOOTSTRAP.has(entry)
+      ? REAL_BOOTSTRAP.get(entry)
+      : entry === "contracts/v1/manifest.json"
       ? `${JSON.stringify({ bundle_version: "v1.0.0", runtime_compatibility: { min_inclusive: "0.1.0", max_exclusive: "0.3.0" } })}\n`
       : componentId === "evozeus" && entry.endsWith("evozeus-cli.mjs")
       ? `console.log(JSON.stringify({ ok: true, marker: ${JSON.stringify(marker)} }));\n`
@@ -134,7 +144,9 @@ function createArchive(root, componentId, marker = "stable") {
     mkdirSync(dirname(path), { recursive: true });
     writeFileSync(
       path,
-      entry === "contracts/v1/manifest.json"
+      REAL_BOOTSTRAP.has(entry)
+        ? REAL_BOOTSTRAP.get(entry)
+        : entry === "contracts/v1/manifest.json"
         ? `${JSON.stringify({ bundle_version: "v1.0.0", runtime_compatibility: { min_inclusive: "0.1.0", max_exclusive: "0.3.0" } })}\n`
         : componentId === "evozeus" && entry.endsWith("evozeus-cli.mjs")
           ? `console.log(JSON.stringify({ ok: true, marker: ${JSON.stringify(marker)} }));\n`
@@ -604,6 +616,43 @@ describe("channel transactions", () => {
 
       assert.equal(readJsonReport(join(home, "hooks", "state.json")).wrapper_source, "channel-managed");
       assert.equal(channelSnapshot(home).health, "healthy");
+    }));
+
+  it("boots a new launcher from a v0.4.0 skeleton that has no host module", async () =>
+    fixture(async (root) => {
+      const home = join(root, "home");
+      const components = Object.fromEntries(
+        Object.keys(COMPONENT_PATHS).map((componentId) => [componentId, initComponent(root, componentId)])
+      );
+      const manifestPath = writeManifest(root, "uat-bootstrap.json", uatManifest(components, "v0.4.1"));
+      await applyChannelUpdate({
+        evozeusHome: home,
+        channel: "uat",
+        manifestSource: manifestPath,
+        autoRefresh: true,
+        smokeRunner: noSmoke
+      });
+      const bootstrapHostModule = join(home, "skeleton", "scripts", "evozeus-hosts.mjs");
+      rmSync(bootstrapHostModule, { force: true });
+
+      const result = spawnSync(
+        process.execPath,
+        [join(home, "skeleton", "scripts", "evozeus-launcher.mjs"), "version", "--json"],
+        {
+          encoding: "utf8",
+          env: {
+            ...process.env,
+            EVOZEUS_HOME: home,
+            EVOZEUS_UAT_MANIFEST: manifestPath,
+            EVOZEUS_HOSTS_AVAILABLE: "none",
+            EVOZEUS_UPDATE_CHECK_INTERVAL_SECONDS: "0"
+          }
+        }
+      );
+
+      assert.equal(result.status, 0, result.stderr);
+      assert.equal(existsSync(bootstrapHostModule), true);
+      assert.equal(readChannelState(home).channels.uat.manifest.product_version, "v0.4.1");
     }));
 
   it("auto-refreshes the same active UAT and continues the previous UAT when a later refresh fails", async () =>
