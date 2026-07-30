@@ -4,6 +4,7 @@
 
 ### Changed
 
+- Channel alignment now refreshes the local launcher bootstrap from the verified EvoZeus component, so an older installation can read the current manifest schema and auto-refresh the single UAT.
 - Legacy product-channel v1 installations now report `migration_required` during alignment instead of crashing before the Stable/UAT migration can be planned.
 - Added one-command `evozeus align` transactions that synchronize the selected Stable/UAT product with the single active Codex/Claude plugin.
 - Added host-specific local marketplaces, channel-visible plugin versions, plugin/runtime mismatch checks, and new-session verification guidance.
@@ -21,6 +22,7 @@
 
 ### Verification
 
+- Channel transaction regressions prove both a new alignment and an idempotent realignment replace stale bootstrap files with the verified channel copy.
 - Regression coverage proves an active v1 channel remains readable and can produce a v2 UAT alignment plan.
 - Codex/Claude host alignment tests cover dry-run planning, single-plugin staging, exact provenance, and stale-channel rejection.
 - Isolated real-host smoke checks registered the generated marketplace, installed `evozeus`, and discovered it through both Codex and Claude Code without touching the user's active host configuration.
