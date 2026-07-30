@@ -2,6 +2,8 @@
 
 **把真实 Agent 工作转化为经过验证的改进。**
 
+> Origin：宙斯的概念诞生于一次不太成功的黑客松之后，[Anthony](https://github.com/HaodiFan) 和 [Neil](https://github.com/orgs/MetaInFLow/people/Neillan96) 两个人的一次复盘。
+
 [English](../README.md) · [业务演示](#业务演示) · [安装 EvoZeus](#安装-evozeus) · [Demo Skill](#用真实-demo-skill-体验-evozeus) · [工作方式](#工作方式) · [安全边界](#安全边界)
 
 EvoZeus 复盘一次真实 Agent 任务中发生了什么，识别能改善下一次执行的 Lesson，并把用户确认后的变化路由为可复用、可验证、可治理的产物。它适用于 Skill、plugin、Agent workflow 和其他 Skillware 的建设团队。
