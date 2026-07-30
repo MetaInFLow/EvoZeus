@@ -3,7 +3,7 @@
 - Status: accepted
 - Date: 2026-06-14
 - Deciders: MetaInFlow
-- Linked Design Doc: [../design/active/design_doc-v0.1-agent-session-judgment-layer.md](../design/active/design_doc-v0.1-agent-session-judgment-layer.md)
+- Linked Design Doc: [../design/done/design_doc-v0.1-agent-session-judgment-layer.md](../design/done/design_doc-v0.1-agent-session-judgment-layer.md)
 
 ## Context
 

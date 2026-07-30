@@ -2,7 +2,7 @@
 
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { homedir } from "node:os";
 import { fileURLToPath } from "node:url";
@@ -18,7 +18,7 @@ import {
 } from "./evozeus-channels.mjs";
 
 const SCHEMA_VERSION = 1;
-const CLI_VERSION = "0.3.4";
+const CLI_VERSION = "0.4.0-dev.0";
 const SOURCE_ROOT = resolve(fileURLToPath(new URL("..", import.meta.url)));
 
 const CAPABILITIES = [
@@ -143,7 +143,7 @@ const CAPABILITIES = [
   {
     name: "insights.plan",
     domain: "insights",
-    summary: "Plan a session insights run through EvoZeus-infra without reading raw stores.",
+    summary: "Plan a session insights run through the built-in EvoZeus Runtime without reading raw stores.",
     input_schema: { type: "object", properties: { source: { type: "string" } } },
     output_schema: { type: "object", required: ["insights_plan", "backend"] },
     write_mode: "plan_only",
@@ -155,7 +155,7 @@ const CAPABILITIES = [
   {
     name: "insights.sessions",
     domain: "insights",
-    summary: "Route approved session insights execution to EvoZeus-infra.",
+    summary: "Route approved session insights execution to the built-in EvoZeus Runtime.",
     input_schema: { type: "object", properties: { source: { type: "string" }, project: { type: "string" } } },
     output_schema: { type: "object", required: ["execution", "backend"] },
     write_mode: "plan_only",
@@ -167,7 +167,7 @@ const CAPABILITIES = [
   {
     name: "harness.attachPlan",
     domain: "harness",
-    summary: "Create a Co-evolve plan for attaching EvoZeus-CoEvolve to a specified Skill, plugin, or repo.",
+    summary: "Create a CoEvolve plan for the independent Git repository containing a specified Skill, plugin, or path.",
     input_schema: {
       type: "object",
       required: ["target"],
@@ -195,7 +195,7 @@ const CAPABILITIES = [
   {
     name: "coevolve.status",
     domain: "coevolve",
-    summary: "Inspect local wrapper manifest status for a Skill, plugin, or repo target.",
+    summary: "Inspect the root Harness of the independent Git repository containing the target.",
     input_schema: { type: "object", required: ["target"], properties: { target: { type: "string" } } },
     output_schema: { type: "object", required: ["target", "wrapper", "backend"] },
     write_mode: "read_only",
@@ -288,7 +288,7 @@ const PRODUCT_FEATURES = [
     lifecycle_stage: "interact",
     user_goal: "从历史 session 中发现可复用 insight、重复表达、项目差异和可进化点。",
     command: "evozeus insights plan --source codex --json",
-    backend_owner: "EvoZeus-infra",
+    backend_owner: "EvoZeus",
     status: "available",
     approval_boundary: "Plan is read-only; raw session scan, factor execution, report write, and HTML open require explicit approval.",
     related_capabilities: ["insights.plan", "insights.sessions", "session.scanPlan"],
@@ -309,10 +309,10 @@ const PRODUCT_FEATURES = [
   },
   {
     id: "coevolve.target",
-    title: "Co-evolve a Skill / plugin / repo",
-    title_zh: "让 Skill / plugin / repo 接入协同进化机制",
+    title: "Co-evolve an independent Skillware repository",
+    title_zh: "让独立 Skillware Repo 接入协同进化机制",
     lifecycle_stage: "coevolve",
-    user_goal: "把已接受或值得长期沉淀的 Skill、plugin、repo 接入 feedback、issue、design doc、PR、CHANGELOG、release 循环。",
+    user_goal: "把包含目标 Skill 或 plugin 的独立 Git Repo 接入 feedback、issue、design doc、PR、CHANGELOG、UAT 和 release 循环。",
     command: "evozeus coevolve attach --target <path|url> --json",
     backend_owner: "EvoZeus-CoEvolve",
     status: "alias",
@@ -588,13 +588,13 @@ function wrapperCommand(root, args, extraEnv = {}) {
 
 function componentReadiness(options) {
   const home = workspaceInfo(options).evozeus_root;
-  const infra = resolveInstalledComponentRoot({ evozeusHome: home, componentId: "infra", sourceRoot: SOURCE_ROOT });
+  const runtime = resolveInstalledComponentRoot({ evozeusHome: home, componentId: "runtime", sourceRoot: SOURCE_ROOT });
   const wrapper = resolveInstalledComponentRoot({ evozeusHome: home, componentId: "coevolve", sourceRoot: SOURCE_ROOT });
   const official = resolveInstalledComponentRoot({ evozeusHome: home, componentId: "session_signal", sourceRoot: SOURCE_ROOT });
-  const infraRoot = infra.root;
+  const runtimeRoot = runtime.root;
   const wrapperRoot = wrapper.root;
   const officialRoot = official.root;
-  const infraCli = join(infraRoot, "src/evozeus_runtime/cli/main.py");
+  const runtimeCli = join(runtimeRoot, "src/evozeus_runtime/cli/main.py");
   const wrapperCli = join(wrapperRoot, "scripts/evozeus_wrapper.py");
   const officialSkill = join(officialRoot, "SKILL.md");
 
@@ -606,15 +606,15 @@ function componentReadiness(options) {
       executable_command: ["node", join(SOURCE_ROOT, "scripts/evozeus-cli.mjs"), "--help"],
       repair_hint: null
     },
-    "EvoZeus-infra": {
-      owner: "EvoZeus-infra",
-      available: existsSync(infraCli),
-      detected_path: infraRoot,
-      resolution_source: infra.source,
+    "EvoZeus Runtime": {
+      owner: "EvoZeus",
+      available: existsSync(runtimeCli),
+      detected_path: runtimeRoot,
+      resolution_source: runtime.source,
       executable_command: ["python3", "-m", "evozeus_runtime.cli.main", "status"],
-      repair_hint: existsSync(infraCli)
+      repair_hint: existsSync(runtimeCli)
         ? null
-        : "Set EVOZEUS_INFRA_ROOT to a local EvoZeus-infra checkout or install evozeus-runtime."
+        : "Repair or realign the active EvoZeus channel; Runtime is embedded in the main product."
     },
     "EvoZeus-CoEvolve": {
       owner: "EvoZeus-CoEvolve",
@@ -626,22 +626,22 @@ function componentReadiness(options) {
         ? null
         : "Set EVOZEUS_WRAPPER_ROOT to a local EvoZeus-CoEvolve checkout."
     },
-    "EvoZeus-session-signal-skill": {
-      owner: "EvoZeus-session-signal-skill",
+    "EvoZeus Session Signal": {
+      owner: "EvoZeus",
       available: existsSync(officialSkill),
       detected_path: officialRoot,
       resolution_source: official.source,
       executable_command: null,
       repair_hint: existsSync(officialSkill)
         ? null
-        : "Set EVOZEUS_OFFICIAL_REPO_ROOT to a local EvoZeus-session-signal-skill checkout."
+        : "Repair or realign the active EvoZeus channel; Session Signal is embedded in the main product."
     }
   };
 }
 
 function infraBackendCommand(options, mode) {
-  const readiness = componentReadiness(options)["EvoZeus-infra"];
-  const official = componentReadiness(options)["EvoZeus-session-signal-skill"];
+  const readiness = componentReadiness(options)["EvoZeus Runtime"];
+  const official = componentReadiness(options)["EvoZeus Session Signal"];
   const workspace = workspaceInfo(options).root;
   const active = readActiveChannel(workspaceInfo(options).evozeus_root);
   const runtimeStateRoot = active
@@ -673,7 +673,7 @@ function infraBackendCommand(options, mode) {
         ];
 
   return {
-    owner: "EvoZeus-infra",
+    owner: "EvoZeus",
     available: readiness.available,
     detected_path: readiness.detected_path,
     command: pythonCommandForPackage(readiness.detected_path, "evozeus_runtime.cli.main", args, {
@@ -1147,9 +1147,45 @@ function insightsOpen(options) {
   });
 }
 
+function resolveGitRepoRoot(path) {
+  const start = existsSync(path) && statSync(path).isFile() ? dirname(path) : path;
+  const result = spawnSync("git", ["-C", start, "rev-parse", "--show-toplevel"], { encoding: "utf8" });
+  return result.status === 0 ? resolve(result.stdout.trim()) : null;
+}
+
+function findNestedHarnessManifests(repoRoot) {
+  const harnessDirectories = new Set([".evozeus-wrapper", ".evozeus_evoinfra", ".evozeus"]);
+  const ignoredDirectories = new Set([".git", "node_modules"]);
+  const found = [];
+  const visit = (directory) => {
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+      if (!entry.isDirectory() || entry.isSymbolicLink() || ignoredDirectories.has(entry.name)) continue;
+      const child = join(directory, entry.name);
+      if (harnessDirectories.has(entry.name)) {
+        const manifest = join(child, "wrapper.json");
+        if (existsSync(manifest) && directory !== repoRoot) {
+          found.push(relative(repoRoot, manifest));
+        }
+        continue;
+      }
+      visit(child);
+    }
+  };
+  visit(repoRoot);
+  return found.sort();
+}
+
 function classifyTarget(target, options) {
   if (/^https?:\/\/github\.com\//i.test(target)) {
-    return { kind: "github_repo", ref: target, inside_workspace: false, exists: null };
+    return {
+      kind: "github_repo",
+      ref: target,
+      inside_workspace: false,
+      exists: null,
+      git_repo_root: target,
+      repo_relative_target: ".",
+      harness_eligible: true
+    };
   }
 
   const workspace = workspaceInfo(options).root;
@@ -1158,6 +1194,8 @@ function classifyTarget(target, options) {
   const insideWorkspace =
     relativePath === "" || (relativePath !== ".." && !relativePath.startsWith(`..${sep}`) && !isAbsolute(relativePath));
   const exists = existsSync(resolved);
+  const gitRepoRoot = exists ? resolveGitRepoRoot(resolved) : null;
+  const nestedHarnessManifests = gitRepoRoot ? findNestedHarnessManifests(gitRepoRoot) : [];
   let kind = "unknown";
 
   if (basename(resolved) === "SKILL.md") {
@@ -1179,7 +1217,11 @@ function classifyTarget(target, options) {
     kind,
     ref: target,
     inside_workspace: insideWorkspace,
-    exists
+    exists,
+    git_repo_root: gitRepoRoot,
+    repo_relative_target: gitRepoRoot ? relative(gitRepoRoot, resolved) || "." : null,
+    nested_harness_manifests: nestedHarnessManifests,
+    harness_eligible: Boolean(gitRepoRoot) && nestedHarnessManifests.length === 0
   };
 }
 
@@ -1202,9 +1244,12 @@ function attachHarness(options) {
     {
       handoff_plan: {
         target,
-        recommended_route: "EvoZeus-CoEvolve",
+        eligible: target.harness_eligible,
+        eligibility_rule: "Only an independent Git repository root may own an Evolution Harness.",
+        recommended_route: target.harness_eligible ? "EvoZeus-CoEvolve" : null,
         global_evozeus_home: "~/.evozeus",
-        target_infra_dir: ".evozeus-wrapper",
+        target_harness_root: target.git_repo_root,
+        target_harness_dir: ".evozeus-wrapper",
         legacy_target_infra_dir: ".evozeus_evoinfra",
         oldest_target_infra_dir: ".evozeus",
         manifest_path: ".evozeus-wrapper/wrapper.json",
@@ -1216,15 +1261,29 @@ function attachHarness(options) {
           runtime_install_policy: "runtime installs should point to the canonical repo and must not become a second source of truth"
         },
         writes_now: false,
-        next_actions: [
-          "confirm target owner",
-          "route target repo-local harness files under .evozeus-wrapper/",
-          "redact private examples",
-          "run EvoZeus-CoEvolve harness upgrade-check",
-          "generate feedback issue draft",
-          "prepare design doc / PR plan"
-        ],
-        approval_required_for: ["repo write", "GitHub issue", "pull request", "release"]
+        maintenance_authority: {
+          required_permission: "ADMIN",
+          verified_now: false,
+          verification_owner: "EvoZeus-CoEvolve before any Harness write"
+        },
+        next_actions: target.harness_eligible
+          ? [
+              "confirm target repo owner",
+              "route the single repo-root Harness under .evozeus-wrapper/",
+              "redact private examples",
+              "run EvoZeus-CoEvolve harness upgrade-check",
+              "generate feedback issue draft",
+              "prepare design doc / PR plan"
+            ]
+          : target.nested_harness_manifests?.length
+            ? ["migrate or remove the nested Harness before attaching the single repository-root Harness"]
+            : ["make the target an independent Git repository before attaching a Harness"],
+        approval_required_for: [
+          "Harness write with verified target Repo ADMIN permission",
+          "GitHub issue",
+          "pull request",
+          "release"
+        ]
       }
     },
     approval
@@ -1237,7 +1296,14 @@ function coevolveStatus(options) {
   }
 
   const target = classifyTarget(options.target, options);
-  const targetPath = resolveWorkspacePath(options, options.target);
+  if (!target.harness_eligible || target.kind === "github_repo") {
+    throw new CliError(
+      "TARGET_REPO_REQUIRED",
+      "coevolve.status requires a local independent Git repository; nested Skill directories inherit the repository root Harness.",
+      "coevolve.status"
+    );
+  }
+  const targetPath = target.git_repo_root;
   const backend = wrapperBackendCommand(options, ["skill", "diagnose", "--target", targetPath, "--json"]);
   const diagnosis = runBackendJson(backend, "coevolve.status");
   const harness = diagnosis?.harness || {};
@@ -1272,7 +1338,15 @@ function coevolveAudit(options) {
     throw new CliError("MISSING_USER_INPUT", "coevolve.audit requires --user-input <feedback>.", "coevolve.auditFeedback");
   }
 
-  const targetPath = resolveWorkspacePath(options, options.target);
+  const target = classifyTarget(options.target, options);
+  if (!target.harness_eligible || target.kind === "github_repo") {
+    throw new CliError(
+      "TARGET_REPO_REQUIRED",
+      "coevolve.audit requires a local independent Git repository; nested Skill directories inherit the repository root Harness.",
+      "coevolve.auditFeedback"
+    );
+  }
+  const targetPath = target.git_repo_root;
   const userInputHash = sha256(options.userInput);
   const backend = wrapperBackendCommand(options, [
     "loop",
@@ -1285,7 +1359,7 @@ function coevolveAudit(options) {
   ]);
 
   return envelope("coevolve.auditFeedback", options, {
-    target: classifyTarget(options.target, options),
+    target,
     feedback: {
       sha256: userInputHash,
       bytes: Buffer.byteLength(options.userInput, "utf8"),
@@ -1404,6 +1478,8 @@ function doctor(options) {
     "SKILL.md",
     "skills/using-evozeus/SKILL.md",
     "skills/maintain-evozeus/SKILL.md",
+    "packages/runtime/src/evozeus_runtime/cli/main.py",
+    "packs/session-signal/scripts/validate_official_factor_spec.py",
     "scripts/evozeus-install.mjs",
     "scripts/evozeus-doctor.mjs",
     "scripts/evozeus-cli.mjs"
@@ -1431,7 +1507,7 @@ function doctor(options) {
     component_readiness: componentReadiness(options),
     optional_paths: {
       session_scan: "approval_required",
-      infra_runtime: "approval_required",
+      built_in_runtime_execution: "approval_required",
       wrapper_github_write: "forbidden_in_p0"
     },
     doctor_verdict:

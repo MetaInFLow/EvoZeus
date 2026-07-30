@@ -32,12 +32,12 @@ Include:
 - public/private evidence status
 - rollback or deprecation path
 
-Use `../../.github/PULL_REQUEST_TEMPLATE/skill_instruction_change.md` when opening a PR.
+Use `../../../.github/PULL_REQUEST_TEMPLATE/skill_instruction_change.md` when opening a PR.
 
 ## Editing Existing Skills
 
-- Keep root `../../SKILL.md` as the stable session judgment entry.
+- Keep root `../../../SKILL.md` as the stable session judgment entry.
 - Put scenario-specific rules under `../`.
 - Keep descriptions as trigger conditions only; do not summarize the whole workflow in frontmatter.
-- Reuse project terms from `../../docs/governance/terminology-glossary.md`.
+- Reuse project terms from `../../../docs/governance/terminology-glossary.md`.
 - Run `python3 scripts/check_pr_ready.py --base <base-ref>` from repository root before review.

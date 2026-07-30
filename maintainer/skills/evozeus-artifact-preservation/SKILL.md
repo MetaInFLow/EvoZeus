@@ -25,10 +25,10 @@ Verdict
 | Case, Evidence Report, Session Verdict Card | `EvoZeus` issue or Candidate PR |
 | Semantic Factor proposal | `EvoZeus` Factor proposal / Candidate PR first |
 | Habit, Pattern, Environment Rule | `EvoZeus` Candidate PR |
-| Executable Factor pack | `EvoZeus-factor-lab` |
-| Scanner module, resolver, scanner pack | `EvoZeus-factor-lab` |
-| Promoted official Factor pack | `EvoZeus-session-signal-skill` |
-| Runtime, CLI, TUI, companion, local registry, lockfile, report execution | `evozeus-runtime` |
+| Built-in executable Factor | `EvoZeus/packs/session-signal/` |
+| Built-in scanner, resolver, Runtime or report execution | `EvoZeus/packages/runtime/` |
+| Third-party Factor pack or scanner | Independent extension Repo |
+| CLI, plugin, local registry and channel behavior | `EvoZeus` |
 
 ## Required Gates
 
@@ -43,6 +43,6 @@ Before public preservation:
 ## Boundaries
 
 - Do not publish raw private sessions.
-- Do not send executable pack or scanner code to the main repo.
-- Do not send runtime implementation changes to the main repo.
+- Built-in executable and Runtime changes require high-risk review in the main Repo.
+- Third-party executable extensions require an independent Repo boundary.
 - Do not invent reviewed or official status.

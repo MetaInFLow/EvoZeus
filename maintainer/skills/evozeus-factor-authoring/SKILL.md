@@ -21,7 +21,7 @@ A valid Factor should include:
 - failure mode it prevents
 - relation to existing ontology terms
 
-Use `../../docs/reference/ontology.md` for artifact boundaries and `../../docs/reference/evidence-grading.md` for proof strength.
+Use `../../../docs/reference/ontology.md` for artifact boundaries and `../../../docs/reference/evidence-grading.md` for proof strength.
 
 ## Promotion Gate
 
@@ -37,17 +37,16 @@ Promote only when:
 
 Use the public `EvoZeus` repo for Factor proposals, Candidate PRs, registry references, and governance changes.
 
-Route heavier assets as follows:
+Route assets as follows:
 
 | Asset | Repo |
 | --- | --- |
-| Draft Factor pack | `EvoZeus-factor-lab` |
-| Scanner module | `EvoZeus-factor-lab` |
-| Reviewed/rejected lab record | `EvoZeus-factor-lab` |
-| Official released Factor pack | `EvoZeus-session-signal-skill` |
-| Stable registry pointer | `EvoZeus` |
+| Built-in official Factor | `EvoZeus/packs/session-signal/` |
+| Built-in scanner or runner | `EvoZeus/packages/runtime/` |
+| Third-party Factor pack or scanner | Independent extension Repo |
+| Stable third-party registry pointer | `EvoZeus/factors/` |
 
-Do not place executable scanner code, unreviewed pack assets, or raw private session evidence in the main repo.
+Do not place raw private session evidence in any public Repo. Executable changes require high-risk owner review and the full product or extension UAT gate.
 
 ## Common Rejections
 

@@ -22,7 +22,7 @@ description: Use when the user asks to attach, inspect, upgrade, or repair EvoZe
 | Upgrade | Verify maintainer authority, current/target version, migration and tests |
 | Upgrade all | Inventory registered independent Repos; ordinary users receive a plan, authorized maintainers may create per-Repo PRs |
 
-Harness upgrades and pushes require target Repo write permission and maintainer policy authorization. UAT changes update the single UAT candidate for that Repo; stable releases use the verified UAT Commit.
+Harness upgrades and pushes require verified target Repo `ADMIN` permission and maintainer policy authorization. UAT changes update the single UAT candidate for that Repo; stable releases use the verified UAT Commit.
 
 ## Output
 
@@ -39,4 +39,3 @@ Use this lifecycle tag for version decisions:
 - Exact current and target versions are known.
 - Upgrade validation passes before PR or UAT promotion.
 - Stable is untouched during UAT repair.
-

@@ -1,23 +1,23 @@
 # Launch Readiness Criteria
 
 - Status: active
-- Last updated: 2026-07-26
+- Last updated: 2026-07-30
 
 本文定义 EvoZeus 的上线评判标准。这里的“上线”不是单一发布按钮，而是把仓库、协议、贡献流程、自动化门禁或未来 runtime 推到更大使用范围前的准入判断。
 
-EvoZeus 当前首先是 agent-readable protocol repo，不是稳定 CLI 产品。因此上线评估的核心不是功能数量，而是：真实用户能否按文档完成最小闭环，证据是否足够支撑判断，隐私边界是否守住，贡献和回滚路径是否可审查。
+EvoZeus 当前以 Agent plugin 作为用户入口，以本地 CLI 负责版本和可重复执行。上线评估聚焦真实用户能否完成最小闭环、证据能否支撑判断、隐私边界能否守住、Stable/UAT 与回滚路径能否验证。
 
 ## 1. 上线分层
 
 | Level | 名称 | 允许范围 | 核心承诺 |
 | --- | --- | --- | --- |
 | `L0` | Internal Trial | maintainer / 内部协作者试用 | 可以手工跑通一次审判流程，不承诺外部贡献体验 |
-| `L1` | Protocol Preview | 公开 README、SKILL 和基础 docs | 外部用户能理解定位，并用手工方式产出 Session Verdict Card |
+| `L1` | Plugin Preview | 公开 README、plugin、用户 Skill 和基础 docs | 外部用户能理解定位，并通过自然语言完成一次复盘 |
 | `L2` | Public Contribution Beta | 开放 issue / PR / Candidate 贡献 | 外部贡献者有清晰模板、证据门槛、隐私规则和 dry-run gate |
 | `L3` | Core Library Stable | 推广 reviewed/core Candidates、Skills、Factors | 核心资产有 E4 级证据、owner review、回滚或废弃路径 |
 | `L4` | Runtime Product Launch | 发布 CLI/TUI/browser companion/cloud 等 runtime | 自动采集、存储、报告、权限、安全和失败降级都稳定可验 |
 
-`v0.3.0` 发布组合把版本渠道、安装、更新、Doctor、回滚和明确批准的本地 Runtime 组装纳入有边界的 `L4`。自动 raw session 上传、静默 Stable 更新、完整 TUI/desktop updater 和大规模 benchmark 仍不在该发布承诺内。
+`v0.4.0` 产品线把 plugin 入口、主仓内置 Runtime/Session Signal、版本渠道、安装、更新、Doctor 和回滚纳入有边界的 `L4`。自动 raw session 上传、静默 Stable 更新、完整 TUI/desktop updater 和大规模 benchmark 不在该发布承诺内。
 
 ## 2. Go / No-Go 规则
 
@@ -42,7 +42,7 @@ EvoZeus 当前首先是 agent-readable protocol repo，不是稳定 CLI 产品�
 
 | 维度 | 权重 | 通过标准 |
 | --- | ---: | --- |
-| 定位与承诺清晰度 | 15 | 用户能在 5 分钟内理解 EvoZeus 是 judgment layer，不是 agent score 或稳定 runtime |
+| 定位与承诺清晰度 | 15 | 用户能在 5 分钟内理解 EvoZeus 的 judgment loop、plugin 入口和隐私边界 |
 | 最小闭环可用性 | 20 | 新用户能按文档完成一次 Verdict Card 或最小 Evidence Packet |
 | 证据与语义质量 | 20 | Case、Candidate、Verdict、Artifact 边界清楚，证据等级可复核 |
 | 隐私与安全 | 15 | public artifact 全部可脱敏复核，贡献前需要用户确认 |
@@ -61,20 +61,21 @@ EvoZeus 当前首先是 agent-readable protocol repo，不是稳定 CLI 产品�
 
 ## 3. 各上线层级的验收标准
 
-### L1 Protocol Preview
+### L1 Plugin Preview
 
 必须满足：
 
-- `README.md` 和 `docs/README.zh-CN.md` 说明定位、Use Paths、Safety Defaults 和 Not promised。
-- `SKILL.md` 作为 zero-install entry 可读，不要求安装依赖。
-- 至少有一条手工路径能输出 Session Verdict Card。
+- `README.md` 和 `docs/README.zh-CN.md` 说明定位、快速开始、输出样例和安全边界。
+- `.codex-plugin/plugin.json` 与 `.claude-plugin/plugin.json` 描述同一产品身份。
+- `skills/using-evozeus/SKILL.md` 能把自然语言请求路由到单一用户任务。
+- 至少有一条路径能输出证据支持的复盘结论，并以正常聊天询问是否记录 Lesson。
 - 文档明确 raw session 默认本地保存，不自动上传。
 - `docs/reference/verdict-card.md`、`docs/reference/evidence-grading.md`、`docs/reference/verdicts.md` 能支撑基础审判。
 
 通过信号：
 
 - 首次用户不需要理解全部治理文档，也能完成一次“只输出 Verdict Card”的试用。
-- 用户不会把 EvoZeus 误解为自动评分系统或稳定 runtime。
+- 用户不会把 EvoZeus 误解为自动评分系统、自动上传工具或多组件安装器。
 
 ### L2 Public Contribution Beta
 
@@ -113,7 +114,7 @@ node scripts/github/candidate-schema-check.mjs
 - owner/maintainer review 已完成，并记录 residual risk。
 - `when to use`、`when NOT to use`、counterexamples、rollback/deprecation path 全部存在。
 - asset 没有未解决 privacy risk、prompt injection risk 或高风险 instruction ambiguity。
-- 修改 `SKILL.md`、`skills/`、`schemas/`、`docs/reference/ontology.md`、`docs/reference/evidence-grading.md` 等高风险路径时，必须经过显式 owner review。
+- 修改 `SKILL.md`、`skills/`、`maintainer/skills/`、plugin manifest、`packages/runtime/`、`packs/session-signal/`、`schemas/` 或核心语义文档时，必须经过显式 owner review。
 
 通过信号：
 
@@ -161,7 +162,7 @@ Decision date:
 
 对当前 EvoZeus 仓库，建议把上线评估拆成三次判断：
 
-1. `L1 Protocol Preview`：确认 README、SKILL、Verdict Card、Evidence Grading 和 Minimal Loop 是否足够让新用户完成第一次手工审判。
+1. `L1 Plugin Preview`：确认 README、plugin、用户 Skill、Verdict Card 和 Evidence Grading 是否足够让新用户完成第一次复盘。
 2. `L2 Public Contribution Beta`：确认 GitHub templates、privacy/redaction、PR guidelines、candidate lifecycle、dry-run gates 和本地检查是否闭环。
 3. `L3 Core Library Stable`：只针对少数 promoted assets 单独评估，不对整个仓库一次性宣布 stable。
 
@@ -169,7 +170,7 @@ Decision date:
 
 - 若所有本地检查通过，当前仓库可以按 `L2 Public Contribution Beta` 准备发布。
 - 不建议声明 `L3 Core Library Stable`，除非已有 core assets 达到 `E4` 并完成 owner review。
-- 只有版本渠道 Design Doc 的 Stable/UAT、回滚、Legacy 迁移和发布门禁全部通过后，才可声明 `v0.3.0` 的受控本地 Runtime 组合达到当前 L4 边界；TUI、desktop updater 和自动上传仍单独评估。
+- 只有 plugin validator、主仓 Python/Node 测试、Stable/UAT、回滚、Legacy 迁移和发布门禁全部通过后，才可声明 `v0.4.0` 达到当前 L4 边界；TUI、desktop updater 和自动上传单独评估。
 
 ## 6. Maintainer 复核清单
 

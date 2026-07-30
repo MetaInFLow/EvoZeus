@@ -44,6 +44,6 @@ Before opening an issue, PR, or example, check:
 - Does the artifact contain only the minimum evidence needed?
 - Can a reviewer understand the Case without private context?
 - Does the privacy note state what was removed or generalized?
-- Does the contribution follow `../../docs/governance/privacy-and-redaction.md`?
+- Does the contribution follow `../../../docs/governance/privacy-and-redaction.md`?
 
 If unsure, keep the artifact local and ask for owner review.

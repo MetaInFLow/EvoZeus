@@ -47,7 +47,7 @@ Every pack or scanner submission should include:
 
 - `../evozeus-factor-authoring/SKILL.md` for semantic Factor quality.
 - `../evozeus-redaction/SKILL.md` before public evidence.
-- `../../docs/reference/scanner-pack-protocol.md` for scanner pack contract.
+- `../../../docs/reference/scanner-pack-protocol.md` for scanner pack contract.
 - `EvoZeus-factor-lab/templates/scanner-submission.md` when working inside the lab repo.
 
 ## Boundaries

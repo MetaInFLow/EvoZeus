@@ -8,15 +8,11 @@ import { describe, it } from "node:test";
 const SCRIPT = new URL("./evozeus-doctor.mjs", import.meta.url);
 
 const READY_CHECKS = {
-  infra: {
-    release: { status: "up_to_date", source: "main_fallback", resolved_ref: "main" },
-    download: { status: "complete" },
-    smoke: { status: "passed", command: "npm run test:infra-components" }
+  runtime: {
+    smoke: { status: "passed", command: "python -m pytest packages/runtime" }
   },
-  factors: {
-    release: { status: "up_to_date", source: "main_fallback", resolved_ref: "main" },
-    download: { status: "complete" },
-    smoke: { status: "passed", command: "npm run test:official-factor-runner" }
+  session_signal: {
+    smoke: { status: "passed", command: "python -m pytest packs/session-signal" }
   }
 };
 
@@ -24,6 +20,8 @@ const COMPLETE_COMPONENTS = [
   "SKILL.md",
   "skills/using-evozeus/SKILL.md",
   "skills/maintain-evozeus/SKILL.md",
+  "packages/runtime/src/evozeus_runtime/cli/main.py",
+  "packs/session-signal/scripts/validate_official_factor_spec.py",
   "scripts/evozeus-cli.mjs",
   "scripts/evozeus-install.mjs",
   "scripts/evozeus-doctor.mjs"
@@ -52,213 +50,143 @@ function withTempWorkspace(files, callback) {
 }
 
 describe("evozeus-doctor", () => {
-  it("guides outdated bootstrap reports toward user-approved update", () => {
+  it("guides an outdated product toward a user-approved update", () => {
     const result = runDoctor({
-      release: {
-        status: "outdated",
-        source: "main_fallback",
-        resolved_ref: "main",
-        resolved_url: "https://github.com/MetaInFLow/EvoZeus/tree/main",
-        local_ref: "feature@abc123"
-      },
-      next_action: {
-        requires_user_approval: true,
-        reason: "install_or_update"
-      }
+      release: { status: "outdated", resolved_ref: "v0.4.0" },
+      next_action: { reason: "install_or_update" }
     });
 
     assert.equal(result.status, 0, result.stderr);
     assert.match(result.stdout, /doctor_verdict: install_or_update/);
-    assert.match(result.stdout, /requires_user_approval: true/);
-    assert.match(result.stdout, /Ask the user before updating local EvoZeus to main/);
+    assert.match(result.stdout, /Ask the user before updating local EvoZeus to v0\.4\.0/);
   });
 
-  it("guides ready bootstrap reports toward protocol-only judgment", () => {
-    const result = runDoctor({
-      release: {
-        status: "up_to_date",
-        source: "release",
-        resolved_ref: "v1.0.0",
-        resolved_url: "https://github.com/MetaInFLow/EvoZeus/releases/tag/v1.0.0",
-        local_ref: "main@abc123"
-      },
-      ...READY_CHECKS,
-      next_action: {
-        requires_user_approval: true,
-        reason: "run_judgment"
-      }
-    });
-
-    assert.equal(result.status, 0, result.stderr);
-    assert.match(result.stdout, /doctor_verdict: ready_for_protocol_judgment/);
-    assert.match(result.stdout, /available_capabilities: .*CLI capability router/);
-    assert.match(result.stdout, /available_capabilities: .*explicit-input session analysis/);
-    assert.match(result.stdout, /available_capabilities: .*co-evolution harness handoff plan/);
-    assert.match(result.stdout, /available_capabilities: .*protocol-only judgment/);
-    assert.match(result.stdout, /available_capabilities: .*health doctor diagnostics/);
-    assert.match(result.stdout, /available_capabilities: .*fixture-only scanner\/runner infra smoke/);
-    assert.match(result.stdout, /available_capabilities: .*fixture-only official factor runner smoke/);
-    assert.match(result.stdout, /approval_required_capabilities: .*workspace scan/);
-    assert.match(result.stdout, /approval_required_capabilities: .*factor execution on user data/);
-    assert.match(result.stdout, /ask for the user's real task in normal language/);
-  });
-
-  it("reports complete component downloads before protocol judgment", () => {
-    const result = withTempWorkspace(
-      COMPLETE_COMPONENTS,
-      (cwd) =>
-        runDoctor(
-          {
-            release: { status: "up_to_date", resolved_ref: "main" },
-            ...READY_CHECKS,
-            next_action: { requires_user_approval: true, reason: "run_judgment" }
-          },
-          { cwd }
-        )
-    );
-
-    assert.equal(result.status, 0, result.stderr);
-    assert.match(result.stdout, /components_status: complete/);
-    assert.match(result.stdout, /doctor_verdict: ready_for_protocol_judgment/);
-  });
-
-  it("blocks protocol judgment when required components are missing", () => {
-    const result = withTempWorkspace(["SKILL.md", "scripts/evozeus-doctor.mjs"], (cwd) =>
-      runDoctor(
+  it("reports a ready plugin product with embedded Runtime and Session Signal", () =>
+    withTempWorkspace(COMPLETE_COMPONENTS, (cwd) => {
+      const result = runDoctor(
         {
-          release: { status: "up_to_date", resolved_ref: "main" },
-          next_action: { requires_user_approval: true, reason: "run_judgment" }
+          release: { status: "up_to_date", resolved_ref: "v0.4.0" },
+          ...READY_CHECKS,
+          next_action: { reason: "run_judgment" }
         },
         { cwd }
-      )
-    );
+      );
 
-    assert.equal(result.status, 0, result.stderr);
-    assert.match(result.stdout, /components_status: incomplete/);
-    assert.match(result.stdout, /missing_components: skills\/using-evozeus\/SKILL\.md, skills\/maintain-evozeus\/SKILL\.md, scripts\/evozeus-cli\.mjs, scripts\/evozeus-install\.mjs/);
-    assert.match(result.stdout, /doctor_verdict: install_or_update/);
-    assert.doesNotMatch(result.stdout, /ready_for_protocol_judgment/);
-  });
+      assert.equal(result.status, 0, result.stderr);
+      assert.match(result.stdout, /components_status: complete/);
+      assert.match(result.stdout, /runtime_distribution: embedded_in_evozeus/);
+      assert.match(result.stdout, /session_signal_distribution: embedded_in_evozeus/);
+      assert.match(result.stdout, /available_capabilities: .*built-in Runtime health check/);
+      assert.match(result.stdout, /available_capabilities: .*built-in Session Signal health check/);
+      assert.match(result.stdout, /doctor_verdict: ready_for_protocol_judgment/);
+      assert.match(result.stdout, /ask for the user's real task in normal language/);
+    }));
 
-  it("allows protocol judgment when optional infra and factor checks are missing", () => {
-    const result = withTempWorkspace(
-      COMPLETE_COMPONENTS,
-      (cwd) =>
-        runDoctor(
-          {
-            release: { status: "up_to_date", resolved_ref: "main" },
-            next_action: { requires_user_approval: true, reason: "run_judgment" }
+  it("blocks when required embedded product files are missing", () =>
+    withTempWorkspace(["SKILL.md", "scripts/evozeus-doctor.mjs"], (cwd) => {
+      const result = runDoctor(
+        {
+          release: { status: "up_to_date", resolved_ref: "v0.4.0" },
+          next_action: { reason: "run_judgment" }
+        },
+        { cwd }
+      );
+
+      assert.equal(result.status, 0, result.stderr);
+      assert.match(result.stdout, /components_status: incomplete/);
+      assert.match(result.stdout, /packages\/runtime\/src\/evozeus_runtime\/cli\/main\.py/);
+      assert.match(result.stdout, /packs\/session-signal\/scripts\/validate_official_factor_spec\.py/);
+      assert.match(result.stdout, /doctor_verdict: install_or_update/);
+    }));
+
+  it("reports missing embedded smoke evidence without inventing separate updates", () =>
+    withTempWorkspace(COMPLETE_COMPONENTS, (cwd) => {
+      const result = runDoctor(
+        {
+          release: { status: "up_to_date", resolved_ref: "v0.4.0" },
+          next_action: { reason: "run_judgment" }
+        },
+        { cwd }
+      );
+
+      assert.equal(result.status, 0, result.stderr);
+      assert.match(result.stdout, /runtime_smoke_status: unknown/);
+      assert.match(result.stdout, /session_signal_smoke_status: unknown/);
+      assert.match(result.stdout, /built-in Runtime needs smoke evidence/);
+      assert.match(result.stdout, /built-in Session Signal needs smoke evidence/);
+      assert.doesNotMatch(result.stdout, /download.*factor/i);
+    }));
+
+  it("ignores obsolete separate Runtime release metadata", () =>
+    withTempWorkspace(COMPLETE_COMPONENTS, (cwd) => {
+      const result = runDoctor(
+        {
+          release: { status: "up_to_date", resolved_ref: "v0.4.0" },
+          runtime: {
+            release: { status: "outdated", resolved_ref: "v0.2.0" },
+            smoke: READY_CHECKS.runtime.smoke
           },
-          { cwd }
-        )
-    );
+          session_signal: READY_CHECKS.session_signal,
+          next_action: { reason: "runtime" }
+        },
+        { cwd }
+      );
 
-    assert.equal(result.status, 0, result.stderr);
-    assert.match(result.stdout, /infra_release_status: unknown/);
-    assert.match(result.stdout, /factor_release_status: unknown/);
-    assert.match(result.stdout, /doctor_verdict: ready_for_protocol_judgment/);
-    assert.match(result.stdout, /optional_component_warnings: .*infra optional path needs evidence or repair/);
-    assert.match(result.stdout, /optional_component_warnings: .*official factors optional path needs evidence or repair/);
-  });
+      assert.equal(result.status, 0, result.stderr);
+      assert.match(result.stdout, /doctor_verdict: ready_for_protocol_judgment/);
+      assert.doesNotMatch(result.stdout, /updating scanner\/runner infra/);
+    }));
 
-  it("asks for update when scanner and runner infra is behind the resolved source", () => {
-    const result = withTempWorkspace(
-      COMPLETE_COMPONENTS,
-      (cwd) =>
-        runDoctor(
-          {
-            release: { status: "up_to_date", resolved_ref: "main" },
-            infra: {
-              release: { status: "outdated", source: "release", resolved_ref: "runtime-v0.2.0" },
-              download: { status: "complete" },
-              smoke: { status: "passed", command: "npm run test:infra-components" }
-            },
-            factors: READY_CHECKS.factors,
-            next_action: { requires_user_approval: true, reason: "runtime" }
-          },
-          { cwd }
-        )
-    );
+  it("collects embedded smoke evidence before Runtime use", () =>
+    withTempWorkspace(COMPLETE_COMPONENTS, (cwd) => {
+      const result = runDoctor(
+        {
+          release: { status: "up_to_date", resolved_ref: "v0.4.0" },
+          runtime: READY_CHECKS.runtime,
+          session_signal: { smoke: { status: "skipped" } },
+          next_action: { reason: "runtime" }
+        },
+        { cwd }
+      );
 
-    assert.equal(result.status, 0, result.stderr);
-    assert.match(result.stdout, /infra_release_status: outdated/);
-    assert.match(result.stdout, /doctor_verdict: install_or_update/);
-    assert.match(result.stdout, /Ask the user before updating scanner\/runner infra to runtime-v0\.2\.0/);
-  });
+      assert.equal(result.status, 0, result.stderr);
+      assert.match(result.stdout, /doctor_verdict: collect_runtime_evidence/);
+      assert.match(result.stdout, /Run the built-in Runtime and Session Signal smoke checks/);
+    }));
 
-  it("asks for official factor download when the resolved factor release is missing locally", () => {
-    const result = withTempWorkspace(
-      COMPLETE_COMPONENTS,
-      (cwd) =>
-        runDoctor(
-          {
-            release: { status: "up_to_date", resolved_ref: "main" },
-            infra: READY_CHECKS.infra,
-            factors: {
-              release: { status: "up_to_date", source: "main_fallback", resolved_ref: "main" },
-              download: { status: "missing" },
-              smoke: { status: "skipped", command: "npm run test:official-factor-runner" }
-            },
-            next_action: { requires_user_approval: true, reason: "runtime" }
-          },
-          { cwd }
-        )
-    );
+  it("blocks on a built-in Runtime smoke failure", () =>
+    withTempWorkspace(COMPLETE_COMPONENTS, (cwd) => {
+      const result = runDoctor(
+        {
+          release: { status: "up_to_date", resolved_ref: "v0.4.0" },
+          runtime: { smoke: { status: "failed", summary: "factor-runner failed" } },
+          session_signal: READY_CHECKS.session_signal,
+          next_action: { reason: "runtime" }
+        },
+        { cwd }
+      );
 
-    assert.equal(result.status, 0, result.stderr);
-    assert.match(result.stdout, /factor_release_status: up_to_date/);
-    assert.match(result.stdout, /factor_download_status: missing/);
-    assert.match(result.stdout, /doctor_verdict: install_or_update/);
-    assert.match(result.stdout, /Ask the user before downloading official factors from main/);
-  });
+      assert.equal(result.status, 0, result.stderr);
+      assert.match(result.stdout, /runtime_smoke_status: failed/);
+      assert.match(result.stdout, /doctor_verdict: fix_environment/);
+      assert.match(result.stdout, /Fix the built-in Runtime smoke failure: factor-runner failed/);
+    }));
 
-  it("blocks on infra smoke failures before runtime use", () => {
-    const result = withTempWorkspace(
-      COMPLETE_COMPONENTS,
-      (cwd) =>
-        runDoctor(
-          {
-            release: { status: "up_to_date", resolved_ref: "main" },
-            infra: {
-              release: { status: "up_to_date", source: "main_fallback", resolved_ref: "main" },
-              download: { status: "complete" },
-              smoke: { status: "failed", command: "npm run test:infra-components", summary: "factor-runner failed" }
-            },
-            factors: READY_CHECKS.factors,
-            next_action: { requires_user_approval: true, reason: "runtime" }
-          },
-          { cwd }
-        )
-    );
+  it("blocks on a built-in Session Signal smoke failure", () =>
+    withTempWorkspace(COMPLETE_COMPONENTS, (cwd) => {
+      const result = runDoctor(
+        {
+          release: { status: "up_to_date", resolved_ref: "v0.4.0" },
+          runtime: READY_CHECKS.runtime,
+          session_signal: { smoke: { status: "failed", summary: "missing factor id" } },
+          next_action: { reason: "runtime" }
+        },
+        { cwd }
+      );
 
-    assert.equal(result.status, 0, result.stderr);
-    assert.match(result.stdout, /infra_smoke_status: failed/);
-    assert.match(result.stdout, /doctor_verdict: fix_environment/);
-    assert.match(result.stdout, /Fix scanner\/runner infra smoke failure: factor-runner failed/);
-  });
-
-  it("blocks on downloaded factor smoke failures before factor use", () => {
-    const result = withTempWorkspace(
-      COMPLETE_COMPONENTS,
-      (cwd) =>
-        runDoctor(
-          {
-            release: { status: "up_to_date", resolved_ref: "main" },
-            infra: READY_CHECKS.infra,
-            factors: {
-              release: { status: "up_to_date", source: "main_fallback", resolved_ref: "main" },
-              download: { status: "complete" },
-              smoke: { status: "failed", command: "npm run test:official-factor-runner", summary: "missing factor id" }
-            },
-            next_action: { requires_user_approval: true, reason: "runtime" }
-          },
-          { cwd }
-        )
-    );
-
-    assert.equal(result.status, 0, result.stderr);
-    assert.match(result.stdout, /factor_smoke_status: failed/);
-    assert.match(result.stdout, /doctor_verdict: fix_environment/);
-    assert.match(result.stdout, /Fix downloaded official factor smoke failure: missing factor id/);
-  });
+      assert.equal(result.status, 0, result.stderr);
+      assert.match(result.stdout, /session_signal_smoke_status: failed/);
+      assert.match(result.stdout, /doctor_verdict: fix_environment/);
+      assert.match(result.stdout, /Fix the built-in Session Signal smoke failure: missing factor id/);
+    }));
 });

@@ -4,6 +4,7 @@
 - Date: 2026-07-26
 - Owner: Anthony.F / MetaInFlow
 - Linked ADR: [`../../decisions/ADR-0003-stable-single-uat-channel-model.md`](../../decisions/ADR-0003-stable-single-uat-channel-model.md)
+- Topology update: [`../../decisions/ADR-0005-plugin-first-monorepo-and-repo-scoped-harness.md`](../../decisions/ADR-0005-plugin-first-monorepo-and-repo-scoped-harness.md)
 - Cross-repo ownership: [`../../governance/repository-topology.md`](../../governance/repository-topology.md)
 
 ## 1. Goal
@@ -16,7 +17,7 @@
 | --- | --- | --- | --- |
 | 正式用户 | 安装、运行或更新 EvoZeus | 无法判断本地代码是否来自正式 Release | Stable 产品清单、版本命令、只读更新检查、批准后覆盖更新 |
 | UAT 用户 | 发现 Bug 后继续测试修复版 | 修复可能产生多个测试版本或污染正式环境 | 唯一 `uat`、隔离 worktree、独立 state、事务刷新 |
-| Maintainer | 跨 Repo 发布产品 | 各组件版本、Commit、部署和本地安装无法统一对账 | EvoZeus 产品清单、组件门禁、发布证据 |
+| Maintainer | 发布主产品与独立扩展 | 主产品、CoEvolve 和本地安装无法统一对账 | EvoZeus 产品清单、独立组件门禁、内嵌模块门禁、发布证据 |
 | Agent | 运行前检查环境 | Doctor 只检查文件存在，无法识别版本漂移 | 渠道状态、清单摘要、组件健康与 Legacy 诊断 |
 
 ## 3. Scope
@@ -27,7 +28,7 @@
 - Stable Release 安装和 UAT Git worktree 事务更新。
 - Stable / UAT Runtime state 隔离。
 - 旧 install manifest 和 CoEvolve dispatcher 状态诊断、备份与迁移。
-- 组件路径从渠道状态解析，环境变量只作为显式开发覆盖。
+- 独立组件路径从渠道状态解析；Runtime 与 Session Signal 从当前 EvoZeus 根目录解析。
 
 ## 4. Non-goals
 
@@ -41,25 +42,33 @@
 
 | Concern | Owner |
 | --- | --- |
-| 产品渠道、清单解析、安装、更新、激活、Doctor、回滚 | EvoZeus |
-| Runtime 执行、状态目录使用、组件运行健康 | EvoZeus-infra |
+| 产品渠道、清单解析、插件、安装、更新、激活、Doctor、回滚 | EvoZeus |
+| Runtime 执行、状态目录使用、运行健康 | EvoZeus `packages/runtime/` |
 | CoEvolve contract / harness / target lifecycle | EvoZeus-CoEvolve |
-| Session Signal方法和official factor tools | EvoZeus-session-signal-skill |
-| 公开入口和部署版本展示 | EvoZeus-web |
+| Session Signal 方法和 official factor tools | EvoZeus `packs/session-signal/` |
+| 公开入口和部署版本展示 | EvoZeus-web；不进入本地产品清单 |
 
-组件 Repo 提供自身版本和固定验证入口。EvoZeus 聚合这些事实，不复制组件领域逻辑。
+EvoZeus 与 CoEvolve 是独立发布单元。Runtime 与 Session Signal 是主仓内嵌模块，随 EvoZeus Commit 原子发布。
 
 ## 6. Product Manifest
 
 Schema事实源：`schemas/product-channel-manifest.schema.json`。
 
-每个组件必须声明：
+每个独立组件必须声明：
 
 - SemVer版本。
 - 完整Git Commit。
 - 来源类型、URL和Ref。
 - 必需文件。
 - Stable Release archive的SHA-256；UAT由Git Commit提供内容固定性。
+
+每个内嵌模块必须声明：
+
+- 模块 API 版本。
+- 在 EvoZeus 主仓内的安全相对路径。
+- 必需文件和固定 smoke。
+
+内嵌模块没有独立来源 URL、Commit、archive 或用户频道。Web 部署信息不进入本地产品清单。
 
 Stable清单作为EvoZeus Release资产发布。UAT清单从唯一`uat/current`解析。UAT清单中的EvoZeus Commit固定为清单发布前的代码Commit；清单提交只更新渠道指针，运行代码仍检出固定Commit。
 
@@ -90,9 +99,10 @@ Stable清单作为EvoZeus Release资产发布。UAT清单从唯一`uat/current`�
 
 解析优先级：
 
-1. 已激活渠道的`channel-state.json`组件路径。
-2. 显式环境变量，例如`EVOZEUS_INFRA_ROOT`。
-3. 开发态兄弟Repo探测，仅作兼容fallback并标记`source=development_fallback`。
+1. 已激活渠道的 `channel-state.json` 中 EvoZeus 与 CoEvolve 路径。
+2. Runtime 解析为当前 EvoZeus 根下的 `packages/runtime/`。
+3. Session Signal 解析为当前 EvoZeus 根下的 `packs/session-signal/`。
+4. 独立 CoEvolve 在开发态可使用显式环境变量或兄弟 Repo fallback。
 
 正式与UAT健康判定不得依赖兄弟目录fallback。
 
@@ -110,8 +120,8 @@ Stable清单作为EvoZeus Release资产发布。UAT清单从唯一`uat/current`�
 ### 9.2 UAT
 
 1. 获取唯一UAT清单。
-2. 为各组件准备Git mirror/cache并检出固定Commit到事务目录。
-3. 检查Commit、必需文件和固定smoke。
+2. 为 EvoZeus 与 CoEvolve 准备 Git mirror/cache并检出固定 Commit 到事务目录。
+3. 检查独立 Commit、内嵌模块路径、必需文件和固定 smoke。
 4. 原子切换`worktrees/uat/current`和UAT channel state。
 5. 任一步失败时清理事务目录，保留旧current和旧state。
 
@@ -155,6 +165,7 @@ evozeus doctor --json
 - `product_version`
 - `manifest_digest`
 - `components`
+- `embedded`
 - `health`
 - `update_available`
 - `rollback`
@@ -179,7 +190,7 @@ evozeus doctor --json
 - UAT：首次安装、覆盖更新、重复执行、错误Commit、缺文件、切换失败和回滚。
 - Stable：Release archive安装、checksum失败、运行内只提示。
 - Doctor：当前真实Legacy样本必须返回`migration_required`。
-- E2E：Stable和UAT同时存在，互不修改对方state。
+- E2E：Stable和UAT同时存在，主仓内嵌模块分别跟随各自 EvoZeus 根目录，互不修改对方 state。
 
 ## 15. Rollback
 

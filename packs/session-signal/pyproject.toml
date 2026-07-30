@@ -17,5 +17,6 @@ key-sentence-trends = [
 ]
 
 [tool.evozeus]
-repo_role = "session-signal-skill"
+repo_role = "embedded-session-signal-pack"
+distribution_role = "embedded-in-evozeus"
 default_factor_language = "python"

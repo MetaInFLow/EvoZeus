@@ -21,7 +21,7 @@ Use this skill when the user:
 ```text
 community /skill
   -> read this skill
-  -> read ../../docs/reference/install-onboarding-conversation.md
+  -> read ../../../docs/reference/install-onboarding-conversation.md
   -> resolve the latest immutable EvoZeus Stable Release assets and checksum
   -> check ~/.evozeus registration state
   -> explain registration value, privacy boundaries, and approval choices
@@ -83,7 +83,7 @@ Do not create `~/.evozeus/runtime/`, runtime lockfiles, local scan outputs, fact
 Before asking for registration or install approval, read:
 
 ```text
-../../docs/reference/install-onboarding-conversation.md
+../../../docs/reference/install-onboarding-conversation.md
 ```
 
 Use it to explain:
@@ -152,7 +152,7 @@ Use `features --json` as the product menu. Then run:
 ~/.evozeus/bin/evozeus capabilities --json
 ```
 
-Use `capabilities --json` as the source of write mode, risk level, approval, and examples. Show the natural-language feature summary with the fixed `Post-Install Capability Template` from `../../docs/reference/install-onboarding-conversation.md` before asking the user what to do:
+Use `capabilities --json` as the source of write mode, risk level, approval, and examples. Show the natural-language feature summary with the fixed `Post-Install Capability Template` from `../../../docs/reference/install-onboarding-conversation.md` before asking the user what to do:
 
 | Product feature | Status after health OK |
 | --- | --- |

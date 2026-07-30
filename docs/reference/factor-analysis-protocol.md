@@ -116,18 +116,18 @@ agent_session_review.v0
 
 可视化机制属于 report layer。P0 HTML renderer 会把指定的 `FactorResult` 拼进一个 Ant Design dashboard，并基于这些结果生成聚合可视化。例如词云读取 `tags.type`、`tags.value` 和 `verdict_signals`，同时用 `factor_id` 生成 `terms.source_factor_ids`，用于追溯某个词来自哪些 factor。
 
-Executable contracts belong to the runtime and Factor lifecycle repos:
+Executable contracts belong to the EvoZeus main Repo:
 
-- `evozeus-runtime` owns factor execution, local registry, lockfile, report generation, and runtime verification.
-- `EvoZeus-factor-lab` owns draft pack and scanner review before official release.
-- `EvoZeus-session-signal-skill` owns promoted pack artifacts, release manifests, checksums, and attestations.
+- `packages/runtime/` owns Factor execution, local registry, report generation, and runtime verification.
+- `packs/session-signal/` owns built-in official Factor implementations, specs, tests, and presentation resources.
+- Independent third-party Factor packs own their Release manifests, checksums, permissions, and attestations.
 
-The `EvoZeus` main repo keeps this protocol and future registry pointer semantics only. It does not store runnable Factor pack bodies or runtime implementation code.
+The EvoZeus product Release versions the built-in Runtime and Session Signal pack atomically.
 
 P0 结构化结果写入本地 SQLite index：
 
 ```text
-.evozeus/infra/index/results.sqlite3
+.evozeus/runtime/index/results.sqlite3
 ```
 
 核心表：

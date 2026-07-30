@@ -5,7 +5,7 @@ description: Use when working on EvoZeus registry pointers, default official fac
 
 # EvoZeus Registry Release
 
-The main repo owns registry pointers, not pack bodies. Runtime uses registry pointers to find official releases and then verifies immutable release metadata.
+The main Repo owns built-in Factor bodies and registry pointers. Runtime resolves built-in Factors from the same product Commit and verifies independent third-party releases through immutable metadata.
 
 ## Registry Consumption Flow
 
@@ -24,7 +24,7 @@ EvoZeus registry pointer
 - point to allowlisted official releases
 - define default official factor set
 - track channel, version pinning, review state, deprecation, and yank behavior
-- route official pack body changes to `EvoZeus-session-signal-skill`
+- route built-in pack body changes to `packs/session-signal/`
 
 ## Default Official Factors
 
@@ -37,7 +37,7 @@ Default factors must be explicit, not silent:
 
 ## Boundaries
 
-- Do not store official pack bodies in the main repo.
+- Keep built-in pack bodies under `packs/session-signal/`.
 - Do not reference lab moving branches.
 - Do not invent manifests, checksums, or reviewed status.
 - Do not let runtime bypass the registry pointer.

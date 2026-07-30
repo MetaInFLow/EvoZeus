@@ -53,7 +53,7 @@ At the end of a meaningful task, check whether the session exposed a reusable ru
 🧙 EvoZeus · 捕捉到一条 Lesson｜<可复用且已脱敏的一句话>。要记录下来吗？
 ```
 
-This is a proposal only. User confirmation is required before recording. An installed Skill activates only when selected by the host; continuous detection across unrelated chats requires a separately enabled host watcher.
+This is a proposal only. User confirmation is required before recording. Claude Code loads this check through the plugin's read-only `SessionStart` adapter. Codex activates the Skill through explicit or semantic selection because its current plugin manifest does not expose an equivalent session hook.
 
 ## Safety
 
@@ -61,9 +61,8 @@ This is a proposal only. User confirmation is required before recording. An inst
 - Remove secrets, customer data, private paths, unreleased code, and unnecessary identities.
 - Read-only review can proceed without write approval.
 - Ask before local persistent writes, GitHub changes, Harness writes, installs, updates, network calls, or external uploads.
-- Only maintainers with target Repo write permission may upgrade and push a Harness.
+- Only maintainers with verified target Repo `ADMIN` permission may upgrade and push a Harness.
 
 ## Completion
 
 End with the result, evidence, and one next action. A task is complete only when its selected Skill's verification target is met.
-

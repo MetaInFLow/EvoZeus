@@ -9,10 +9,10 @@ import { describe, it } from "node:test";
 const SCRIPT = fileURLToPath(new URL("./evozeus-cli.mjs", import.meta.url));
 
 function stableManifest() {
-  const versions = { evozeus: "v0.3.0", infra: "v0.2.0", coevolve: "v0.12.0", session_signal: "v0.1.0" };
+  const versions = { evozeus: "v0.4.0", coevolve: "v0.13.0" };
   return {
-    schema_version: "evozeus.product-channel.v1",
-    product_version: "v0.3.0",
+    schema_version: "evozeus.product-channel.v2",
+    product_version: "v0.4.0",
     channel: "stable",
     generated_at: "2026-07-26T00:00:00Z",
     components: Object.fromEntries(Object.entries(versions).map(([id, version], index) => [
@@ -29,6 +29,18 @@ function stableManifest() {
         required_paths: ["SKILL.md"]
       }
     ])),
+    embedded: {
+      runtime: {
+        version: "v0.2.0",
+        path: "packages/runtime",
+        required_paths: ["src/evozeus_runtime/cli/main.py"]
+      },
+      session_signal: {
+        version: "v0.1.0",
+        path: "packs/session-signal",
+        required_paths: ["scripts/validate_official_factor_spec.py"]
+      }
+    },
     compatibility: {
       runtime_min_inclusive: "0.1.0",
       runtime_max_exclusive: "0.3.0",
@@ -65,6 +77,11 @@ function parseJson(result, expectedStatus = 0) {
   return JSON.parse(result.stdout);
 }
 
+function initGitRepo(root) {
+  const result = spawnSync("git", ["init", "-b", "main"], { cwd: root, encoding: "utf8" });
+  assert.equal(result.status, 0, result.stderr);
+}
+
 describe("evozeus-cli", () => {
   it("describes P0 capabilities as JSON", () => {
     const result = runCli(["capabilities", "--json"]);
@@ -95,7 +112,7 @@ describe("evozeus-cli", () => {
     assert.ok(features.has("preserve.artifact"));
     assert.ok(features.has("coevolve.target"));
     assert.equal(features.get("review.session").command, "evozeus review session --input <path|-> --json");
-    assert.equal(features.get("insights.sessions").backend_owner, "EvoZeus-infra");
+    assert.equal(features.get("insights.sessions").backend_owner, "EvoZeus");
     assert.equal(features.get("insights.sessions").command, "evozeus insights plan --source codex --json");
     assert.ok(features.get("insights.sessions").related_capabilities.includes("insights.plan"));
     assert.equal(features.get("preserve.artifact").command, "evozeus preserve draft --from-report <path> --json");
@@ -111,7 +128,7 @@ describe("evozeus-cli", () => {
     assert.match(result.stdout, /Review one explicit session/);
     assert.match(result.stdout, /Generate session insights report/);
     assert.match(result.stdout, /Preserve a Verdict \/ report as an artifact draft/);
-    assert.match(result.stdout, /Co-evolve a Skill \/ plugin \/ repo/);
+    assert.match(result.stdout, /Co-evolve an independent Skillware repository/);
   });
 
   it("prints help without crashing", () => {
@@ -242,35 +259,21 @@ describe("evozeus-cli", () => {
     assert.ok(report.data.scan_plan.forbidden_in_this_command.includes("reading raw session files"));
   });
 
-  it("plans session insights through an explicitly resolved infra without reading raw stores", () => withTempWorkspace((workspace) => {
-    const infraRoot = join(workspace, "infra");
-    mkdirSync(join(infraRoot, "src/evozeus_runtime/cli"), { recursive: true });
-    writeFileSync(join(infraRoot, "src/evozeus_runtime/cli/main.py"), "# fixture\n");
+  it("plans session insights through the embedded Runtime without reading raw stores", () => withTempWorkspace((workspace) => {
     const result = runCli(["insights", "plan", "--source", "codex", "--json"], {
-      cwd: workspace,
-      env: { EVOZEUS_INFRA_ROOT: infraRoot }
+      cwd: workspace
     });
     const report = parseJson(result);
 
     assert.equal(report.operation, "insights.plan");
     assert.equal(report.data.insights_plan.reads_raw_store_now, false);
     assert.equal(report.data.insights_plan.source, "codex");
-    assert.equal(report.data.backend.owner, "EvoZeus-infra");
+    assert.equal(report.data.backend.owner, "EvoZeus");
     assert.equal(report.data.backend.available, true);
+    assert.match(report.data.backend.detected_path, /packages\/runtime$/);
     assert.ok(report.data.backend.command.argv.includes("session-insights"));
     assert.ok(report.data.insights_plan.forbidden_in_this_command.includes("reading raw session files"));
   }));
-
-  it("reports missing infra readiness with a repair hint", () => {
-    const missingRoot = join(tmpdir(), "missing-evozeus-infra-for-test");
-    const result = runCli(["insights", "plan", "--source", "codex", "--json"], {
-      env: { EVOZEUS_INFRA_ROOT: missingRoot }
-    });
-    const report = parseJson(result);
-
-    assert.equal(report.data.backend.available, false);
-    assert.match(report.data.backend.repair_hint, /EVOZEUS_INFRA_ROOT/);
-  });
 
   it("requires explicit approval before running session insights", () => {
     const result = runCli(["insights", "sessions", "--source", "codex", "--reuse-factors", "--html", "--json"]);
@@ -308,6 +311,7 @@ describe("evozeus-cli", () => {
 
   it("creates a harness handoff plan without writing target repo files", () =>
     withTempWorkspace((workspace) => {
+      initGitRepo(workspace);
       const skillRoot = join(workspace, "skills/example");
       mkdirSync(skillRoot, { recursive: true });
       writeFileSync(join(skillRoot, "SKILL.md"), "---\nname: example\n---\n");
@@ -317,22 +321,61 @@ describe("evozeus-cli", () => {
 
       assert.equal(report.operation, "harness.attachPlan");
       assert.equal(report.data.handoff_plan.target.kind, "skill");
+      assert.equal(report.data.handoff_plan.target.harness_eligible, true);
+      assert.equal(realpathSync(report.data.handoff_plan.target_harness_root), realpathSync(workspace));
       assert.equal(report.data.handoff_plan.writes_now, false);
       assert.equal(report.data.handoff_plan.global_evozeus_home, "~/.evozeus");
-      assert.equal(report.data.handoff_plan.target_infra_dir, ".evozeus-wrapper");
+      assert.equal(report.data.handoff_plan.target_harness_dir, ".evozeus-wrapper");
       assert.equal(report.data.handoff_plan.legacy_target_infra_dir, ".evozeus_evoinfra");
       assert.equal(report.data.handoff_plan.oldest_target_infra_dir, ".evozeus");
       assert.equal(report.data.handoff_plan.manifest_path, ".evozeus-wrapper/wrapper.json");
-      assert.equal(existsSync(join(skillRoot, ".evozeus-wrapper")), false);
+      assert.equal(report.data.handoff_plan.maintenance_authority.required_permission, "ADMIN");
+      assert.equal(report.data.handoff_plan.maintenance_authority.verified_now, false);
+      assert.equal(existsSync(join(workspace, ".evozeus-wrapper")), false);
+    }));
+
+  it("refuses to assign a Harness to a directory without an independent Git repo", () =>
+    withTempWorkspace((workspace) => {
+      const skillRoot = join(workspace, "skills/example");
+      mkdirSync(skillRoot, { recursive: true });
+      writeFileSync(join(skillRoot, "SKILL.md"), "---\nname: example\n---\n");
+
+      const report = parseJson(runCli(["harness", "attach", "--target", "skills/example", "--json"], { cwd: workspace }));
+
+      assert.equal(report.data.handoff_plan.eligible, false);
+      assert.equal(report.data.handoff_plan.target_harness_root, null);
+      assert.match(report.data.handoff_plan.next_actions[0], /independent Git repository/);
+    }));
+
+  it("refuses a second Harness when the repository already contains a nested Harness", () =>
+    withTempWorkspace((workspace) => {
+      initGitRepo(workspace);
+      const skillRoot = join(workspace, "skills/example");
+      const nestedHarness = join(skillRoot, ".evozeus-wrapper");
+      mkdirSync(nestedHarness, { recursive: true });
+      writeFileSync(join(skillRoot, "SKILL.md"), "---\nname: example\n---\n");
+      writeFileSync(join(nestedHarness, "wrapper.json"), "{}\n");
+
+      const report = parseJson(
+        runCli(["harness", "attach", "--target", "skills/example", "--json"], { cwd: workspace })
+      );
+
+      assert.equal(report.data.handoff_plan.eligible, false);
+      assert.deepEqual(report.data.handoff_plan.target.nested_harness_manifests, [
+        "skills/example/.evozeus-wrapper/wrapper.json"
+      ]);
+      assert.match(report.data.handoff_plan.next_actions[0], /nested Harness/);
     }));
 
   it("delegates coevolve status to the installed backend contract", () =>
     withTempWorkspace((workspace) => {
+      initGitRepo(workspace);
       const skillRoot = join(workspace, "skills/example");
-      const infraRoot = join(skillRoot, ".evozeus-wrapper");
+      const infraRoot = join(workspace, ".evozeus-wrapper");
       const wrapperRoot = join(workspace, "EvoZeus-CoEvolve");
       const wrapperScript = join(wrapperRoot, "scripts/evozeus_wrapper.py");
       mkdirSync(infraRoot, { recursive: true });
+      mkdirSync(skillRoot, { recursive: true });
       mkdirSync(join(wrapperRoot, "scripts"), { recursive: true });
       writeFileSync(join(skillRoot, "SKILL.md"), "---\nname: example\n---\n");
       writeFileSync(
@@ -372,6 +415,7 @@ describe("evozeus-cli", () => {
 
   it("plans coevolve feedback audit without writing GitHub", () =>
     withTempWorkspace((workspace) => {
+      initGitRepo(workspace);
       const skillRoot = join(workspace, "skills/example");
       mkdirSync(skillRoot, { recursive: true });
       writeFileSync(join(skillRoot, "SKILL.md"), "---\nname: example\n---\n");
@@ -391,6 +435,7 @@ describe("evozeus-cli", () => {
 
   it("supports coevolve attach as the product alias for wrapper handoff planning", () =>
     withTempWorkspace((workspace) => {
+      initGitRepo(workspace);
       const skillRoot = join(workspace, "skills/example");
       mkdirSync(skillRoot, { recursive: true });
       writeFileSync(join(skillRoot, "SKILL.md"), "---\nname: example\n---\n");
@@ -400,9 +445,10 @@ describe("evozeus-cli", () => {
 
       assert.equal(report.operation, "harness.attachPlan");
       assert.equal(report.data.handoff_plan.target.kind, "skill");
+      assert.equal(report.data.handoff_plan.target.repo_relative_target, "skills/example");
       assert.equal(report.data.handoff_plan.recommended_route, "EvoZeus-CoEvolve");
       assert.equal(report.data.handoff_plan.writes_now, false);
-      assert.equal(existsSync(join(skillRoot, ".evozeus-wrapper")), false);
+      assert.equal(existsSync(join(workspace, ".evozeus-wrapper")), false);
     }));
 
   it("marks public GitHub wrapper targets only when explicitly requested", () =>
@@ -548,8 +594,8 @@ describe("evozeus-cli", () => {
 
     assert.equal(report.operation, "system.doctor");
     assert.equal(report.data.component_readiness.evozeus.available, true);
-    assert.equal(report.data.component_readiness["EvoZeus-infra"].owner, "EvoZeus-infra");
+    assert.equal(report.data.component_readiness["EvoZeus Runtime"].owner, "EvoZeus");
     assert.equal(report.data.component_readiness["EvoZeus-CoEvolve"].owner, "EvoZeus-CoEvolve");
-    assert.equal(report.data.component_readiness["EvoZeus-session-signal-skill"].owner, "EvoZeus-session-signal-skill");
+    assert.equal(report.data.component_readiness["EvoZeus Session Signal"].owner, "EvoZeus");
   });
 });

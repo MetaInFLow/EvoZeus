@@ -35,6 +35,7 @@ Harness 也缺少明确治理边界。若 monorepo 内的 package、pack 或 Ski
 - 一个 Git Repo 最多拥有一个活动 Harness，且只能位于 Repo 根目录。
 - monorepo 内的 package、pack、Skill、app 和其他子目录继承根 Repo Harness，禁止创建嵌套 Harness。
 - 某个内部模块需要独立 Harness 时，必须先完成独立 Repo 的架构决策、所有权和发布边界，再接入 Harness。
+- Harness 写入、升级和上传要求目标 GitHub Repo 已验证的 `ADMIN` 权限；只读诊断和 dry-run 计划无需管理员权限。
 - 归档 Repo 不保留活动维护承诺；其 Harness 只作为历史记录。
 
 ### 4. 版本与频道
@@ -81,4 +82,3 @@ Git 变更、Issue、PR 和 Release 仍由根 Repo 统一承载，子 Harness �
 - 产品清单不再要求 Infra 与 Session Signal 独立下载。
 - Stable 与唯一 UAT 均可完成安装、切换、Doctor、回滚和核心场景验证。
 - `EvoZeus-web` 不出现在本地产品组件清单中。
-

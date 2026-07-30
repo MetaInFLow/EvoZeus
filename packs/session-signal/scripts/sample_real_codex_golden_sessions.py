@@ -19,8 +19,8 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--infra-root",
         type=Path,
-        default=ROOT.parent / "EvoZeus-infra",
-        help="EvoZeus-infra repo 路径",
+        default=ROOT.parents[1] / "packages" / "runtime",
+        help="EvoZeus 内置 Runtime package 路径",
     )
     parser.add_argument(
         "--output-dir",
@@ -35,7 +35,7 @@ def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     infra_src = args.infra_root.resolve() / "src"
     if not infra_src.is_dir():
-        raise FileNotFoundError(f"EvoZeus-infra src not found: {infra_src}")
+        raise FileNotFoundError(f"EvoZeus built-in Runtime src not found: {infra_src}")
     sys.path.insert(0, str(infra_src))
 
     from evozeus_runtime.scanners.base import ScanRequest

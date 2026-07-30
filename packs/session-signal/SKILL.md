@@ -1,11 +1,11 @@
 ---
-name: evozeus-session-signal-skill
+name: evozeus-session-signal-internal
 description: Use when analyzing Codex or agent chat sessions with EvoZeus session signal factors to produce evidence-backed review signals, route reviewed sessions toward the right artifact type, diagnose dissatisfaction, repeated requests, tool failures, task completion, resource usage, semantic phrase patterns, synthesize an MBTI/personality profile, or generate/review a High-Quality Session Review Page.
 ---
 
-# EvoZeus Session Signal Skill
+# EvoZeus Session Signal (internal)
 
-Use this as the Session Signal SKILL for finding AI collaboration history that is worth summarizing, preserving, or turning into reusable SKILL instructions.
+Use this internal method for finding AI collaboration history worth summarizing, preserving, or turning into a reusable improvement. The pack inherits product versioning, UAT, Release, Issues, PRs, and Harness governance from the EvoZeus Git Repo root.
 
 Core model:
 

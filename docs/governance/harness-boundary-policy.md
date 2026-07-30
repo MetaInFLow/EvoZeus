@@ -21,7 +21,7 @@
 | --- | --- | --- |
 | `.evozeus-wrapper/wrapper.json` | 允许 | Repo 根 Harness |
 | `packages/runtime/.evozeus-wrapper/wrapper.json` | 拒绝 | package 不是独立 Repo |
-| `plugin/skills/review/.evozeus-wrapper/` | 拒绝 | Skill 继承主 Repo Harness |
+| `skills/review-agent-session/.evozeus-wrapper/` | 拒绝 | Skill 继承主 Repo Harness |
 | `packs/session-signal/.evozeus_evoinfra/` | 拒绝 | 内置 pack 且使用旧布局 |
 | 独立 `EvoZeus-CoEvolve/.evozeus-wrapper/` | 允许 | 独立 Repo 根 Harness |
 
@@ -40,9 +40,8 @@
 
 Harness 版本升级和向目标 Repo 推送变更属于维护操作。执行者必须同时具备：
 
-- 目标 Repo 的写权限；
+- 目标 GitHub Repo 的 `viewerPermission=ADMIN`；
 - 目标 Repo Harness policy 允许的 maintainer 身份；
 - 对应 PR、UAT 和 Release 门禁权限。
 
 普通用户可以运行只读检查、生成升级计划和验证结果；不得直接覆盖或上传 Harness。
-

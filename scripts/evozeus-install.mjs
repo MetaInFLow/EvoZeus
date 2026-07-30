@@ -25,6 +25,8 @@ const DEFAULT_SKELETON_ENTRIES = [
   "SKILL.md",
   "README.md",
   "skills",
+  "packages/runtime",
+  "packs/session-signal",
   "docs/reference",
   "docs/governance/privacy-and-redaction.md",
   "docs/governance/terminology-glossary.md",

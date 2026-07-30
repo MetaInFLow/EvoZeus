@@ -4,6 +4,8 @@ type:code:
           - "src/**"
           - "tests/**"
           - "scripts/**"
+          - "packages/runtime/**"
+          - "packs/session-signal/**"
 
 type:candidate:
   - changed-files:
@@ -25,6 +27,7 @@ type:skill-instruction:
           - "maintainer/skills/**"
           - ".codex-plugin/**"
           - ".claude-plugin/**"
+          - "hooks/**"
 
 type:governance:
   - changed-files:

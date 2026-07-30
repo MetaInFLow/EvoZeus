@@ -16,7 +16,7 @@ Reports translate a raw session into reviewable evidence. They should make the n
 | Case Summary | Public or maintainer-facing issue context |
 | Candidate Report | Promotion argument for Skill, Factor, Pattern, Habit, or Environment Rule |
 
-Use `../../docs/reference/report-templates.md` and `../../docs/reference/verdict-card.md`.
+Use `../../../docs/reference/report-templates.md` and `../../../docs/reference/verdict-card.md`.
 
 ## Report Order
 

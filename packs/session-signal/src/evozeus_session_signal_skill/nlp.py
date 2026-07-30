@@ -11,7 +11,7 @@ from typing import Any, Mapping
 
 
 NLP_PACKAGES = ("scikit-learn", "jieba", "rapidfuzz", "snownlp")
-INSTALL_HINT = "python3 -m pip install 'EvoZeus-session-signal-skill[nlp]'"
+INSTALL_HINT = "python3 -m pip install -e 'packs/session-signal[nlp]'"
 
 
 class MissingNlpDependencyError(RuntimeError):

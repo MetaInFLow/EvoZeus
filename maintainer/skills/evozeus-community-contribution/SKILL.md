@@ -46,8 +46,8 @@ Every Candidate should include:
 - limitations or uncertainty
 - reviewer action requested
 
-Use `../../.github/PULL_REQUEST_TEMPLATE/candidate_submission.md` for Candidate PRs and `../../docs/reference/review-contract.md` for review expectations.
+Use `../../../.github/PULL_REQUEST_TEMPLATE/candidate_submission.md` for Candidate PRs and `../../../docs/reference/review-contract.md` for review expectations.
 
 ## Rejection Is Normal
 
-Rejected contributions should map to `../../docs/reference/negative-patterns.md`. A rejected Candidate is useful when it clarifies what EvoZeus should not absorb.
+Rejected contributions should map to `../../../docs/reference/negative-patterns.md`. A rejected Candidate is useful when it clarifies what EvoZeus should not absorb.

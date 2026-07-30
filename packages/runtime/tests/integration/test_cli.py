@@ -7,6 +7,15 @@ import evozeus_runtime.cli.main as cli_main
 from evozeus_runtime.cli.main import app
 
 
+def test_runtime_resolves_the_built_in_session_signal_pack():
+    root = cli_main._built_in_session_signal_root()
+
+    assert root is not None
+    assert root.name == "session-signal"
+    assert (root / "factors").is_dir()
+    assert (root / "SKILL.md").is_file()
+
+
 def test_status_command_prints_runtime_status():
     result = CliRunner().invoke(app, ["status"])
 

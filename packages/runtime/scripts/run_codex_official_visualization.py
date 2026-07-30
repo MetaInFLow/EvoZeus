@@ -11,7 +11,7 @@ def _repo_root() -> Path:
     return Path(__file__).resolve().parents[1]
 
 
-def _cluster_root() -> Path:
+def _main_repo_root() -> Path:
     return _repo_root().parents[1]
 
 
@@ -62,9 +62,9 @@ def main() -> int:
     )
     parser.add_argument(
         "--official-repo-root",
-        default=_cluster_root() / "10-repos" / "EvoZeus-session-signal-skill",
+        default=_main_repo_root() / "packs" / "session-signal",
         type=Path,
-        help="Path to EvoZeus-session-signal-skill.",
+        help="Path to the built-in EvoZeus Session Signal pack.",
     )
     parser.add_argument(
         "--output",

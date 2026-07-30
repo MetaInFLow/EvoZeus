@@ -22,7 +22,7 @@ community /skill
 
 On the first pass:
 
-- read root `../../SKILL.md`
+- read root `../../../SKILL.md`
 - keep raw session local
 - produce a Session Verdict Card in the response
 - avoid writing files unless the user asks

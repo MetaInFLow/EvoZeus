@@ -53,7 +53,7 @@ Do not mix Candidate content, runtime code, and governance changes in one PR unl
 ## Naming Rule
 
 - User-facing local scenario skill names must start with `EvoZeus-`; keep frontmatter `name` and folder paths lowercase `evozeus-*` to pass skill validation.
-- Reuse project terms from `../../docs/governance/terminology-glossary.md` and `../../docs/reference/ontology.md`.
+- Reuse project terms from `../../../docs/governance/terminology-glossary.md` and `../../../docs/reference/ontology.md`.
 - Prefer canonical names such as `Session`, `Evidence`, `Case`, `Verdict`, `Artifact`, `Candidate`, `Factor`, `Pattern`, `Rejected Pattern`, and `Environment Rule`.
 - New variables, filenames, headings, schemas, and CLI flags should make the layer and artifact kind obvious.
 - Do not introduce synonyms for established project terms unless the terminology glossary is updated in the same governance PR.
@@ -101,9 +101,9 @@ Use the closest template:
 
 | Work | Template |
 | --- | --- |
-| Default or mixed docs/governance | `../../.github/PULL_REQUEST_TEMPLATE.md` |
-| Candidate, Case, Pattern, Factor, or Artifact | `../../.github/PULL_REQUEST_TEMPLATE/candidate_submission.md` |
-| Protocol-supporting script or behavior in this repo | `../../.github/PULL_REQUEST_TEMPLATE/code_change.md` |
+| Default or mixed docs/governance | `../../../.github/PULL_REQUEST_TEMPLATE.md` |
+| Candidate, Case, Pattern, Factor, or Artifact | `../../../.github/PULL_REQUEST_TEMPLATE/candidate_submission.md` |
+| Protocol-supporting script or behavior in this repo | `../../../.github/PULL_REQUEST_TEMPLATE/code_change.md` |
 | Runtime, CLI, TUI, companion, scanner execution, local state, or report execution | Open PR in `evozeus-runtime` |
-| Ontology, schema, protocol, compatibility | `../../.github/PULL_REQUEST_TEMPLATE/schema_change.md` |
-| `SKILL.md`, `skills/`, prompts, or agent instructions | `../../.github/PULL_REQUEST_TEMPLATE/skill_instruction_change.md` |
+| Ontology, schema, protocol, compatibility | `../../../.github/PULL_REQUEST_TEMPLATE/schema_change.md` |
+| `SKILL.md`, `skills/`, prompts, or agent instructions | `../../../.github/PULL_REQUEST_TEMPLATE/skill_instruction_change.md` |

@@ -36,7 +36,7 @@ EvoZeus
 | --- | --- | --- | --- |
 | `packages/runtime/` | 本地证据处理、Runner、Ledger、Report | EvoZeus Commit / Release | 禁止；继承主仓根 Harness |
 | `packs/session-signal/` | 官方 Session 判断规则和 Factor tools | EvoZeus Commit / Release | 禁止；继承主仓根 Harness |
-| `plugin/skills/` | 默认用户任务 Skill | EvoZeus Commit / Release | 禁止；继承主仓根 Harness |
+| `skills/` | 默认用户任务 Skill | EvoZeus Commit / Release | 禁止；继承主仓根 Harness |
 
 ## 3. 待退役与历史 Repo
 

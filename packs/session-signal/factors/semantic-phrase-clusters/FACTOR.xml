@@ -28,7 +28,7 @@
     <presentation id="semantic_phrase_cluster_json" component_ref="builtin.json.v1" route="drawer" data_ref="semantic_phrase_clusters" priority="180" />
   </presentations>
   <dependencies>
-    <package name="rapidfuzz" required="true" install="python3 -m pip install 'EvoZeus-session-signal-skill[nlp]'" />
+    <package name="rapidfuzz" required="true" install="python3 -m pip install -e 'packs/session-signal[nlp]'" />
   </dependencies>
   <evidence_policy>
     <raw_body_allowed>false</raw_body_allowed>

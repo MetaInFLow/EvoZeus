@@ -1,8 +1,10 @@
 # Factor Registry Governance
 
-- Status: draft
-- Last updated: 2026-06-18
+- Status: superseded for built-in Factors; retained for independent third-party extension design
+- Last updated: 2026-07-30
 - Decision: [ADR-0002](../decisions/ADR-0002-factor-pack-registry-and-community-promotion.md)
+
+> ADR-0005 moved the official Session Signal pack and Runtime into the EvoZeus main Repo. The separate Factor Lab and official-pack Repo flow below is historical. Apply this document only to future independent third-party executable extensions; built-in changes use `packs/session-signal/`, `packages/runtime/`, the unique EvoZeus UAT, and the EvoZeus Stable Release.
 
 本文定义社区共创下 Factor 和 scanner module 从上传、审核到上线的链路。这里的上线不是 PR merge，而是进入主 registry 后可被默认搜索和按需安装。
 

@@ -19,6 +19,14 @@ from evozeus_runtime.use_cases.scan_sessions import scan_sessions
 app = typer.Typer(help="EvoZeus local scanner and factor runner runtime.")
 
 
+def _built_in_session_signal_root() -> Path | None:
+    for parent in Path(__file__).resolve().parents:
+        candidate = parent / "packs" / "session-signal"
+        if (candidate / "factors").is_dir() and (candidate / "SKILL.md").is_file():
+            return candidate
+    return None
+
+
 @app.command()
 def status() -> None:
     typer.echo(f"evozeus-runtime {__version__}: scanner-runner-runtime")
@@ -72,7 +80,7 @@ def session_insights(
     official_repo_root: Path | None = typer.Option(
         None,
         "--official-repo-root",
-        help="Explicit path to EvoZeus-session-signal-skill. EVOZEUS_OFFICIAL_REPO_ROOT is also supported.",
+        help="Optional Session Signal pack override. The built-in EvoZeus pack is used by default.",
     ),
     output: Path | None = typer.Option(
         None,
@@ -88,8 +96,10 @@ def session_insights(
     if resolved_official_root is None and os.environ.get("EVOZEUS_OFFICIAL_REPO_ROOT"):
         resolved_official_root = Path(os.environ["EVOZEUS_OFFICIAL_REPO_ROOT"])
     if resolved_official_root is None:
+        resolved_official_root = _built_in_session_signal_root()
+    if resolved_official_root is None:
         raise typer.BadParameter(
-            "Provide --official-repo-root or EVOZEUS_OFFICIAL_REPO_ROOT; sibling-directory guessing is disabled."
+            "The built-in Session Signal pack is missing. Repair or realign the active EvoZeus channel."
         )
     result = run_codex_official_visualization(
         workspace_root=workspace,

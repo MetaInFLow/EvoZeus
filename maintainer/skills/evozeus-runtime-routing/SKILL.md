@@ -79,7 +79,7 @@ Runtime work should include:
 - privacy impact
 - fallback when optional dependencies are unavailable
 
-For main repo protocol or routing changes, use the appropriate `../../.github/PULL_REQUEST_TEMPLATE/*` template and run `python3 scripts/check_pr_ready.py --base <base-ref>`. For runtime implementation, open the PR in `evozeus-runtime` and use that repo's checks.
+For main repo protocol or routing changes, use the appropriate `../../../.github/PULL_REQUEST_TEMPLATE/*` template and run `python3 scripts/check_pr_ready.py --base <base-ref>`. For runtime implementation, open the PR in `evozeus-runtime` and use that repo's checks.
 
 ## Boundaries
 

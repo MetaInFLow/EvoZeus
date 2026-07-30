@@ -1,4 +1,4 @@
-# EvoZeus v0.5 插件化主仓架构与迁移设计
+# EvoZeus v0.4.0 插件化主仓架构与迁移设计
 
 - 状态：active / 对内-已通过
 - 受众：EvoZeus 维护者、CoEvolve 维护者、发布管理员
@@ -32,7 +32,7 @@ EvoZeus main repo
 ├── scripts/               产品 CLI、频道、安装和治理
 ├── packages/runtime/      内置执行引擎
 ├── packs/session-signal/  内置官方判断包
-├── plugin/skills/         默认用户 Skill
+├── skills/                默认用户 Skill
 └── docs/                  ADR、契约与维护文档
         │
         └── optional contract ──> EvoZeus-CoEvolve 独立 Repo
@@ -79,13 +79,13 @@ CI 读取 Git 跟踪和待提交文件路径；发现 Harness 目录位于 Repo 
 
 ### 5.2 Lesson 捕捉
 
-普通聊天中的捕捉依赖宿主的会话级 watcher。插件内 Skill 负责定义识别和交互契约：
+普通聊天中的捕捉依赖宿主的会话级能力。插件内 Skill 负责定义识别和交互契约：
 
 ```text
 🧙 EvoZeus · 捕捉到一条可能值得记录的 Lesson：<一句话摘要>。要记录下来吗？
 ```
 
-用户确认前不创建 Issue、不修改目标 Repo。Codex 当前插件 manifest 不声明 session hook，因此全局 watcher 作为显式启用的宿主适配层交付，不能伪装成插件天然自动能力。
+用户确认前不创建 Issue、不修改目标 Repo。Claude Code 通过插件根 `hooks/hooks.json` 自动发现只读 `SessionStart` 适配器；该适配器只注入 Lesson 检查合同，不写状态、不显示横幅。Codex 当前插件 manifest 不声明 session hook，通过显式或语义匹配选择 EvoZeus，不能宣称所有聊天自动捕捉。
 
 ## 6. 版本模型
 
@@ -136,7 +136,7 @@ UAT 永远只有一个活动候选。UAT 修复覆盖 `uat/current`，不得创�
 
 | 范围 | 必须证明 |
 | --- | --- |
-| Plugin | manifest validator 通过；默认 Skill 可被发现 |
+| Plugin | manifest validator 通过；默认 Skill 可被发现；Claude SessionStart 适配器输出合法、只读且不显示横幅 |
 | Harness | 根 Harness 允许；任意嵌套 Harness 被 CI 拒绝 |
 | Install | 新装、旧版升级、重复对齐均成功 |
 | Channel | stable 与 uat 隔离；UAT 修复覆盖同一候选 |
@@ -155,4 +155,3 @@ UAT 永远只有一个活动候选。UAT 修复覆盖 `uat/current`，不得创�
 - Stable Release 使用相同已验证代码。
 - 旧 Repo README 指向新路径。
 - GitHub issue、release 和 archive 状态已记录。
-

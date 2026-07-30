@@ -18,8 +18,13 @@ jobs:
         with:
           node-version: "22"
           cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
       - run: npm ci
       - run: npm test
+      - run: python -m pip install -e "packs/session-signal[nlp]" -e "packages/runtime[dev]"
+      - run: npm run test:python
       - name: Build Core archive and Stable product manifest
         run: |
           test "$(git describe --tags --exact-match)" = "${GITHUB_REF_NAME}"

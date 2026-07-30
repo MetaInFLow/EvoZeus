@@ -1,11 +1,11 @@
 ---
-name: evozeus-infra
+name: evozeus-runtime-internal
 description: Use when designing, implementing, reviewing, or debugging EvoZeus local scanner, SessionEnvelope, factor runner, local ledger, report generation, permission gate, manifest verification, or FactorPack execution.
 ---
 
-# EvoZeus Infra
+# EvoZeus Runtime (internal)
 
-This repo is the Python scanner / runner infra component for EvoZeus.
+This package is the built-in Python scanner and runner for EvoZeus. It inherits product versioning, UAT, Release, Issues, PRs, and Harness governance from the EvoZeus Git Repo root.
 
 ## Component Role
 
@@ -85,7 +85,7 @@ Runtime changes belong here when they touch:
 - permission gate
 - manifest checksum / attestation / compatibility verification
 
-Protocol, governance, and registry pointer semantics belong in the `EvoZeus` main repo.
+Protocol, plugin, channel, governance, and registry changes belong at the EvoZeus Repo root.
 
 ## Output Shape
 

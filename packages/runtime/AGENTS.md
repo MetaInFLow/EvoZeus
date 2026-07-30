@@ -1,18 +1,15 @@
 # AGENTS.md
 
-## 项目约定
+## Package role
 
-- 项目产出文件默认用中文，关键专有名词、专业名词可以用英文。
-- Feishu 相关的操作用 `larkcli`。
-- 本 repo 属于 EvoZeus repo 体系，归属 `metainflow private`。
+- This directory is the built-in EvoZeus Runtime package.
+- Product version, Issue, PR, UAT, Release and Harness belong to the EvoZeus Git Repo root.
+- This package cannot own `.evozeus-wrapper/` or `.evozeus_evoinfra/`.
+- Runtime access to local sessions, files, external commands or network remains explicit and approval-gated.
 
-## Repo 职责
+## Development entry
 
-- 承接未来 EvoZeus infra 的 CLI / TUI / local registry / report generation 能力。
-- 在 protocol、schema 和 trust policy 稳定前，不作为默认用户入口。
-- infra 相关联网、扫描、上传能力必须显式启用并经过权限设计。
-
-## Agent 入口
-
-- Infra 相关任务先读 `SKILL.md` 和 `README.md`。
-- 不绕过 `EvoZeus` main registry pointer、official manifest、checksum、SBOM / attestation。
+- Read `SKILL.md` and `README.md` before Runtime changes.
+- Run package tests from this directory with `python -m pytest -q`.
+- Cross-package Session Signal tests use `../../packs/session-signal`.
+- Changes that affect installation, channel resolution or product behavior must also pass the root `npm test` suite.
