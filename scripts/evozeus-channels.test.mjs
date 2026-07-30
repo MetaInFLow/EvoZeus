@@ -629,6 +629,48 @@ function readJsonReport(path) {
 }
 
 describe("legacy diagnosis", () => {
+  it("reports an active v1 channel as migration_required without crashing", () =>
+    fixture((root) => {
+      const home = join(root, ".evozeus");
+      mkdirSync(home, { recursive: true });
+      writeFileSync(
+        join(home, "active-channel.json"),
+        `${JSON.stringify({ schema_version: "evozeus.active-channel.v1", channel: "uat", auto_refresh: false })}\n`
+      );
+      writeFileSync(
+        join(home, "channel-state.json"),
+        `${JSON.stringify({
+          schema_version: "evozeus.channel-state.v1",
+          channels: {
+            stable: null,
+            uat: {
+              manifest: {
+                schema_version: "evozeus.product-channel.v1",
+                product_version: "v0.3.5",
+                channel: "uat",
+                components: {
+                  evozeus: { version: "v0.3.5", commit: "a".repeat(40) },
+                  coevolve: { version: "v0.13.1", commit: "b".repeat(40) },
+                  infra: { version: "v0.2.0", commit: "c".repeat(40) },
+                  session_signal: { version: "v0.1.0", commit: "d".repeat(40) }
+                }
+              },
+              manifest_digest: `sha256:${"e".repeat(64)}`,
+              install_root: join(home, "worktrees/uat/legacy"),
+              component_roots: {}
+            }
+          }
+        })}\n`
+      );
+
+      const snapshot = channelSnapshot(home);
+      assert.equal(snapshot.active_channel, "uat");
+      assert.equal(snapshot.product_version, "v0.3.5");
+      assert.equal(snapshot.status, "legacy");
+      assert.equal(snapshot.health, "migration_required");
+      assert.equal(snapshot.legacy.manifest_schema, "evozeus.product-channel.v1");
+    }));
+
   it("reports an unreleased install and temporary CoEvolve source as migration_required", () =>
     fixture((root) => {
       const home = join(root, ".evozeus");
