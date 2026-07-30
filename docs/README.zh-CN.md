@@ -2,7 +2,7 @@
 
 **把真实 Agent 工作转化为经过验证的改进。**
 
-[English](../README.md) · [业务演示](#业务演示) · [快速开始](#快速开始) · [工作方式](#工作方式) · [安全边界](#安全边界)
+[English](../README.md) · [业务演示](#业务演示) · [安装 EvoZeus](#安装-evozeus) · [Demo Skill](#用真实-demo-skill-体验-evozeus) · [工作方式](#工作方式) · [安全边界](#安全边界)
 
 EvoZeus 复盘一次真实 Agent 任务中发生了什么，识别能改善下一次执行的 Lesson，并把用户确认后的变化路由为可复用、可验证、可治理的产物。它适用于 Skill、plugin、Agent workflow 和其他 Skillware 的建设团队。
 
@@ -49,9 +49,44 @@ EvoZeus 提供完整判断闭环：
   </tr>
 </table>
 
-## 快速开始
+## 安装 EvoZeus
 
-在兼容的 Agent 宿主中启用 EvoZeus plugin，然后直接表达目标。公开 plugin 分发随 v0.4 产品线提供；正式发布前，本仓库是开发事实源。
+官网负责完整的安装与注册旅程。在兼容的 Agent 宿主中粘贴下面一行：
+
+```text
+加入 EvoZeus: https://evozeus-community.vercel.app/skill
+```
+
+[官网 Install Skill](https://evozeus-community.vercel.app/skill) 会依次完成：
+
+1. 解析最新不可变 Stable Release，并校验正式安装包的 SHA-256；
+2. 说明将发生的本地写入，在安装和注册前取得用户批准；
+3. 安装 Stable，并核验当前渠道、版本、产品清单和 Doctor 结果。
+
+官网是唯一公开安装交接入口，因此 README 不复制第二套安装命令。Stable 健康后，用户可以再单独选择是否进入唯一 UAT。
+
+## 用真实 Demo Skill 体验 EvoZeus
+
+[企业 AI 场景地图 Skill](https://github.com/MetaInFLow/Enterprise-ai-scenario-map-skill) 是理解 EvoZeus 真实用法的业务 Demo。它会调研企业、生成 30 个以上 AI 场景、完成优先级判断并给出落地路径。
+
+```text
+使用企业 AI 场景地图 Skill，为一家 B2B 软件服务公司生成标准版 AI 场景地图。
+```
+
+沿着一次完整旅程体验 EvoZeus：
+
+| 时刻 | 业务动作 | EvoZeus 动作 |
+| --- | --- | --- |
+| 1. 运行 | 使用 Demo Skill 生成企业 AI 场景地图 | 展示 EvoZeus 产品渠道并识别目标 Skill；目标 Repo 已接入 Harness 时同步显示其身份 |
+| 2. 纠正 | 指出具体问题，例如证据不足或缺少 Markdown 交付文件 | 先完成业务纠正，再总结一条可复用 Lesson |
+| 3. 确认 | 决定是否记录这条 Lesson | 只有用户确认后才创建 Skill Feedback Issue |
+| 4. 进化 | 单独授权修改目标 Repo | 接入或遵循目标 Repo Harness，让已批准变化进入 Design、PR、验证、UAT 和 Release |
+
+这个 Demo 负责解释产品如何使用；安装和注册始终使用上方官网 `/skill` 入口。
+
+## 开始使用
+
+完成安装后，可以直接表达目标：
 
 ```text
 复盘这次 Agent 执行，找出值得保留、修复或进化的内容。
