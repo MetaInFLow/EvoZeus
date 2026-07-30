@@ -21,6 +21,12 @@ import { fileURLToPath } from "node:url";
 const REGISTRATION_VERSION = 1;
 const IDENTITY_VERSION = "device-runtime-v1";
 const DEFAULT_RUNTIME_FAMILY = "codex";
+const DEFAULT_UPDATE_POLICY = {
+  schema_version: "evozeus.update-policy.v1",
+  enabled: true,
+  check_interval_seconds: 3600,
+  channels: { stable: true, uat: true }
+};
 const DEFAULT_SKELETON_ENTRIES = [
   "SKILL.md",
   "README.md",
@@ -230,6 +236,7 @@ function plannedFiles(evozeusRoot) {
   return [
     join(evozeusRoot, "registration.json"),
     join(evozeusRoot, "install-manifest.json"),
+    join(evozeusRoot, "update-policy.json"),
     join(evozeusRoot, "bin/evozeus"),
     join(evozeusRoot, "skeleton")
   ];
@@ -426,8 +433,10 @@ function install(options) {
   const skeletonRoot = join(evozeusRoot, "skeleton");
   const registrationPath = join(evozeusRoot, "registration.json");
   const manifestPath = join(evozeusRoot, "install-manifest.json");
+  const updatePolicyPath = join(evozeusRoot, "update-policy.json");
   const existingRegistration = existsSync(registrationPath) ? readJson(registrationPath) : null;
   const existingManifest = existsSync(manifestPath) ? readJson(manifestPath) : null;
+  const existingUpdatePolicy = existsSync(updatePolicyPath) ? readJson(updatePolicyPath) : null;
   const now = new Date().toISOString();
   const filesWritten = [];
   const skillInventory = listSkillInventory(sourceRoot);
@@ -454,6 +463,13 @@ function install(options) {
 
     writeFileSync(registrationPath, `${JSON.stringify(registration, null, 2)}\n`);
     filesWritten.push(registrationPath);
+
+    writeFileSync(
+      updatePolicyPath,
+      `${JSON.stringify(existingUpdatePolicy || DEFAULT_UPDATE_POLICY, null, 2)}\n`,
+      { mode: 0o600 }
+    );
+    filesWritten.push(updatePolicyPath);
 
     for (const entry of DEFAULT_SKELETON_ENTRIES) {
       copyEntry(sourceRoot, skeletonRoot, entry, filesWritten);
@@ -502,7 +518,7 @@ function install(options) {
     next_command:
       "Run ~/.evozeus/bin/evozeus align --channel stable --host auto --json, ask for approval, rerun it with --approve-write, then start a new Agent chat. Do not scan local sessions, write project files, or submit to GitHub unless the user explicitly approves the specific action.",
     approval_needed: options.approveWrite
-      ? "Ask before session analysis, runtime, scanner, factor execution, report file generation, wrapper handoff writes, GitHub issue/PR/public artifact, update, or uninstall."
+      ? "Automatic verified product updates are enabled by update-policy.json. Ask before session analysis, scanner/factor execution, report generation, repository writes, GitHub issue/PR/public artifacts, channel switching, policy changes, or uninstall."
       : "Ask the user before writing ~/.evozeus, then rerun with --approve-write.",
     not_enabled: manifest.not_enabled
   };

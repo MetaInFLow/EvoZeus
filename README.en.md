@@ -98,7 +98,7 @@ The [official Install Skill](https://evozeus-community.vercel.app/skill) will:
 1. resolve the latest immutable Stable release and verify its checksum;
 2. explain the local writes and ask for approval before installation or registration;
 3. detect Codex, Claude Code, or both and register the single active `evozeus` plugin;
-4. align Runtime and plugin to one Stable/UAT channel, run Doctor, and request a new chat when the host must reload.
+4. align Runtime and plugin to one Stable/UAT channel, enable in-channel automatic updates, run Doctor, and request a new chat when the host must reload.
 
 The website remains the canonical installation handoff, so this README does not duplicate a second set of installer commands. UAT remains a separate, explicit choice after Stable is healthy.
 
@@ -157,6 +157,10 @@ EvoZeus shows one compact line only when its lifecycle state changes. Ordinary a
 | `📝 EvoZeus · Lesson 已记录｜<record>` | The approved Lesson was persisted |
 | `🔐 EvoZeus · 等待确认｜<action>` | A specific write or external action needs approval |
 | `🧭 EvoZeus · 版本状态｜<current → target>` | An install, alignment, or channel decision is pending |
+| `🧭 EvoZeus · 发现更新｜<current → target>` | The selected channel has a new product version |
+| `🛠️ EvoZeus · 自动更新中｜<managed surfaces>` | The product-level update transaction is running |
+| `✅ EvoZeus · 自动更新完成｜<channel/version>` | The verified product update completed |
+| `🛡️ EvoZeus · 自动更新失败｜<retained version>` | The update failed and the previous verified version remains active |
 | `🛠️ EvoZeus · 进化中｜<Repo> · <change>` | An approved evolution change is executing |
 | `🧪 EvoZeus · UAT 就绪｜<Repo> · <Commit>` | The single UAT candidate passed its gates |
 | `🚀 EvoZeus · 已发布｜<Repo> · <Release>` | A Stable Release was published |
@@ -170,8 +174,8 @@ Host support determines how the Lesson check starts:
 
 | Host | Behavior |
 | --- | --- |
-| Claude Code plugin | The built-in `SessionStart` adapter quietly loads the Lesson-check contract for startup, resume, clear, and compact. It performs no write and shows no banner. |
-| Codex plugin | EvoZeus is selected from explicit or semantically matching requests. The current Codex plugin manifest has no session hook, so all-chat automatic detection is not claimed. |
+| Claude Code plugin | The built-in `SessionStart` adapter loads the Lesson-check contract and checks the selected product channel. It stays quiet when current and shows update markers only when state changes. |
+| Codex plugin | EvoZeus is selected from explicit or semantically matching requests. Version checks run when EvoZeus or a CoEvolve-managed Skill starts. |
 
 In both hosts, EvoZeus finishes the user's task first and asks before recording any Lesson.
 
@@ -212,10 +216,14 @@ Runtime and Session Signal are internal modules of this repository. They share t
 
 - `stable` is an immutable formal release.
 - `uat` is one mutable test candidate.
+- Both channels automatically check and update at product entry, with a default one-hour remote-check interval.
+- Automatic updates remain in the selected channel; Stable never switches itself to UAT.
 - A UAT fix replaces the current UAT candidate; it never creates a second user-visible UAT.
 - Stable and UAT use isolated code and local state.
 - Promotion publishes the exact verified UAT source as Stable.
 - Codex and Claude expose only one active `evozeus` plugin; switching channels overwrites that plugin rather than creating a second UAT plugin.
+
+Installed Stable `v0.4.0` and earlier need one explicit alignment into `v0.4.1+`; subsequent updates inside the selected channel are automatic. An active `v0.4.0` UAT with auto-refresh can bootstrap directly from the overwritten `uat/current` candidate.
 
 The approved transaction used by the official installer is:
 
@@ -240,9 +248,10 @@ See the [Harness boundary policy](docs/governance/harness-boundary-policy.md).
 
 - Raw private sessions stay local by default.
 - EvoZeus does not upload sessions automatically.
-- EvoZeus asks before persistent local writes, GitHub changes, installs, updates, or external uploads.
+- Initial install approval includes verified automatic updates inside the selected channel. Channel switching, GitHub changes, and external uploads still require separate approval.
+- Users can disable automatic updates or change the interval in `~/.evozeus/update-policy.json`.
 - Public artifacts must remove secrets, customer data, private paths, unnecessary identities, and unreleased code.
-- Running an older Skill does not silently overwrite the Stable installation.
+- Running an older Skill invokes the installed launcher for an in-channel check; failed validation keeps the previous version active.
 
 ## For maintainers
 

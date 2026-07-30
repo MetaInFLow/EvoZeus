@@ -2,6 +2,7 @@
 
 - Status: accepted
 - Date: 2026-07-26
+- Amended: 2026-07-31
 - Deciders: Anthony.F / MetaInFlow
 - Linked Design Doc: `docs/design/active/design_doc-v0.4-version-channel-system.md`
 
@@ -39,6 +40,9 @@ EvoZeus当前跨多个Repo交付。正式Release、UAT分支、Web部署、本�
 - `EvoZeus`拥有版本解析、安装、更新、Doctor和回滚。
 - 组件Repo提供版本、Commit、安装物料和固定健康检查。
 - Stable与UAT代码及Runtime state隔离。
+- Stable 与 UAT 都在运行入口自动检查当前订阅渠道。
+- 更新以 Core、活动 Plugin、Runtime、Session Signal 与 CoEvolve 的单一事务执行。
+- 自动更新不切换 Stable/UAT 订阅；失败时保留上一验证版本。
 
 ## Consequences
 
@@ -48,6 +52,7 @@ EvoZeus当前跨多个Repo交付。正式Release、UAT分支、Web部署、本�
 - UAT Bug修复不会制造第二个测试产品。
 - 跨Repo更新可以先验证后切换。
 - Doctor可以根据版本事实判断健康。
+- 用户无需为每次同渠道更新重复运行对齐命令。
 
 负面：
 
@@ -63,4 +68,4 @@ EvoZeus当前跨多个Repo交付。正式Release、UAT分支、Web部署、本�
 
 - `design_doc-v0.4-version-channel-system.md` 的完整渠道、事务、回滚和发布门禁全部通过。
 - 任何出现第二个用户可见UAT的实现触发ADR重审。
-- 任何Stable自动写入行为触发ADR重审。
+- 任何 Stable 从可变分支获取安装物、自动切到 UAT，或越过失败回滚的行为触发 ADR 重审。

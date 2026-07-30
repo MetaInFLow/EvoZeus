@@ -86,7 +86,7 @@ EvoZeus 当前优先解决两类高频问题：产品需要尽快进入真实使
 1. 解析最新不可变 Stable Release，并校验正式安装物；
 2. 说明本地写入和联网行为，在安装与注册前取得批准；
 3. 自动识别 Codex、Claude Code 或两者，并注册唯一的 `evozeus` Plugin；
-4. 同步 Runtime 与 Plugin 到同一 Stable/UAT 渠道，完成 Doctor 后提示开启新会话。
+4. 同步 Runtime 与 Plugin 到同一 Stable/UAT 渠道，启用渠道内自动更新，完成 Doctor 后提示开启新会话。
 
 官网是唯一公开安装交接入口，README 不复制第二套安装命令。Stable 健康后，用户可以单独选择是否进入唯一 UAT。
 
@@ -145,6 +145,10 @@ EvoZeus 在正常聊天中给出结果。生命周期事件使用紧凑标记：
 | `📝 EvoZeus · Lesson 已记录｜Feedback Issue #12` | 已按授权保存 Lesson | 本地记录或 Issue 创建成功后 |
 | `🔐 EvoZeus · 等待确认｜创建 Feedback Issue` | 下一动作会写入或影响外部系统 | 需要新的具体授权时 |
 | `🧭 EvoZeus · 版本状态｜Stable v0.4.0 → UAT v0.4.1` | 正在判断安装或渠道变化 | 对齐、升级、切换前 |
+| `🧭 EvoZeus · 发现更新｜Stable v0.4.0 → v0.4.1` | 当前订阅渠道有新版本 | 自动检查发现变化后 |
+| `🛠️ EvoZeus · 自动更新中｜正在对齐Plugin、Runtime、Session Signal与CoEvolve` | 产品级更新事务已开始 | 下载与验证期间 |
+| `✅ EvoZeus · 自动更新完成｜Stable v0.4.1 · 新会话加载Plugin` | 新产品已通过验证并切换 | 自动更新成功后 |
+| `🛡️ EvoZeus · 自动更新失败｜继续使用Stable v0.4.0` | 已保留上一验证版本 | 更新或验证失败后 |
 | `🛠️ EvoZeus · 进化中｜example-skill · 修复验收门禁` | 已开始实施获批修改 | 修改授权已取得后 |
 | `🧪 EvoZeus · UAT 就绪｜example-skill · abc1234` | 唯一 UAT 候选已经通过门禁 | 测试和候选更新完成后 |
 | `🚀 EvoZeus · 已发布｜example-skill · v1.2.0` | Stable Release 已真实存在 | 正式发布完成后 |
@@ -158,8 +162,8 @@ EvoZeus 在正常聊天中给出结果。生命周期事件使用紧凑标记：
 
 | 宿主 | 行为 |
 | --- | --- |
-| Claude Code plugin | 内置 `SessionStart` 适配器在启动、恢复、清空和压缩后静默加载 Lesson 检查合同；不写入、不显示启动横幅 |
-| Codex plugin | 通过用户显式请求或语义匹配选择 EvoZeus；当前 Codex plugin manifest 没有 session hook，因此不承诺所有聊天自动捕捉 |
+| Claude Code plugin | 内置 `SessionStart` 适配器加载 Lesson 检查合同并检查当前产品渠道；已是最新时保持安静，只在更新状态变化时显示标记 |
+| Codex plugin | 通过用户显式请求或语义匹配选择 EvoZeus；进入 EvoZeus 或 CoEvolve 受管 Skill 时检查版本 |
 
 两种宿主都先完成用户任务，再询问是否记录 Lesson。
 
@@ -189,10 +193,14 @@ Runtime 与 Session Signal 是主仓内部模块，随 EvoZeus 产品版本一�
 
 - `stable` 是不可变正式 Release。
 - `uat` 是唯一可覆盖的测试候选。
+- Stable 和 UAT 都会在运行入口自动检查并更新，默认最多每小时访问一次远端清单。
+- 自动更新始终留在当前渠道；Stable 不会自动切到 UAT。
 - UAT 修复覆盖当前候选，不产生第二个用户可见 UAT。
 - Stable 与 UAT 的代码和本地状态隔离。
 - 正式发布使用已经验证的同一份 UAT 源码。
 - Codex/Claude 中始终只有一个活动 `evozeus` Plugin；切换渠道会覆盖重装它，不会生成第二个 UAT Plugin。
+
+已安装的 Stable `v0.4.0` 及更旧版本需要一次显式对齐进入 `v0.4.1+`，之后的同渠道更新才会自动运行。已激活自动刷新的 `v0.4.0` UAT 可以直接从覆盖后的 `uat/current` 完成迁移。
 
 用户批准后，官网安装流程调用同一个对齐事务：
 
@@ -219,9 +227,10 @@ evozeus align --channel stable --host auto --approve-write --json
 
 - raw private session 默认保留在本地。
 - 不自动上传会话。
-- 持久化写入、GitHub 修改、安装、更新和外部上传前需要确认。
+- 首次安装授权包含当前渠道内的已验证自动更新；渠道切换、GitHub 修改和外部上传仍需单独确认。
+- 用户可在 `~/.evozeus/update-policy.json` 关闭自动更新或调整检查间隔。
 - 公开产物必须移除 secret、客户数据、私有路径、无关身份和未发布代码。
-- 运行历史 Skill 不会静默覆盖 Stable 安装。
+- 运行历史 Skill 会调用已安装启动器检查当前渠道；验证失败时继续使用上一版。
 
 ## 维护者入口
 

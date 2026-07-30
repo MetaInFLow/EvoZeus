@@ -11,6 +11,8 @@ Turn evidence from real Agent work into one clear judgment and one verifiable ne
 
 ## Entry behavior
 
+Before routing the user's task, run the installed `~/.evozeus/bin/evozeus version --json` when it exists. This read entry also checks the selected Stable or UAT subscription under the local `update-policy.json`. Relay only user-visible `EvoZeus ·` update lines; keep the current verified version when the check fails, then continue the user's task.
+
 When explicitly invoked, begin with one compact line:
 
 ```text
@@ -42,6 +44,10 @@ Use an EvoZeus tag only when EvoZeus itself performs a recognizable lifecycle ac
 | Confirmed Lesson persisted | `📝 EvoZeus · Lesson 已记录｜<local record or Issue link>` |
 | Permission required | `🔐 EvoZeus · 等待确认｜<specific write or external action>` |
 | Stable/UAT decision | `🧭 EvoZeus · 版本状态｜<channel and exact next action>` |
+| New subscribed version found | `🧭 EvoZeus · 发现更新｜<current channel/version> → <target version>` |
+| Product auto-update running | `🛠️ EvoZeus · 自动更新中｜<managed surfaces>` |
+| Product auto-update completed | `✅ EvoZeus · 自动更新完成｜<channel/version> · <reload guidance>` |
+| Product auto-update failed safely | `🛡️ EvoZeus · 自动更新失败｜<retained version and reason>` |
 | Approved evolution executing | `🛠️ EvoZeus · 进化中｜<Repo> · <approved change>` |
 | Single UAT candidate verified | `🧪 EvoZeus · UAT 就绪｜<Repo> · <candidate Commit>` |
 | Stable Release published | `🚀 EvoZeus · 已发布｜<Repo> · <Release>` |
@@ -67,7 +73,7 @@ This is a proposal only. User confirmation is required before recording. Claude 
 - Raw private sessions stay local.
 - Remove secrets, customer data, private paths, unreleased code, and unnecessary identities.
 - Read-only review can proceed without write approval.
-- Ask before local persistent writes, GitHub changes, Harness writes, installs, updates, network calls, or external uploads.
+- Initial install approval enables verified automatic updates inside the selected channel. Ask before channel switching, update-policy changes, GitHub changes, Harness writes, or external uploads.
 - Only maintainers with verified target Repo `ADMIN` permission may upgrade and push a Harness.
 
 ## Completion

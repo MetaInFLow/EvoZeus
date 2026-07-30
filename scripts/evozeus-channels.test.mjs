@@ -34,6 +34,8 @@ const COMPONENT_PATHS = {
   evozeus: [
     "scripts/evozeus-cli.mjs",
     "scripts/evozeus-channels.mjs",
+    "scripts/evozeus-hosts.mjs",
+    "scripts/evozeus-coevolve-dispatcher.py",
     "scripts/evozeus-launcher.mjs",
     "SKILL.md",
     "packages/runtime/src/evozeus_runtime/cli/main.py",
@@ -134,10 +136,16 @@ function createArchive(root, componentId, marker = "stable") {
       path,
       entry === "contracts/v1/manifest.json"
         ? `${JSON.stringify({ bundle_version: "v1.0.0", runtime_compatibility: { min_inclusive: "0.1.0", max_exclusive: "0.3.0" } })}\n`
+        : componentId === "evozeus" && entry.endsWith("evozeus-cli.mjs")
+          ? `console.log(JSON.stringify({ ok: true, marker: ${JSON.stringify(marker)} }));\n`
         : entry.endsWith(".py")
           ? `print(${JSON.stringify(`${componentId}:${marker}`)})\n`
         : `${componentId}:${marker}\n`
     );
+  }
+  if (componentId === "evozeus") {
+    writeFileSync(join(top, "packages/runtime/src/evozeus_runtime/__init__.py"), "");
+    writeFileSync(join(top, "packages/runtime/src/evozeus_runtime/cli/__init__.py"), "");
   }
   const archive = join(root, `${componentId}.tar.gz`);
   execFileSync("tar", ["-czf", archive, "-C", source, basename(top)]);
@@ -145,28 +153,28 @@ function createArchive(root, componentId, marker = "stable") {
   return { archive, sha256: `sha256:${sha256(bytes)}` };
 }
 
-function stableManifest(root) {
+function stableManifest(root, productVersion = "v0.4.0", commitDigit = "1") {
   const commits = {
-    evozeus: "1".repeat(40),
+    evozeus: commitDigit.repeat(40),
     coevolve: "3".repeat(40)
   };
   return {
     schema_version: "evozeus.product-channel.v2",
-    product_version: "v0.4.0",
+    product_version: productVersion,
     channel: "stable",
     generated_at: "2026-07-26T00:00:00Z",
     components: Object.fromEntries(
       Object.keys(COMPONENT_PATHS).map((componentId) => {
-        const archive = createArchive(root, componentId);
+        const archive = createArchive(root, componentId, `${productVersion}-${componentId}`);
         return [
           componentId,
           {
-            version: componentId === "coevolve" ? "v0.13.0" : "v0.4.0",
+            version: componentId === "coevolve" ? "v0.13.0" : productVersion,
             commit: commits[componentId],
             source: {
               kind: "release_archive",
               url: `file://${archive.archive}`,
-              ref: componentId === "evozeus" ? "v0.4.0" : "release",
+              ref: componentId === "evozeus" ? productVersion : "release",
               sha256: archive.sha256
             },
             required_paths: COMPONENT_PATHS[componentId]
@@ -529,7 +537,7 @@ describe("channel transactions", () => {
       const hookState = readJsonReport(join(home, "hooks", "state.json"));
       assert.equal(hookState.wrapper_source, "channel-managed");
       assert.equal(hookState.source_repository, "MetaInFLow/EvoZeus-CoEvolve");
-      assert.ok(readFileSync(join(home, "hooks", "evozeus_wrapper_dispatcher.py"), "utf8").includes("evozeus.channel-coevolve-dispatcher.v1"));
+      assert.ok(readFileSync(join(home, "hooks", "evozeus_wrapper_dispatcher.py"), "utf8").includes("evozeus.channel-coevolve-dispatcher.v2"));
       assert.ok(result.migration_backup);
       assert.equal(readFileSync(join(result.migration_backup, "hooks", "evozeus_wrapper_dispatcher.py"), "utf8"), "# legacy dispatcher\n");
       assert.equal(channelSnapshot(home).dispatcher.status, "ready");
@@ -569,7 +577,7 @@ describe("channel transactions", () => {
       assert.equal(readChannelState(home).channels.uat.previous.install_root, first.install_root);
       assert.equal(hookState.wrapper_source, "channel-managed");
       assert.equal(hookState.installed_version, "v0.13.0");
-      assert.ok(readFileSync(join(home, "hooks", "evozeus_wrapper_dispatcher.py"), "utf8").includes("evozeus.channel-coevolve-dispatcher.v1"));
+      assert.ok(readFileSync(join(home, "hooks", "evozeus_wrapper_dispatcher.py"), "utf8").includes("evozeus.channel-coevolve-dispatcher.v2"));
       assert.equal(channelSnapshot(home).health, "healthy");
     }));
 
@@ -618,24 +626,110 @@ describe("channel transactions", () => {
       const secondPath = writeManifest(root, "uat-two.json", uatManifest(components));
       const refreshed = spawnSync(process.execPath, [LAUNCHER, "version", "--json"], {
         encoding: "utf8",
-        env: { ...process.env, EVOZEUS_HOME: home, EVOZEUS_UAT_MANIFEST: secondPath }
+        env: {
+          ...process.env,
+          EVOZEUS_HOME: home,
+          EVOZEUS_UAT_MANIFEST: secondPath,
+          EVOZEUS_HOSTS_AVAILABLE: "none",
+          EVOZEUS_UPDATE_CHECK_INTERVAL_SECONDS: "0"
+        }
       });
       assert.equal(refreshed.status, 0, refreshed.stderr);
       const after = readChannelState(home).channels.uat.manifest_digest;
       assert.notEqual(after, before);
-      assert.equal(readJsonReport(join(home, "state", "uat", "auto-refresh-last.json")).status, "installed");
+      assert.equal(readJsonReport(join(home, "state", "uat", "auto-refresh-last.json")).status, "updated");
+      assert.match(refreshed.stderr, /EvoZeus · 发现更新/);
+      assert.match(refreshed.stderr, /EvoZeus · 自动更新中/);
+      assert.match(refreshed.stderr, /EvoZeus · 自动更新完成/);
 
       const broken = { ...uatManifest(components), components: { ...uatManifest(components).components } };
       broken.components.evozeus = { ...broken.components.evozeus, commit: "f".repeat(40) };
       const brokenPath = writeManifest(root, "uat-broken.json", broken);
       const continued = spawnSync(process.execPath, [LAUNCHER, "version", "--json"], {
         encoding: "utf8",
-        env: { ...process.env, EVOZEUS_HOME: home, EVOZEUS_UAT_MANIFEST: brokenPath }
+        env: {
+          ...process.env,
+          EVOZEUS_HOME: home,
+          EVOZEUS_UAT_MANIFEST: brokenPath,
+          EVOZEUS_HOSTS_AVAILABLE: "none",
+          EVOZEUS_UPDATE_CHECK_INTERVAL_SECONDS: "0"
+        }
       });
       assert.equal(continued.status, 0, continued.stderr);
       assert.equal(readChannelState(home).channels.uat.manifest_digest, after);
       assert.equal(readJsonReport(join(home, "state", "uat", "auto-refresh-last.json")).status, "failed_continuing_previous");
-      assert.match(continued.stderr, /continuing the previous verified UAT/);
+      assert.match(continued.stderr, /EvoZeus · 自动更新失败/);
+    }));
+
+  it("automatically updates Stable as one product and records the visible lifecycle", async () =>
+    fixture(async (root) => {
+      const home = join(root, "home");
+      const first = stableManifest(join(root, "stable-one"), "v0.4.0", "1");
+      await applyChannelUpdate({
+        evozeusHome: home,
+        channel: "stable",
+        manifestSource: writeManifest(root, "stable-one.json", first),
+        fetchImpl: fileFetch,
+        smokeRunner: noSmoke,
+        embeddedSmokeRunner: noSmoke
+      });
+
+      const second = stableManifest(join(root, "stable-two"), "v0.4.1", "4");
+      const secondPath = writeManifest(root, "stable-two.json", second);
+      const updated = spawnSync(process.execPath, [LAUNCHER, "version", "--json"], {
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          EVOZEUS_HOME: home,
+          EVOZEUS_STABLE_MANIFEST: secondPath,
+          EVOZEUS_HOSTS_AVAILABLE: "none",
+          EVOZEUS_UPDATE_CHECK_INTERVAL_SECONDS: "0"
+        }
+      });
+
+      assert.equal(updated.status, 0, updated.stderr);
+      assert.equal(readChannelState(home).channels.stable.manifest.product_version, "v0.4.1");
+      assert.equal(readJsonReport(join(home, "state", "stable", "auto-update-last.json")).status, "updated");
+      assert.match(updated.stderr, /EvoZeus · 发现更新/);
+      assert.match(updated.stderr, /EvoZeus · 自动更新中/);
+      assert.match(updated.stderr, /EvoZeus · 自动更新完成/);
+    }));
+
+  it("respects a disabled automatic update policy without changing the active product", async () =>
+    fixture(async (root) => {
+      const home = join(root, "home");
+      const first = stableManifest(join(root, "stable-policy-one"), "v0.4.0", "1");
+      await applyChannelUpdate({
+        evozeusHome: home,
+        channel: "stable",
+        manifestSource: writeManifest(root, "stable-policy-one.json", first),
+        fetchImpl: fileFetch,
+        smokeRunner: noSmoke,
+        embeddedSmokeRunner: noSmoke
+      });
+      writeFileSync(
+        join(home, "update-policy.json"),
+        `${JSON.stringify({
+          schema_version: "evozeus.update-policy.v1",
+          enabled: false,
+          check_interval_seconds: 0,
+          channels: { stable: true, uat: true }
+        })}\n`
+      );
+      const second = stableManifest(join(root, "stable-policy-two"), "v0.4.1", "4");
+      const result = spawnSync(process.execPath, [LAUNCHER, "version", "--json"], {
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          EVOZEUS_HOME: home,
+          EVOZEUS_STABLE_MANIFEST: writeManifest(root, "stable-policy-two.json", second),
+          EVOZEUS_HOSTS_AVAILABLE: "none"
+        }
+      });
+
+      assert.equal(result.status, 0, result.stderr);
+      assert.equal(readChannelState(home).channels.stable.manifest.product_version, "v0.4.0");
+      assert.doesNotMatch(result.stderr, /EvoZeus ·/);
     }));
 });
 
