@@ -12,6 +12,7 @@ import {
 import { join, resolve } from "node:path";
 import { homedir } from "node:os";
 import { spawnSync } from "node:child_process";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import {
   activateInstalledChannel,
   applyChannelUpdate,
@@ -21,7 +22,6 @@ import {
   readChannelState,
   rollbackChannel
 } from "./evozeus-channels.mjs";
-import { alignPluginHosts, detectPluginHosts, inspectPluginHosts } from "./evozeus-hosts.mjs";
 
 const DEFAULT_CHECK_INTERVAL_SECONDS = 3600;
 const LOCK_STALE_SECONDS = 900;
@@ -39,6 +39,23 @@ const home = resolve(process.env.EVOZEUS_HOME || join(homedir(), ".evozeus"));
 let active = readJson(join(home, "active-channel.json"));
 let state = readJson(join(home, "channel-state.json"));
 let channel = ["stable", "uat"].includes(active?.channel) ? active.channel : null;
+const adjacentHostModule = fileURLToPath(new URL("./evozeus-hosts.mjs", import.meta.url));
+
+async function loadPluginHostModule() {
+  const activeCore = channel ? state?.channels?.[channel]?.component_roots?.evozeus : null;
+  const candidates = [
+    adjacentHostModule,
+    join(home, "skeleton", "scripts", "evozeus-hosts.mjs"),
+    ...(activeCore ? [join(activeCore, "scripts", "evozeus-hosts.mjs")] : [])
+  ];
+  for (const path of [...new Set(candidates)]) {
+    if (!existsSync(path)) continue;
+    return import(pathToFileURL(path).href);
+  }
+  return null;
+}
+
+const pluginHosts = await loadPluginHostModule();
 
 function atomicWriteJson(target, payload) {
   const directory = resolve(target, "..");
@@ -126,12 +143,12 @@ function channelLabel(value) {
 }
 
 function availablePluginHosts() {
-  return detectPluginHosts();
+  return pluginHosts?.detectPluginHosts?.() ?? [];
 }
 
 function pluginStatus(entry, hosts) {
   if (!entry || hosts.length === 0) return { status: "not_applicable", hosts: {} };
-  return inspectPluginHosts({
+  return pluginHosts.inspectPluginHosts({
     evozeusHome: home,
     channel: entry.manifest.channel,
     productVersion: entry.manifest.product_version,
@@ -142,7 +159,7 @@ function pluginStatus(entry, hosts) {
 
 function alignEntryPlugin(entry, hosts) {
   if (!entry || hosts.length === 0) return { status: "not_applicable", hosts: {} };
-  return alignPluginHosts({
+  return pluginHosts.alignPluginHosts({
     evozeusHome: home,
     sourceRoot: entry.component_roots.evozeus,
     channel: entry.manifest.channel,
