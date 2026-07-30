@@ -453,6 +453,30 @@ export function channelSnapshot(evozeusHome) {
       components: {}
     };
   }
+  if (
+    !isObject(entry.manifest) ||
+    entry.manifest.schema_version !== "evozeus.product-channel.v2" ||
+    !isObject(entry.manifest.components) ||
+    !isObject(entry.manifest.embedded)
+  ) {
+    return {
+      active_channel: active.channel,
+      auto_refresh: active.channel === "uat" && active.auto_refresh === true,
+      status: "legacy",
+      health: "migration_required",
+      product_version: entry.manifest?.product_version ?? null,
+      manifest_digest: entry.manifest_digest ?? null,
+      manifest_source: entry.manifest_source ?? null,
+      components: {},
+      embedded: {},
+      legacy: {
+        migration_required: true,
+        manifest_schema: entry.manifest?.schema_version ?? "unknown",
+        issues: ["active channel uses the legacy product manifest and must be aligned to v2"]
+      },
+      channels: state.channels
+    };
+  }
   const components = Object.fromEntries(
     PRODUCT_COMPONENTS.map((componentId) => [
       componentId,
