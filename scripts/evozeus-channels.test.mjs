@@ -33,6 +33,8 @@ import {
 const COMPONENT_PATHS = {
   evozeus: [
     "scripts/evozeus-cli.mjs",
+    "scripts/evozeus-channels.mjs",
+    "scripts/evozeus-launcher.mjs",
     "SKILL.md",
     "packages/runtime/src/evozeus_runtime/cli/main.py",
     "packages/runtime/pyproject.toml",
@@ -275,6 +277,14 @@ describe("channel transactions", () => {
         smokeRunner: noSmoke
       });
       assert.equal(first.status, "installed");
+      assert.equal(
+        readFileSync(join(home, "skeleton/scripts/evozeus-channels.mjs"), "utf8"),
+        readFileSync(join(first.component_roots.evozeus, "scripts/evozeus-channels.mjs"), "utf8")
+      );
+      assert.equal(
+        readFileSync(join(home, "skeleton/scripts/evozeus-launcher.mjs"), "utf8"),
+        readFileSync(join(first.component_roots.evozeus, "scripts/evozeus-launcher.mjs"), "utf8")
+      );
       assert.equal(readActiveChannel(home).channel, "uat");
       assert.equal(readActiveChannel(home).auto_refresh, true);
       const firstCurrent = resolve(dirname(join(home, "worktrees", "uat", "current")), readlinkSync(join(home, "worktrees", "uat", "current")));
@@ -353,6 +363,7 @@ describe("channel transactions", () => {
         manifestSource: path,
         smokeRunner: noSmoke
       });
+      writeFileSync(join(home, "skeleton/scripts/evozeus-channels.mjs"), "legacy bootstrap\n");
       const second = await applyChannelUpdate({
         evozeusHome: home,
         channel: "uat",
@@ -361,6 +372,10 @@ describe("channel transactions", () => {
       });
       assert.equal(second.status, "already_current");
       assert.equal(second.install_root, first.install_root);
+      assert.equal(
+        readFileSync(join(home, "skeleton/scripts/evozeus-channels.mjs"), "utf8"),
+        readFileSync(join(first.component_roots.evozeus, "scripts/evozeus-channels.mjs"), "utf8")
+      );
     }));
 
   it("revalidates and reuses the prior UAT root when uat/current points back to it", async () =>

@@ -40,6 +40,7 @@ const EMBEDDED_FALLBACK = {
   runtime: "packages/runtime",
   session_signal: "packs/session-signal"
 };
+const CHANNEL_BOOTSTRAP_FILES = ["evozeus-channels.mjs", "evozeus-launcher.mjs"];
 const CHANNEL_DISPATCHER = fileURLToPath(new URL("./evozeus-coevolve-dispatcher.py", import.meta.url));
 
 export class ChannelError extends Error {
@@ -784,6 +785,20 @@ function replaceSymlink(current, target) {
   renameSync(temporary, current);
 }
 
+function refreshChannelBootstrap(evozeusHome, coreRoot) {
+  const targetDirectory = privateDirectory(join(resolve(evozeusHome), "skeleton", "scripts"));
+  for (const file of CHANNEL_BOOTSTRAP_FILES) {
+    const source = join(coreRoot, "scripts", file);
+    if (!existsSync(source)) {
+      throw new ChannelError("BOOTSTRAP_MISSING", `verified EvoZeus component is missing bootstrap file: scripts/${file}`);
+    }
+    const target = join(targetDirectory, file);
+    const temporary = join(targetDirectory, `.${file}.${randomUUID()}.tmp`);
+    cpSync(source, temporary);
+    renameSync(temporary, target);
+  }
+}
+
 function currentLinkFor(evozeusHome, channel) {
   return channel === "stable"
     ? join(resolve(evozeusHome), "releases", "stable", "current")
@@ -887,6 +902,7 @@ export async function applyChannelUpdate({
   const activeBefore = readActiveChannel(home);
   const existing = stateBefore.channels[channel];
   if (!plan.update_available && existing?.install_root && existsSync(existing.install_root)) {
+    refreshChannelBootstrap(home, existing.component_roots.evozeus);
     const active = activateInstalledChannel(home, channel, autoRefresh);
     return { status: "already_current", ...plan, install_root: existing.install_root, active };
   }
@@ -984,6 +1000,7 @@ export async function applyChannelUpdate({
       nextEntry.migration_backup = backupPath;
       atomicWriteJson(join(home, "channel-state.json"), nextState);
     }
+    refreshChannelBootstrap(home, coreRoot);
     return {
       status: reuseExistingRoot ? "reused_verified" : "installed",
       ...plan,
