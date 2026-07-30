@@ -1,0 +1,66 @@
+{
+  "id": "evozeus.project_insights_report.v1",
+  "title": "EvoZeus Project Insights Report Skill",
+  "purpose": "Turn local Codex session factor results into reusable project-level working-method insights.",
+  "minimum_report_fields": [
+    "project",
+    "project_key",
+    "project_label",
+    "source_sessions",
+    "project_evidence",
+    "session_count",
+    "direct_session_count",
+    "message_scope_counts",
+    "exact_phrases",
+    "user_repeated_phrases",
+    "session_local_repeats",
+    "single_session_repeated_phrases",
+    "quoted_material_phrases",
+    "protocol_templates",
+    "delegated_task_phrases",
+    "key_sentence_labels",
+    "repeated_requests",
+    "completion_verdicts",
+    "representative_sessions"
+  ],
+  "template_slots": [
+    {
+      "slot": "cross_session_phrases",
+      "field": "user_repeated_phrases",
+      "meaning": "User phrases repeated across at least two sessions; primary source for reusable methodology."
+    },
+    {
+      "slot": "session_local_repeats",
+      "field": "single_session_repeated_phrases",
+      "meaning": "Repeated user phrases inside one session; primary source for execution-friction diagnosis."
+    },
+    {
+      "slot": "quoted_material",
+      "field": "quoted_material_phrases",
+      "meaning": "Quoted or pasted material excluded from user-preference inference."
+    },
+    {
+      "slot": "delegated_tasks",
+      "field": "delegated_task_phrases",
+      "meaning": "Task prompts to subagents shown separately from the user's own repeated preferences."
+    },
+    {
+      "slot": "factor_key_sentences",
+      "field": "key_sentence_labels",
+      "meaning": "Official factor result labels used as secondary explanation, not as primary evidence."
+    }
+  ],
+  "factor_datasets": [
+    "key_sentence_trends",
+    "repeated_request_events",
+    "task_completion_verdict"
+  ],
+  "evidence_policy": {
+    "source": "local_ledger_redacted_preview",
+    "cross_session_min_sessions": 2,
+    "max_evidence_per_phrase": 50,
+    "occurrence_speaker": "user",
+    "context_ref_required": true,
+    "raw_upload": false
+  }
+}

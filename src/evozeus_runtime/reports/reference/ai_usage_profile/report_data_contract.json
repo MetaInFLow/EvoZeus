@@ -1,0 +1,39 @@
+{
+  "id": "evozeus.ai_usage_profile_report.v1",
+  "required_top_level_fields": [
+    "schema_version",
+    "meta",
+    "profile",
+    "session_review",
+    "usage_patterns",
+    "factor_summary",
+    "evidence_policy"
+  ],
+  "required_profile_fields": [
+    "code",
+    "display_name",
+    "archetype",
+    "confidence",
+    "evidence_count",
+    "known_dimensions",
+    "one_sentence"
+  ],
+  "required_session_review_fields": [
+    "scanned_sessions_total",
+    "analyzed_sessions_total",
+    "high_quality_sessions",
+    "low_quality_sessions",
+    "factor_results",
+    "representative_sessions"
+  ],
+  "evidence_policy": {
+    "direct_user_only": true,
+    "excluded_scopes": [
+      "delegated_task",
+      "automation",
+      "subagent_event",
+      "context_wrapper"
+    ],
+    "raw_upload": false
+  }
+}
