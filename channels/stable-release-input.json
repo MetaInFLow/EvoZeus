@@ -17,13 +17,13 @@
   },
   "components": {
     "coevolve": {
-      "version": "v0.13.0",
-      "commit": "c414a8dc7a3cdc4c1ca3b2766d82a230420381e1",
+      "version": "v0.14.0",
+      "commit": "c3065c2745a7e3771cb790919d41777f3a9cb8ad",
       "source": {
         "kind": "release_archive",
-        "url": "https://github.com/MetaInFLow/EvoZeus-CoEvolve/releases/download/v0.13.0/evozeus-coevolve-v0.13.0.tar.gz",
-        "ref": "v0.13.0",
-        "sha256": "sha256:f687d2eeead62367ad6a673cfe55106dceb1e1d930c60357e21721d44f2d455d"
+        "url": "https://github.com/MetaInFLow/EvoZeus-CoEvolve/releases/download/v0.14.0/evozeus-coevolve-v0.14.0.tar.gz",
+        "ref": "v0.14.0",
+        "sha256": "sha256:5d77c84e715ede627d9b123744d0e2f27a7845088572c769c3cd6126a26c00fa"
       },
       "required_paths": [
         "SKILL.md",

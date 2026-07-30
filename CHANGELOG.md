@@ -12,6 +12,7 @@
 - Required verified target GitHub Repo `ADMIN` permission for Harness mutation, upgrade, and upload.
 - Added a read-only Claude Code `SessionStart` adapter that quietly loads the Lesson-check contract; Codex remains explicit or semantic Skill selection until its plugin manifest supports a session hook.
 - Replaced the component-heavy README with a user outcome, example, privacy, Stable/UAT, and maintainer entry.
+- Pinned the optional CoEvolve extension to the verified `v0.14.0` Release, including the Repo-root Harness and GitHub `ADMIN` mutation boundary.
 
 ### Verification
 

@@ -6,7 +6,7 @@ EvoZeus v0.4.0 introduces the plugin-first product architecture.
 
 - One EvoZeus plugin with five default user-task Skills.
 - Built-in Runtime and Session Signal modules ship in the EvoZeus product Release.
-- CoEvolve remains the optional independent evolution extension.
+- CoEvolve `v0.14.0` remains the optional independent evolution extension, with one root Harness per independent Repo and verified `ADMIN` authority for mutations.
 - Product channel manifest v2 installs only EvoZeus and CoEvolve as independent components.
 - Stable and the single UAT retain isolated state, transactional updates, overwrite semantics, and rollback.
 - A CI gate rejects nested or legacy Harness directories; only an independent Git Repo root can own a Harness.
