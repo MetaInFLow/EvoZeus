@@ -7,6 +7,8 @@
   <strong>Turn real Agent work into verified improvements.</strong>
 </p>
 
+> Origin: EvoZeus came from a retrospective between [Anthony](https://github.com/HaodiFan) and [Neil](https://github.com/orgs/MetaInFLow/people/Neillan96) after a hackathon that did not go well.
+
 <p align="center">
   <a href="docs/README.zh-CN.md">简体中文</a> ·
   <a href="#see-evozeus-in-action">Demos</a> ·
