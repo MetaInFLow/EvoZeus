@@ -18,7 +18,8 @@ import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
-export const PRODUCT_COMPONENTS = ["evozeus", "infra", "coevolve", "session_signal"];
+export const PRODUCT_COMPONENTS = ["evozeus", "coevolve"];
+export const EMBEDDED_COMPONENTS = ["runtime", "session_signal"];
 export const CHANNELS = ["stable", "uat"];
 export const DEFAULT_MANIFEST_SOURCES = {
   stable:
@@ -28,16 +29,16 @@ export const DEFAULT_MANIFEST_SOURCES = {
 
 const COMPONENT_ENV = {
   evozeus: "EVOZEUS_CORE_ROOT",
-  infra: "EVOZEUS_INFRA_ROOT",
-  coevolve: "EVOZEUS_WRAPPER_ROOT",
-  session_signal: "EVOZEUS_OFFICIAL_REPO_ROOT"
+  coevolve: "EVOZEUS_WRAPPER_ROOT"
 };
 
 const COMPONENT_SIBLING = {
   evozeus: "EvoZeus",
-  infra: "EvoZeus-infra",
-  coevolve: "EvoZeus-CoEvolve",
-  session_signal: "EvoZeus-session-signal-skill"
+  coevolve: "EvoZeus-CoEvolve"
+};
+const EMBEDDED_FALLBACK = {
+  runtime: "packages/runtime",
+  session_signal: "packs/session-signal"
 };
 const CHANNEL_DISPATCHER = fileURLToPath(new URL("./evozeus-coevolve-dispatcher.py", import.meta.url));
 
@@ -128,12 +129,12 @@ export function validateProductManifest(manifest, expectedChannel = null) {
   }
   exactKeys(
     manifest,
-    ["schema_version", "product_version", "channel", "generated_at", "components", "compatibility", "web"],
+    ["schema_version", "product_version", "channel", "generated_at", "components", "embedded", "compatibility"],
     "manifest",
     issues
   );
-  if (manifest.schema_version !== "evozeus.product-channel.v1") {
-    issues.push("schema_version must be evozeus.product-channel.v1");
+  if (manifest.schema_version !== "evozeus.product-channel.v2") {
+    issues.push("schema_version must be evozeus.product-channel.v2");
   }
   if (!/^v\d+\.\d+\.\d+$/.test(String(manifest.product_version ?? ""))) {
     issues.push("product_version must use vMAJOR.MINOR.PATCH");
@@ -195,6 +196,33 @@ export function validateProductManifest(manifest, expectedChannel = null) {
       issues.push(`${prefix}.required_paths must contain safe relative paths`);
     }
   }
+  if (!isObject(manifest.embedded)) {
+    issues.push("embedded must be an object");
+  } else {
+    exactKeys(manifest.embedded, EMBEDDED_COMPONENTS, "embedded", issues);
+    for (const componentId of EMBEDDED_COMPONENTS) {
+      const component = manifest.embedded[componentId];
+      const prefix = `embedded.${componentId}`;
+      if (!isObject(component)) {
+        issues.push(`${prefix} is required`);
+        continue;
+      }
+      exactKeys(component, ["version", "path", "required_paths"], prefix, issues);
+      if (!/^v\d+\.\d+\.\d+$/.test(String(component.version ?? ""))) {
+        issues.push(`${prefix}.version must use vMAJOR.MINOR.PATCH`);
+      }
+      if (!validRelativePath(component.path)) {
+        issues.push(`${prefix}.path must be a safe relative path`);
+      }
+      if (
+        !Array.isArray(component.required_paths) ||
+        component.required_paths.length === 0 ||
+        component.required_paths.some((entry) => !validRelativePath(entry))
+      ) {
+        issues.push(`${prefix}.required_paths must contain safe relative paths`);
+      }
+    }
+  }
   if (!isObject(manifest.compatibility)) {
     issues.push("compatibility is required");
   } else {
@@ -206,7 +234,7 @@ export function validateProductManifest(manifest, expectedChannel = null) {
     );
     const minimum = semverTuple(manifest.compatibility.runtime_min_inclusive);
     const maximum = semverTuple(manifest.compatibility.runtime_max_exclusive);
-    const runtime = semverTuple(manifest.components.infra?.version);
+    const runtime = semverTuple(manifest.embedded?.runtime?.version);
     if (!minimum) issues.push("compatibility.runtime_min_inclusive must use SemVer");
     if (!maximum) issues.push("compatibility.runtime_max_exclusive must use SemVer");
     if (!/^v\d+\.\d+\.\d+$/.test(String(manifest.compatibility.coevolve_contract ?? ""))) {
@@ -216,23 +244,7 @@ export function validateProductManifest(manifest, expectedChannel = null) {
       issues.push("compatibility runtime range must be non-empty");
     }
     if (runtime && minimum && maximum && (compareSemver(runtime, minimum) < 0 || compareSemver(runtime, maximum) >= 0)) {
-      issues.push("components.infra.version is outside the product compatibility range");
-    }
-  }
-  if (manifest.web !== undefined) {
-    if (!isObject(manifest.web)) {
-      issues.push("web must be an object");
-    } else {
-      exactKeys(manifest.web, ["deployment_url", "commit", "deployed_at"], "web", issues);
-      if (!validUrl(manifest.web.deployment_url)) {
-        issues.push("web.deployment_url must be an https or file URL");
-      }
-      if (!/^[a-f0-9]{40}$/.test(String(manifest.web.commit ?? ""))) {
-        issues.push("web.commit must be a full lowercase Git SHA");
-      }
-      if (manifest.web.deployed_at && Number.isNaN(Date.parse(manifest.web.deployed_at))) {
-        issues.push("web.deployed_at must be an RFC3339 timestamp");
-      }
+      issues.push("embedded.runtime.version is outside the product compatibility range");
     }
   }
   return issues;
@@ -333,6 +345,31 @@ function inspectInstalledComponent(componentId, root, expected) {
   };
 }
 
+function inspectEmbeddedComponent(componentId, coreRoot, expected) {
+  const root = coreRoot && expected?.path ? join(coreRoot, expected.path) : null;
+  const missing = [];
+  if (!root || !existsSync(root)) {
+    return {
+      status: "missing",
+      health: "missing",
+      root,
+      expected_version: expected?.version ?? null,
+      missing: expected?.required_paths ?? []
+    };
+  }
+  for (const entry of expected?.required_paths ?? []) {
+    if (!existsSync(join(root, entry))) missing.push(entry);
+  }
+  return {
+    status: missing.length > 0 ? "invalid" : "ready",
+    health: missing.length > 0 ? "invalid" : "healthy",
+    root,
+    expected_version: expected?.version ?? null,
+    source: "embedded_in_evozeus",
+    missing
+  };
+}
+
 function legacySnapshot(evozeusHome) {
   const home = resolve(evozeusHome);
   const install = readJson(join(home, "install-manifest.json"));
@@ -422,8 +459,16 @@ export function channelSnapshot(evozeusHome) {
       inspectInstalledComponent(componentId, entry.component_roots?.[componentId], entry.manifest.components[componentId])
     ])
   );
+  const coreRoot = entry.component_roots?.evozeus;
+  const embedded = Object.fromEntries(
+    EMBEDDED_COMPONENTS.map((componentId) => [
+      componentId,
+      inspectEmbeddedComponent(componentId, coreRoot, entry.manifest.embedded[componentId])
+    ])
+  );
   const dispatcher = dispatcherSnapshot(home);
-  const invalid = Object.values(components).some((component) => component.status !== "ready");
+  const invalid = [...Object.values(components), ...Object.values(embedded)]
+    .some((component) => component.status !== "ready");
   const expectedDispatcherVersion = entry.manifest.components.coevolve.version;
   const dispatcherMissing = dispatcher.status === "not_installed";
   const legacyDispatcher = dispatcher.status === "legacy";
@@ -447,6 +492,7 @@ export function channelSnapshot(evozeusHome) {
     manifest_digest: entry.manifest_digest,
     manifest_source: entry.manifest_source,
     components,
+    embedded,
     dispatcher,
     channels: state.channels
   };
@@ -455,7 +501,8 @@ export function channelSnapshot(evozeusHome) {
 export function resolveInstalledComponentRoot({ evozeusHome, componentId, sourceRoot, env = process.env }) {
   const active = readActiveChannel(evozeusHome);
   const state = readChannelState(evozeusHome);
-  const installed = active ? state.channels[active.channel]?.component_roots?.[componentId] : null;
+  const entry = active ? state.channels[active.channel] : null;
+  const installed = entry?.component_roots?.[componentId] ?? entry?.embedded_roots?.[componentId] ?? null;
   if (installed && existsSync(installed)) {
     return { root: resolve(installed), source: `channel:${active.channel}` };
   }
@@ -464,7 +511,12 @@ export function resolveInstalledComponentRoot({ evozeusHome, componentId, source
     return { root: resolve(env[envName]), source: `env:${envName}` };
   }
   const sibling = COMPONENT_SIBLING[componentId];
-  const fallback = sibling ? resolve(dirname(sourceRoot), sibling) : null;
+  const embedded = EMBEDDED_FALLBACK[componentId];
+  const fallback = embedded
+    ? resolve(sourceRoot, embedded)
+    : sibling
+      ? resolve(dirname(sourceRoot), sibling)
+      : null;
   return { root: fallback, source: "development_fallback" };
 }
 
@@ -642,7 +694,7 @@ function validateInstalledCompatibility(manifest, componentRoots) {
       actual: contract.bundle_version ?? null
     });
   }
-  const runtime = semverTuple(manifest.components.infra.version);
+  const runtime = semverTuple(manifest.embedded.runtime.version);
   const contractMinimum = semverTuple(contract.runtime_compatibility?.min_inclusive);
   const contractMaximum = semverTuple(contract.runtime_compatibility?.max_exclusive);
   if (
@@ -659,19 +711,25 @@ function validateInstalledCompatibility(manifest, componentRoots) {
 export function fixedComponentSmoke(componentId, destination) {
   if (componentId === "evozeus") {
     execChecked("node", [join(destination, "scripts", "evozeus-cli.mjs"), "features", "--json"]);
-  } else if (componentId === "infra") {
-    execChecked("python3", ["-m", "evozeus_runtime.cli.main", "status"], {
-      cwd: destination,
-      env: { ...process.env, PYTHONPATH: join(destination, "src") }
-    });
   } else if (componentId === "coevolve") {
     execChecked("python3", [join(destination, "scripts", "evozeus_wrapper.py"), "--help"], {
       cwd: destination
     });
+  }
+  return { component: componentId, status: "passed" };
+}
+
+export function fixedEmbeddedSmoke(componentId, destination) {
+  if (componentId === "runtime") {
+    execChecked("python3", ["-m", "evozeus_runtime.cli.main", "status"], {
+      cwd: destination,
+      env: { ...process.env, PYTHONDONTWRITEBYTECODE: "1", PYTHONPATH: join(destination, "src") }
+    });
   } else if (componentId === "session_signal") {
     const specs = componentSpecPaths(destination);
     execChecked("python3", [join(destination, "scripts", "validate_official_factor_spec.py"), ...specs], {
-      cwd: destination
+      cwd: destination,
+      env: { ...process.env, PYTHONDONTWRITEBYTECODE: "1", PYTHONPATH: join(destination, "src") }
     });
   }
   return { component: componentId, status: "passed" };
@@ -795,7 +853,8 @@ export async function applyChannelUpdate({
   manifestSource,
   autoRefresh = false,
   fetchImpl = globalThis.fetch,
-  smokeRunner = fixedComponentSmoke
+  smokeRunner = fixedComponentSmoke,
+  embeddedSmokeRunner = fixedEmbeddedSmoke
 }) {
   const home = resolve(evozeusHome);
   const plan = await prepareChannelUpdate({ evozeusHome: home, channel, manifestSource, fetchImpl });
@@ -828,6 +887,7 @@ export async function applyChannelUpdate({
   if (!reuseExistingRoot) privateDirectory(installRoot);
   const installedGit = [];
   const componentRoots = {};
+  const embeddedRoots = {};
   let backupPath = null;
   let linkSwitched = false;
   let stateWritten = false;
@@ -857,6 +917,14 @@ export async function applyChannelUpdate({
       smokeRunner(componentId, destination);
       componentRoots[componentId] = realpathSync(destination);
     }
+    const coreRoot = componentRoots.evozeus;
+    for (const componentId of EMBEDDED_COMPONENTS) {
+      const embedded = plan.manifest.embedded[componentId];
+      const destination = join(coreRoot, embedded.path);
+      validateRequiredPaths(componentId, embedded, destination);
+      embeddedSmokeRunner(componentId, destination);
+      embeddedRoots[componentId] = realpathSync(destination);
+    }
     validateInstalledCompatibility(plan.manifest, componentRoots);
 
     replaceSymlink(currentLink, installRoot);
@@ -868,6 +936,7 @@ export async function applyChannelUpdate({
       manifest_digest: plan.manifest_digest,
       install_root: installRoot,
       component_roots: componentRoots,
+      embedded_roots: embeddedRoots,
       installed_at: now,
       previous: existing ? { ...existing, previous: null } : null,
       migration_backup: backupPath ? String(backupPath) : null
@@ -898,6 +967,7 @@ export async function applyChannelUpdate({
       install_root: installRoot,
       recovered_interrupted_install: recoveredInterruptedInstall,
       component_roots: componentRoots,
+      embedded_roots: embeddedRoots,
       migration_backup: backupPath ? String(backupPath) : null,
       active,
       rollback: existing?.install_root

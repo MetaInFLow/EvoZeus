@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://evozeus.org/contracts/coevolve/v1/attachment-v1.schema.json",
+  "title": "EvoZeus-CoEvolve Attachment Record v1 test fixture",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "mode"],
+  "properties": {
+    "schema_version": {"const": "evozeus.coevolve.attachment.v1"},
+    "mode": {"const": "external-sidecar"}
+  }
+}

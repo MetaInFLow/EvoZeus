@@ -1,0 +1,312 @@
+from pathlib import Path
+
+from evozeus_runtime.factors.protocol import FactorResult, FactorStage
+from evozeus_runtime.ledger.repository import (
+    SessionAnalysisStatus,
+    SessionEventTag,
+    SessionEventRecord,
+)
+from evozeus_runtime.reports.ledger_browser import render_ledger_browser_html
+
+
+def test_ledger_browser_html_renders_provider_project_session_and_chat():
+    status = SessionAnalysisStatus(
+        session_id="session-1",
+        provider="codex",
+        project_key="/Users/anthonyf/Documents/EvoZeus-web",
+        project_label="EvoZeus-web",
+        source_ref="/tmp/session-1.jsonl",
+        event_count=1,
+        discovered_at="2026-06-19T00:00:00+00:00",
+        last_analyzed_at="",
+        analyzed_factor_count=0,
+        pending_factor_count=0,
+        session_title="分析 scanner runner",
+        session_cwd="/Users/anthonyf/Documents/EvoZeus-web",
+        session_updated_at="2026-06-19T00:00:00+00:00",
+    )
+    event = SessionEventRecord(
+        session_id="session-1",
+        event_id="msg-1",
+        event_index=1,
+        role="user",
+        content="看看 provider、project、session、chat",
+        tool_name="",
+        tool_result_preview="",
+        source_ref="/tmp/session-1.jsonl",
+        source_line=12,
+        tags=[
+            SessionEventTag(
+                factor_id="official.user-input-sentiment",
+                tag_type="user_sentiment",
+                tag_value="dissatisfaction",
+                reason="classified",
+                result_run_id="frun-1",
+                analysis_run_id="arun-1",
+                last_run_at="2026-06-19T00:00:00+00:00",
+            )
+        ],
+    )
+
+    html = render_ledger_browser_html(
+        statuses=[status],
+        events=[event],
+        factor_results=[
+            FactorResult(
+                run_id="frun-1",
+                factor_id="official.user-input-sentiment",
+                factor_version="v0.1.0",
+                framework_id="evozeus.official",
+                stage=FactorStage.SIGNAL_EXTRACTION,
+                target_type="session",
+                target_id="session-1",
+                session_id="session-1",
+                status="matched",
+                tags=[{"type": "user_sentiment", "value": "dissatisfaction"}],
+                scores={"average_sentiment_score": -0.8},
+                statistics={"dominant_sentiment_kind": "dissatisfaction"},
+                datasets=[
+                    {
+                        "id": "sentiment_distribution",
+                        "semantic_type": "frequency_distribution",
+                        "shape": "record_set",
+                        "primary_key": "sentiment_kind",
+                        "records": [{"sentiment_kind": "dissatisfaction", "count": 1}],
+                        "schema": {"sentiment_kind": "string", "count": "number"},
+                    }
+                ],
+                presentations=[
+                    {
+                        "id": "sentiment_chart",
+                        "title": "用户情绪分布",
+                        "component_ref": "ui.native-static.bar-chart.v1",
+                        "data_ref": "sentiment_distribution",
+                        "bindings": {"x": "sentiment_kind", "y": "count"},
+                        "routes": ["canvas.global.insights", "session.detail.factor_drawer"],
+                        "fallback": ["ui.native-static.table.v1"],
+                        "priority": 75,
+                    }
+                ],
+                evidence_refs=[{"ref_id": "msg-1", "kind": "user_turn"}],
+                confidence=0.8,
+            )
+        ],
+        ledger_path=Path("/tmp/evozeus/results.sqlite3"),
+    )
+
+    assert "Codex SKILL Candidate Finder" in html
+    assert "找到需要被总结成 SKILL 的 sessions" in html
+    assert "SKILL.md 方法层" in html
+    assert 'data-tab-target="skill-candidates"' in html
+    assert 'data-tab-target="sessions"' in html
+    assert 'data-tab-target="global-canvas"' in html
+    assert 'data-tab-target="run-health"' in html
+    assert "SKILL 候选识别结果" in html
+    assert "SKILL Candidates" in html
+    assert "problem_skill_candidate" in html
+    assert "建议沉淀成" in html
+    assert "quality-row" in html
+    assert "Global Canvas" in html
+    assert "Run Health" in html
+    assert "ui.native-static.bar-chart.v1" in html
+    assert "用户情绪分布" in html
+    assert "dissatisfaction" in html
+    assert "sentiment:negative" in html
+    assert "不满意 chat" in html
+    assert 'data-filter-value="dissatisfaction"' in html
+    assert 'data-filter-value="sentiment:negative"' in html
+    assert "function normalizedTerms()" in html
+    assert 'project.querySelector(".session:not(.hidden)")' in html
+    assert 'data-provider="codex"' in html
+    assert "EvoZeus-web" in html
+    assert "session-1" in html
+    assert "msg-1" in html
+    assert "看看 provider、project、session、chat" in html
+    assert "/tmp/evozeus/results.sqlite3" in html
+
+
+def test_ledger_browser_html_renders_joined_factor_input_evidence():
+    status = SessionAnalysisStatus(
+        session_id="session-evidence",
+        provider="codex",
+        project_key="EvoZeus-session-signal-skill",
+        project_label="Session Signal Skill",
+        source_ref="/tmp/session-evidence.jsonl",
+        event_count=3,
+        discovered_at="2026-06-19T00:00:00+00:00",
+        last_analyzed_at="",
+        analyzed_factor_count=2,
+        pending_factor_count=0,
+        session_title="检查结果页面",
+        session_cwd="/Users/anthonyf/Documents/EvoZeus-cluster",
+        session_updated_at="2026-06-19T00:00:00+00:00",
+    )
+    events = [
+        SessionEventRecord(
+            session_id="session-evidence",
+            event_id="msg-first",
+            event_index=1,
+            role="user",
+            content="把当前 SKILL 跑一下，给我结果页面。",
+            tool_name="",
+            tool_result_preview="",
+            source_ref="/tmp/session-evidence.jsonl",
+            source_line=10,
+            tags=[],
+        ),
+        SessionEventRecord(
+            session_id="session-evidence",
+            event_id="msg-repeat",
+            event_index=2,
+            role="user",
+            content="我刚说了，跑一下这个 SKILL，看下结果。",
+            tool_name="",
+            tool_result_preview="",
+            source_ref="/tmp/session-evidence.jsonl",
+            source_line=18,
+            tags=[],
+        ),
+        SessionEventRecord(
+            session_id="session-evidence",
+            event_id="msg-correction",
+            event_index=3,
+            role="user",
+            content="不是这个，我看不到具体是哪句话是负面情绪。",
+            tool_name="",
+            tool_result_preview="",
+            source_ref="/tmp/session-evidence.jsonl",
+            source_line=27,
+            tags=[],
+        ),
+    ]
+    results = [
+        FactorResult(
+            run_id="frun-repeat",
+            factor_id="official.repeated-request",
+            factor_version="v0.1.0",
+            framework_id="evozeus.official",
+            stage=FactorStage.SIGNAL_EXTRACTION,
+            target_type="session",
+            target_id="session-evidence",
+            session_id="session-evidence",
+            status="matched",
+            tags=[{"type": "loop", "value": "repeated-request"}],
+            scores={"repeated_request_count": 1.0},
+            datasets=[
+                {
+                    "id": "repeated_request_events",
+                    "semantic_type": "evidence_record_set",
+                    "shape": "record_set",
+                    "primary_key": "event_id",
+                    "records": [
+                        {
+                            "chain_id": "repeat_chain_1",
+                            "first_event_id": "msg-first",
+                            "repeat_event_id": "msg-repeat",
+                            "event_id": "msg-repeat",
+                            "role": "user",
+                            "first_input_text": "把当前 SKILL 跑一下，给我结果页面。",
+                            "repeat_input_text": "我刚说了，跑一下这个 SKILL，看下结果。",
+                            "similarity_score": 0.86,
+                            "request_signature": "跑 skill 结果 页面",
+                            "signal": "user repeated a previously unresolved request",
+                        }
+                    ],
+                }
+            ],
+            evidence_refs=[{"ref_id": "msg-repeat", "kind": "user_turn"}],
+            confidence=0.72,
+        ),
+        FactorResult(
+            run_id="frun-sentiment",
+            factor_id="official.user-input-sentiment",
+            factor_version="v0.1.0",
+            framework_id="evozeus.official",
+            stage=FactorStage.SIGNAL_EXTRACTION,
+            target_type="session",
+            target_id="session-evidence",
+            session_id="session-evidence",
+            status="matched",
+            tags=[{"type": "user_sentiment", "value": "correction_request"}],
+            scores={"average_sentiment_score": -0.65},
+            statistics={"dominant_sentiment_kind": "correction_request"},
+            datasets=[
+                {
+                    "id": "user_input_sentiment",
+                    "semantic_type": "user_sentiment",
+                    "shape": "record_set",
+                    "primary_key": "event_id",
+                    "records": [
+                        {
+                            "event_id": "msg-correction",
+                            "sentiment_kind": "correction_request",
+                            "input_text": "不是这个，我看不到具体是哪句话是负面情绪。",
+                            "matched_excerpt": "不是这个，我看不到具体是哪句话是负面情绪。",
+                            "sentiment_score": -0.65,
+                            "dissatisfaction_score": 0.65,
+                            "confidence": 0.88,
+                            "nearest_example": "explicit correction marker",
+                        }
+                    ],
+                }
+            ],
+            evidence_refs=[{"ref_id": "msg-correction", "kind": "user_turn"}],
+            confidence=0.76,
+        ),
+    ]
+
+    html = render_ledger_browser_html(
+        statuses=[status],
+        events=events,
+        factor_results=results,
+        ledger_path=Path("/tmp/evozeus/results.sqlite3"),
+    )
+
+    assert "Factor 命中 input" in html
+    assert "重复请求" in html
+    assert "首次请求" in html
+    assert "重复请求" in html
+    assert "msg-first" in html
+    assert "msg-repeat" in html
+    assert "把当前 SKILL 跑一下，给我结果页面。" in html
+    assert "我刚说了，跑一下这个 SKILL，看下结果。" in html
+    assert "用户输入情绪" in html
+    assert "user_sentiment=correction_request" in html
+    assert "explicit correction marker" in html
+    assert "不是这个，我看不到具体是哪句话是负面情绪。" in html
+
+
+def test_ledger_browser_html_bounds_rendered_events_for_large_sessions():
+    status = SessionAnalysisStatus(
+        session_id="session-large",
+        provider="codex",
+        project_key="p1",
+        project_label="P1",
+        source_ref="/tmp/session-large.jsonl",
+        event_count=120,
+        discovered_at="2026-06-19T00:00:00+00:00",
+        last_analyzed_at="",
+        analyzed_factor_count=0,
+        pending_factor_count=0,
+    )
+    events = [
+        SessionEventRecord(
+            session_id="session-large",
+            event_id=f"msg-{index}",
+            event_index=index,
+            role="tool",
+            content=f"tool event {index}",
+            tool_name="exec_command",
+            tool_result_preview="",
+            source_ref="/tmp/session-large.jsonl",
+            source_line=index,
+            tags=[],
+        )
+        for index in range(1, 121)
+    ]
+
+    html = render_ledger_browser_html(statuses=[status], events=events, ledger_path=Path("/tmp/evozeus/results.sqlite3"))
+
+    assert "已省略" in html
+    assert "完整索引保留在 SQLite ledger" in html
+    assert "tool event 60" not in html

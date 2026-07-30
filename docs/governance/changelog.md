@@ -2,6 +2,11 @@
 
 ## 2026-07-30
 
+- Accepted ADR-0005: EvoZeus adopts a plugin-first monorepo, embeds Runtime and Session Signal, and keeps CoEvolve as the independent evolution extension.
+- Defined the hard Harness boundary: only an independent Git repository root may own an active Harness.
+- Added a CI-enforced Harness boundary check.
+- Required verified GitHub Repo administrator authority for Harness writes while keeping diagnosis and planning read-only.
+- Added a Claude Code SessionStart adapter for silent Lesson-check context and documented the current Codex session-hook limitation.
 - Accepted ADR-0004 to retire EvoZeus-MegaRepo as an active coordination and version source.
 - Moved canonical repository topology, cross-component ownership, and retirement governance into EvoZeus.
 - Removed active version-channel documentation dependencies on Mega Repo.

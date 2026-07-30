@@ -31,10 +31,28 @@ import {
 } from "./evozeus-channels.mjs";
 
 const COMPONENT_PATHS = {
-  evozeus: ["scripts/evozeus-cli.mjs", "SKILL.md"],
-  infra: ["src/evozeus_runtime/cli/main.py", "pyproject.toml"],
-  coevolve: ["scripts/evozeus_wrapper.py", "SKILL.md", "contracts/v1/manifest.json"],
-  session_signal: ["scripts/validate_official_factor_spec.py", "SKILL.md"]
+  evozeus: [
+    "scripts/evozeus-cli.mjs",
+    "SKILL.md",
+    "packages/runtime/src/evozeus_runtime/cli/main.py",
+    "packages/runtime/pyproject.toml",
+    "packs/session-signal/scripts/validate_official_factor_spec.py",
+    "packs/session-signal/SKILL.md",
+    "packs/session-signal/factors/task-completion/spec.json"
+  ],
+  coevolve: ["scripts/evozeus_wrapper.py", "SKILL.md", "contracts/v1/manifest.json"]
+};
+const EMBEDDED = {
+  runtime: {
+    version: "v0.2.0",
+    path: "packages/runtime",
+    required_paths: ["src/evozeus_runtime/cli/main.py", "pyproject.toml"]
+  },
+  session_signal: {
+    version: "v0.1.0",
+    path: "packs/session-signal",
+    required_paths: ["scripts/validate_official_factor_spec.py", "SKILL.md", "factors/task-completion/spec.json"]
+  }
 };
 const LAUNCHER = fileURLToPath(new URL("./evozeus-launcher.mjs", import.meta.url));
 
@@ -60,9 +78,9 @@ function initComponent(root, componentId, marker = "one") {
         : `${componentId}:${marker}\n`;
     writeFileSync(path, content);
   }
-  if (componentId === "infra") {
-    writeFileSync(join(repo, "src/evozeus_runtime/__init__.py"), "");
-    writeFileSync(join(repo, "src/evozeus_runtime/cli/__init__.py"), "");
+  if (componentId === "evozeus") {
+    writeFileSync(join(repo, "packages/runtime/src/evozeus_runtime/__init__.py"), "");
+    writeFileSync(join(repo, "packages/runtime/src/evozeus_runtime/cli/__init__.py"), "");
   }
   writeFileSync(join(repo, "marker.txt"), `${marker}\n`);
   git(repo, "add", ".");
@@ -77,9 +95,9 @@ function updateComponent(component, marker) {
   component.commit = git(component.repo, "rev-parse", "HEAD");
 }
 
-function uatManifest(components, productVersion = "v0.3.0") {
+function uatManifest(components, productVersion = "v0.4.0") {
   return {
-    schema_version: "evozeus.product-channel.v1",
+    schema_version: "evozeus.product-channel.v2",
     product_version: productVersion,
     channel: "uat",
     generated_at: "2026-07-26T00:00:00Z",
@@ -87,20 +105,14 @@ function uatManifest(components, productVersion = "v0.3.0") {
       Object.entries(components).map(([componentId, component]) => [
         componentId,
         {
-          version:
-            componentId === "infra"
-              ? "v0.2.0"
-              : componentId === "coevolve"
-                ? "v0.12.0"
-                : componentId === "session_signal"
-                  ? "v0.1.0"
-                  : "v0.3.0",
+          version: componentId === "coevolve" ? "v0.13.0" : productVersion,
           commit: component.commit,
           source: { kind: "git", url: `file://${component.repo}`, ref: "uat/current" },
           required_paths: COMPONENT_PATHS[componentId]
         }
       ])
     ),
+    embedded: EMBEDDED,
     compatibility: {
       runtime_min_inclusive: "0.1.0",
       runtime_max_exclusive: "0.3.0",
@@ -120,6 +132,8 @@ function createArchive(root, componentId, marker = "stable") {
       path,
       entry === "contracts/v1/manifest.json"
         ? `${JSON.stringify({ bundle_version: "v1.0.0", runtime_compatibility: { min_inclusive: "0.1.0", max_exclusive: "0.3.0" } })}\n`
+        : entry.endsWith(".py")
+          ? `print(${JSON.stringify(`${componentId}:${marker}`)})\n`
         : `${componentId}:${marker}\n`
     );
   }
@@ -132,13 +146,11 @@ function createArchive(root, componentId, marker = "stable") {
 function stableManifest(root) {
   const commits = {
     evozeus: "1".repeat(40),
-    infra: "2".repeat(40),
-    coevolve: "3".repeat(40),
-    session_signal: "4".repeat(40)
+    coevolve: "3".repeat(40)
   };
   return {
-    schema_version: "evozeus.product-channel.v1",
-    product_version: "v0.3.0",
+    schema_version: "evozeus.product-channel.v2",
+    product_version: "v0.4.0",
     channel: "stable",
     generated_at: "2026-07-26T00:00:00Z",
     components: Object.fromEntries(
@@ -147,19 +159,12 @@ function stableManifest(root) {
         return [
           componentId,
           {
-            version:
-              componentId === "infra"
-                ? "v0.2.0"
-                : componentId === "coevolve"
-                  ? "v0.12.0"
-                  : componentId === "session_signal"
-                    ? "v0.1.0"
-                    : "v0.3.0",
+            version: componentId === "coevolve" ? "v0.13.0" : "v0.4.0",
             commit: commits[componentId],
             source: {
               kind: "release_archive",
               url: `file://${archive.archive}`,
-              ref: componentId === "evozeus" ? "v0.3.0" : "release",
+              ref: componentId === "evozeus" ? "v0.4.0" : "release",
               sha256: archive.sha256
             },
             required_paths: COMPONENT_PATHS[componentId]
@@ -167,6 +172,7 @@ function stableManifest(root) {
         ];
       })
     ),
+    embedded: EMBEDDED,
     compatibility: {
       runtime_min_inclusive: "0.1.0",
       runtime_max_exclusive: "0.3.0",
@@ -241,7 +247,7 @@ describe("product channel manifest", () => {
       const manifest = stableManifest(root);
       manifest.channel = "uat2";
       manifest.components.evozeus.commit = "abc";
-      manifest.components.infra.source.kind = "git";
+      manifest.components.evozeus.source.kind = "git";
       manifest.compatibility.runtime_max_exclusive = "0.2.0";
       manifest.extra = true;
       const issues = validateProductManifest(manifest);
@@ -273,7 +279,7 @@ describe("channel transactions", () => {
       assert.equal(readActiveChannel(home).auto_refresh, true);
       const firstCurrent = resolve(dirname(join(home, "worktrees", "uat", "current")), readlinkSync(join(home, "worktrees", "uat", "current")));
 
-      updateComponent(components.infra, "fixed");
+      updateComponent(components.evozeus, "fixed");
       const secondManifest = uatManifest(components);
       const secondPath = writeManifest(root, "uat-two.json", secondManifest);
       const second = await applyChannelUpdate({
@@ -286,14 +292,15 @@ describe("channel transactions", () => {
       const secondCurrent = resolve(dirname(join(home, "worktrees", "uat", "current")), readlinkSync(join(home, "worktrees", "uat", "current")));
       assert.notEqual(firstCurrent, secondCurrent);
       assert.equal(readChannelState(home).channels.uat.previous.install_root, first.install_root);
-      assert.equal(readFileSync(join(second.component_roots.infra, "marker.txt"), "utf8"), "fixed\n");
+      assert.equal(readFileSync(join(second.component_roots.evozeus, "marker.txt"), "utf8"), "fixed\n");
+      assert.equal(second.embedded_roots.runtime, join(second.component_roots.evozeus, "packages/runtime"));
       assert.equal(channelSnapshot(home).active_channel, "uat");
       assert.equal(channelSnapshot(home).status, "ready");
 
       const rollback = rollbackChannel(home, "uat");
       assert.equal(rollback.status, "rolled_back");
       assert.equal(
-        readFileSync(join(readChannelState(home).channels.uat.component_roots.infra, "marker.txt"), "utf8"),
+        readFileSync(join(readChannelState(home).channels.uat.component_roots.evozeus, "marker.txt"), "utf8"),
         "one\n"
       );
       assert.equal(readActiveChannel(home).channel, "uat");
@@ -370,7 +377,7 @@ describe("channel transactions", () => {
         smokeRunner: noSmoke
       });
 
-      updateComponent(components.infra, "two");
+      updateComponent(components.evozeus, "two");
       const secondPath = writeManifest(root, "uat-two.json", uatManifest(components, "v0.3.1"));
       const second = await applyChannelUpdate({
         evozeusHome: home,
@@ -416,7 +423,7 @@ describe("channel transactions", () => {
       });
       assert.equal(applied.status, "installed");
       assert.equal(readActiveChannel(home).channel, "stable");
-      assert.ok(applied.install_root.includes("releases/stable/v0.3.0"));
+      assert.ok(applied.install_root.includes("releases/stable/v0.4.0"));
       assert.ok(!applied.install_root.includes("worktrees/uat"));
     }));
 
@@ -479,11 +486,11 @@ describe("channel transactions", () => {
       assert.equal(readActiveChannel(home).channel, "stable");
       const resolved = resolveInstalledComponentRoot({
         evozeusHome: home,
-        componentId: "infra",
+        componentId: "runtime",
         sourceRoot: root,
         env: {}
       });
-      assert.equal(resolved.root, state.channels.stable.component_roots.infra);
+      assert.equal(resolved.root, state.channels.stable.embedded_roots.runtime);
       assert.equal(resolved.source, "channel:stable");
     }));
 
@@ -546,7 +553,7 @@ describe("channel transactions", () => {
       assert.equal(replaced.status, "installed");
       assert.equal(readChannelState(home).channels.uat.previous.install_root, first.install_root);
       assert.equal(hookState.wrapper_source, "channel-managed");
-      assert.equal(hookState.installed_version, "v0.12.0");
+      assert.equal(hookState.installed_version, "v0.13.0");
       assert.ok(readFileSync(join(home, "hooks", "evozeus_wrapper_dispatcher.py"), "utf8").includes("evozeus.channel-coevolve-dispatcher.v1"));
       assert.equal(channelSnapshot(home).health, "healthy");
     }));
@@ -592,7 +599,7 @@ describe("channel transactions", () => {
       });
       const before = readChannelState(home).channels.uat.manifest_digest;
 
-      updateComponent(components.infra, "fixed-in-runtime");
+      updateComponent(components.evozeus, "fixed-in-runtime");
       const secondPath = writeManifest(root, "uat-two.json", uatManifest(components));
       const refreshed = spawnSync(process.execPath, [LAUNCHER, "version", "--json"], {
         encoding: "utf8",
@@ -604,7 +611,7 @@ describe("channel transactions", () => {
       assert.equal(readJsonReport(join(home, "state", "uat", "auto-refresh-last.json")).status, "installed");
 
       const broken = { ...uatManifest(components), components: { ...uatManifest(components).components } };
-      broken.components.infra = { ...broken.components.infra, commit: "f".repeat(40) };
+      broken.components.evozeus = { ...broken.components.evozeus, commit: "f".repeat(40) };
       const brokenPath = writeManifest(root, "uat-broken.json", broken);
       const continued = spawnSync(process.execPath, [LAUNCHER, "version", "--json"], {
         encoding: "utf8",

@@ -21,6 +21,12 @@
 # Agent instruction entrypoints.
 /SKILL.md @MetaInFLow/0812team
 /skills/ @MetaInFLow/0812team
+/maintainer/skills/ @MetaInFLow/0812team
+/.codex-plugin/ @MetaInFLow/0812team
+/.claude-plugin/ @MetaInFLow/0812team
+/hooks/ @MetaInFLow/0812team
+/packages/runtime/ @MetaInFLow/0812team
+/packs/session-signal/ @MetaInFLow/0812team
 
 # GitHub automation and templates.
 /.github/workflows/ @MetaInFLow/0812team

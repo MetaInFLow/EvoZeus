@@ -27,7 +27,7 @@ function sha256(path) {
 const args = options(process.argv.slice(2));
 const input = JSON.parse(readFileSync(resolve(args.input), "utf8"));
 const manifest = {
-  schema_version: "evozeus.product-channel.v1",
+  schema_version: "evozeus.product-channel.v2",
   product_version: input.product_version,
   channel: "stable",
   generated_at: new Date().toISOString(),
@@ -45,6 +45,7 @@ const manifest = {
     },
     ...input.components
   },
+  embedded: input.embedded,
   compatibility: input.compatibility
 };
 const issues = validateProductManifest(manifest, "stable");

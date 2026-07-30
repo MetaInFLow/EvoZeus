@@ -1,0 +1,43 @@
+{
+  "name": "evozeus",
+  "version": "0.4.0-dev.0",
+  "description": "Review real Agent work, capture lessons, preserve proven improvements, and evolve independent Skillware repositories.",
+  "author": {
+    "name": "MetaInFlow",
+    "url": "https://github.com/MetaInFLow"
+  },
+  "homepage": "https://github.com/MetaInFLow/EvoZeus",
+  "repository": "https://github.com/MetaInFLow/EvoZeus",
+  "license": "MIT",
+  "keywords": [
+    "agent",
+    "session-review",
+    "lessons",
+    "skillware",
+    "continuous-evolution"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "EvoZeus",
+    "shortDescription": "Turn real Agent work into verified improvements",
+    "longDescription": "Review Agent sessions with evidence, identify lessons worth preserving, and route approved improvements into reusable artifacts or the evolution lifecycle of an independent Skillware repository.",
+    "developerName": "MetaInFlow",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Interactive",
+      "Read",
+      "Write"
+    ],
+    "websiteURL": "https://github.com/MetaInFLow/EvoZeus",
+    "defaultPrompt": [
+      "复盘这次 Agent 执行，找出值得保留、修复或进化的内容",
+      "把这条已确认 Lesson 保存为可追踪的改进",
+      "检查 EvoZeus 的 stable/UAT 状态并给出唯一下一步"
+    ],
+    "brandColor": "#C99A24",
+    "composerIcon": "./assets/icons/evozeus-gold-128.png",
+    "logo": "./assets/icons/evozeus-gold-128.png",
+    "screenshots": []
+  }
+}
+

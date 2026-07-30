@@ -62,16 +62,16 @@ const entry = channel ? state?.channels?.[channel] : null;
 const coreRoot = entry?.component_roots?.evozeus;
 const fallbackRoot = join(home, "skeleton");
 const selectedRoot = coreRoot && existsSync(join(coreRoot, "scripts", "evozeus-cli.mjs")) ? coreRoot : fallbackRoot;
+const runtimeRoot = entry?.embedded_roots?.runtime || join(selectedRoot, "packages", "runtime");
+const sessionSignalRoot = entry?.embedded_roots?.session_signal || join(selectedRoot, "packs", "session-signal");
 
 const env = {
   ...process.env,
   EVOZEUS_HOME: home,
   ...(channel ? { EVOZEUS_ACTIVE_CHANNEL: channel, EVOZEUS_RUNTIME_STATE_ROOT: join(home, "state", channel) } : {}),
-  ...(entry?.component_roots?.infra ? { EVOZEUS_INFRA_ROOT: entry.component_roots.infra } : {}),
+  EVOZEUS_INFRA_ROOT: runtimeRoot,
   ...(entry?.component_roots?.coevolve ? { EVOZEUS_WRAPPER_ROOT: entry.component_roots.coevolve } : {}),
-  ...(entry?.component_roots?.session_signal
-    ? { EVOZEUS_OFFICIAL_REPO_ROOT: entry.component_roots.session_signal }
-    : {})
+  EVOZEUS_OFFICIAL_REPO_ROOT: sessionSignalRoot
 };
 
 const result = spawnSync(process.execPath, [join(selectedRoot, "scripts", "evozeus-cli.mjs"), ...process.argv.slice(2)], {

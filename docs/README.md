@@ -1,7 +1,7 @@
 # EvoZeus Docs
 
 - Status: active
-- Last updated: 2026-06-15
+- Last updated: 2026-07-30
 
 This repository follows the Engineering Everything document layout.
 
@@ -9,11 +9,13 @@ This repository follows the Engineering Everything document layout.
 
 | Need | Document |
 | --- | --- |
-| Scenario skill routing | [EvoZeus-Skill Index](../skills/index/SKILL.md) |
-| Repository development rules | [EvoZeus-Development](../skills/evozeus-development/SKILL.md) |
-| Product and protocol design | [design/active/design_doc-v0.1-agent-session-judgment-layer.md](design/active/design_doc-v0.1-agent-session-judgment-layer.md) |
+| User plugin entry | [Using EvoZeus](../skills/using-evozeus/SKILL.md) |
+| Repository development rules | [EvoZeus-Development](../maintainer/skills/evozeus-development/SKILL.md) |
+| Product architecture | [design/active/design_doc-v0.5-plugin-monorepo.md](design/active/design_doc-v0.5-plugin-monorepo.md) |
 | Architecture decision history | [decisions/](decisions/) |
+| Plugin monorepo architecture | [design/active/design_doc-v0.5-plugin-monorepo.md](design/active/design_doc-v0.5-plugin-monorepo.md) |
 | Active repository topology | [governance/repository-topology.md](governance/repository-topology.md) |
+| Harness repository boundary | [governance/harness-boundary-policy.md](governance/harness-boundary-policy.md) |
 | Mega Repo retirement plan | [governance/mega-repo-retirement-plan.md](governance/mega-repo-retirement-plan.md) |
 | Privacy and redaction rules | [governance/privacy-and-redaction.md](governance/privacy-and-redaction.md) |
 | PR rules | [governance/pr-guidelines.md](governance/pr-guidelines.md) |
@@ -28,7 +30,7 @@ This repository follows the Engineering Everything document layout.
 | GitHub settings checklist | [governance/github-settings.md](governance/github-settings.md) |
 | Candidate lifecycle | [governance/candidate-lifecycle.md](governance/candidate-lifecycle.md) |
 | Release and promotion policy | [governance/release-and-promotion-policy.md](governance/release-and-promotion-policy.md) |
-| Factor registry governance | [governance/factor-registry-governance.md](governance/factor-registry-governance.md) |
+| Third-party Factor extension history | [governance/factor-registry-governance.md](governance/factor-registry-governance.md) |
 | Launch readiness criteria | [governance/launch-readiness-criteria.md](governance/launch-readiness-criteria.md) |
 | Folder ownership | [governance/folder-declaration-v0.md](governance/folder-declaration-v0.md) |
 | Terminology | [governance/terminology-glossary.md](governance/terminology-glossary.md) |

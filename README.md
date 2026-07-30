@@ -1,274 +1,168 @@
 <h1 align="center">
-  <img src="assets/icons/evozeus-gold-128.png" alt="EvoZeus gold icon" width="38" align="absmiddle">&nbsp;&nbsp;EvoZeus（宙斯）&nbsp;&nbsp;<img src="assets/icons/evozeus-silver-128.png" alt="EvoZeus silver icon" width="38" align="absmiddle">
+  <img src="assets/icons/evozeus-gold-128.png" alt="EvoZeus" width="44"><br>
+  EvoZeus
 </h1>
 
 <p align="center">
-  <strong>English</strong> · <a href="docs/README.zh-CN.md">简体中文</a>
+  <strong>Turn real Agent work into verified improvements.</strong>
 </p>
 
 <p align="center">
-  <img src="assets/evozeus-banner.png" alt="EvoZeus banner: put agent sessions on the judgment bench" width="100%">
+  <a href="docs/README.zh-CN.md">简体中文</a> ·
+  <a href="#start-here">Start here</a> ·
+  <a href="#how-it-works">How it works</a> ·
+  <a href="#safety">Safety</a> ·
+  <a href="CHANGELOG.md">Changelog</a>
 </p>
 
 <p align="center">
-  <a href="#start-here">Start Here</a> ·
-  <a href="#what-evozeus-manages">Managed Assets</a> ·
-  <a href="#use-paths">Use Paths</a> ·
-  <a href="#contribution-quick-path">Contribution</a> ·
-  <a href="#docs-by-goal">Docs by Goal</a> ·
-  <a href="docs/README.md">Full Docs</a>
+  <a href="https://github.com/MetaInFLow/EvoZeus/releases"><img alt="GitHub release" src="https://img.shields.io/github/v/release/MetaInFLow/EvoZeus?display_name=tag"></a>
+  <a href="https://github.com/MetaInFLow/EvoZeus/actions/workflows/ci.yml"><img alt="Product CI" src="https://github.com/MetaInFLow/EvoZeus/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="LICENSE"><img alt="License MIT" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
 </p>
 
-## <img src="assets/icons/evozeus-gold-128.png" alt="" width="24" align="absmiddle"> Put Agent Sessions on the judgment bench.
+<p align="center">
+  <img src="assets/evozeus-banner.png" alt="EvoZeus reviews Agent work with evidence" width="100%">
+</p>
 
-**Evidence decides what should be preserved, fixed, promoted, or rejected.**
-
-EvoZeus is a judgment layer for Agent Sessions. It does not score agents, and it does not treat Skill creation as the only goal. It manages evidence, Cases, Verdicts, and reusable artifacts from real sessions.
-
-EvoZeus also defines a software pattern: **Skill Driven Software (SDS)**. In SDS, software behavior is shaped by code, scenario skills, factors, rules, reports, and runtime surfaces together.
-
-> Origin: EvoZeus came from a retrospective between [Anthony](https://github.com/HaodiFan) and [Neil](https://github.com/orgs/MetaInFLow/people/Neillan96) after a hackathon that did not go well.
-
-## <img src="assets/icons/evozeus-silver-128.png" alt="" width="24" align="absmiddle"> Start Here
-
-Copy this into your agent:
+EvoZeus reviews what happened in a real Agent task, identifies the lesson that can improve the next run, and routes an approved change into a reusable artifact. It is designed for teams building Skills, plugins, Agent workflows, and other Skillware.
 
 ```text
-Run ~/.evozeus/bin/evozeus features --json, show the available EvoZeus product features, then use ~/.evozeus/bin/evozeus capabilities --json for the selected feature's risk and permission facts. Do not scan local sessions, write files, or submit to GitHub unless the user explicitly approves the specific action.
+Agent work → Evidence → Judgment → Lesson → Verified improvement
 ```
 
-If you arrived from `https://evozeus-community.vercel.app/skill`, this is the agent-readable install skill handoff. The user copies the install skill to a local agent; the agent asks before local writes, then installs or reconciles `~/.evozeus/skeleton`, `~/.evozeus/bin/evozeus`, and EvoZeus skills. Runtime, default official factors, local scans, report files, wrapper writes, and GitHub contribution happen only after explicit user approval.
-In that path, read [EvoZeus-Install Registration](skills/evozeus-install-registration/SKILL.md) before running any judgment, co-evolution, update, or uninstall action.
+## Why EvoZeus
 
-## <img src="assets/icons/evozeus-gold-128.png" alt="" width="24" align="absmiddle"> Registration / Install Sequence
+Agent teams already have logs, chat histories, diffs, errors, and user corrections. The hard part is deciding which observations deserve action and proving that the resulting change actually helped.
 
-The community `/skill` page should return an install skill, not a normal installer download. It is not the runtime judgment itself. A local install must register the user-level EvoZeus home, install `~/.evozeus/skeleton`, install `~/.evozeus/bin/evozeus`, and install the EvoZeus skills before optional runtime scanning, Factor execution, or static Skill wrapping. EvoZeus stays the installed root protocol and orchestration layer; component repos are capabilities it routes to after user approval.
+EvoZeus provides that judgment loop:
 
-```mermaid
-sequenceDiagram
-  autonumber
-  participant User
-  participant Community as EvoZeus-web /skill
-  participant Installer as Agent / installer
-  participant Local as User home
-  participant Main as EvoZeus repo
-  participant Skills as EvoZeus skills
-  participant Runtime as EvoZeus-infra
-  participant Official as EvoZeus-session-signal-skill
+- review one task or a set of sessions with evidence;
+- separate product, Skill, environment, and execution problems;
+- ask before recording a reusable Lesson;
+- preserve the Lesson as a Case, rule, habit, Skill change, or environment fix;
+- connect an independent Skillware repository to a governed evolution lifecycle.
 
-  User->>Community: Open /skill
-  Community-->>User: Agent-readable install skill
-  User->>Installer: Copy install skill and choose workspace
-  Installer->>Local: Check ~/.evozeus registration state
+## Start here
 
-  alt ~/.evozeus exists and registered
-    Local-->>Installer: Existing registration, workspace id, installed skills
-    Installer->>Main: Check EvoZeus skeleton version
-    Installer->>Skills: Check installed EvoZeus skills
-    Installer-->>User: Report current install / update plan
-  else no ~/.evozeus or not registered
-    Installer->>Local: Create ~/.evozeus registration state
-    Installer->>Main: Run scripts/evozeus-install.mjs
-    Main->>Local: Install ~/.evozeus/skeleton and ~/.evozeus/bin/evozeus
-    Installer->>Skills: Install EvoZeus skills
-    Installer-->>User: Report installed skeleton, CLI, and skills
-  end
+Enable the EvoZeus plugin in a compatible Agent host, then ask for the outcome you want. The public plugin distribution is introduced with the v0.4 product line; until that release is published, this repository is the development source.
 
-  Installer->>Local: Run ~/.evozeus/bin/evozeus features --json
-  Local-->>Installer: Product feature menu
-  Installer->>Local: Run ~/.evozeus/bin/evozeus capabilities --json
-  Local-->>Installer: Capability manifest and approval gates
-  Installer-->>User: Choose review, insights, co-evolve, maintain, or uninstall
-  User->>Installer: Choose explicit-input session analysis
-  Installer->>Local: Run evozeus review session --input <path|-> --json
-  Local-->>Installer: Session Verdict Card envelope
-  Installer-->>User: Explain Verdict Card and next approval gates
-
-  opt User approves local runtime
-    Installer->>Runtime: Read runtime trust policy and install plan
-    Runtime->>Main: Read registry pointer
-    Runtime->>Official: Resolve official release manifest
-    Official-->>Runtime: Manifest, checksum, attestation, compatibility
-    Runtime->>Runtime: Verify metadata and selected Factors
-    Runtime->>Local: Write ~/.evozeus/infra/lockfile.json
-    Runtime->>Local: Scan approved session evidence
-    Runtime->>Local: Run selected Factors and write local report
-    Runtime-->>Installer: Evidence Report / local judgment output
-    Installer-->>User: Explain result and ask before preservation
-  end
-```
-
-| Step | Current state |
-| --- | --- |
-| Web `/skill` | Should return agent-readable install skill |
-| `~/.evozeus` registration | Install path must check existing registration before creating or updating state |
-| EvoZeus install | Should install `~/.evozeus/skeleton`, `~/.evozeus/bin/evozeus`, and EvoZeus skills |
-| Product feature router | Should expose `features --json` before judgment, insights, co-evolve, maintain, or uninstall |
-| Capability router | Should expose `capabilities --json` for risk, permission, schema, and examples |
-| Explicit-input session analysis | Can produce a Session Verdict Card envelope without scanning local stores |
-| Runtime approval | Required before scanning, installing, networking, or writing `~/.evozeus/` |
-| Runtime implementation | Lives in `EvoZeus-infra`; scanner / runner prototype is not a default user command |
-| Official Factors | Must come through registry pointer + manifest + checksum + attestation |
-| Local output | Only after approval: `~/.evozeus/infra/lockfile.json`, local evidence index, Markdown / JSON / HTML report |
-
-## <img src="assets/icons/evozeus-gold-128.png" alt="" width="24" align="absmiddle"> What EvoZeus Manages
-
-Software development manages `code -> issue -> PR -> review -> merge`.
-
-EvoZeus manages:
+Try one of these:
 
 ```text
-Session -> Evidence -> Case -> Verdict -> Artifact -> Library
+复盘这次 Agent 执行，找出值得保留、修复或进化的内容。
 ```
 
-| Term | Meaning |
+```text
+把这条已确认的 Lesson 保存为可追踪的改进。
+```
+
+```text
+检查 EvoZeus 的 stable/UAT 状态，并告诉我唯一下一步。
+```
+
+EvoZeus responds inside the normal conversation. Lifecycle events use a compact marker:
+
+```text
+🧙 EvoZeus · 捕捉到一条 Lesson｜版本检查不应阻断用户的真实任务。要记录下来吗？
+```
+
+No raw JSON block is shown for a normal Lesson prompt, and nothing is recorded before confirmation.
+
+Host support determines how the Lesson check starts:
+
+| Host | Behavior |
 | --- | --- |
-| Session | One real agent execution |
-| Evidence | The smallest proof that supports a judgment |
-| Case | A finding waiting for judgment |
-| Verdict | The evidence-backed decision for a Case |
-| Artifact | The executable or reusable asset created after a Verdict |
-| Library | The reusable public asset collection |
+| Claude Code plugin | The built-in `SessionStart` adapter quietly loads the Lesson-check contract for startup, resume, clear, and compact. It performs no write and shows no banner. |
+| Codex plugin | EvoZeus is selected from explicit or semantically matching requests. The current Codex plugin manifest has no session hook, so all-chat automatic detection is not claimed. |
 
-Every Verdict should become an Artifact:
+In both hosts, EvoZeus finishes the user's task first and asks before recording any Lesson.
 
-| Verdict | Artifact |
+## How it works
+
+### 1. Review
+
+EvoZeus reads only the evidence placed in scope: the current conversation, an explicit file, a diff, a report, or an approved local session source.
+
+### 2. Judge
+
+Each meaningful finding receives an evidence-backed route such as Preserve, Promote to Skill, Keep as Habit, Fix Environment, Reject Pattern, or Open Case.
+
+### 3. Confirm
+
+When a reusable Lesson appears, EvoZeus summarizes it in one sentence and asks whether to record it.
+
+### 4. Improve
+
+Confirmed Lessons become reviewable artifacts. Changes to an independent Skillware repository can use [EvoZeus CoEvolve](https://github.com/MetaInFLow/EvoZeus-CoEvolve) for Harness, feedback, UAT, and release governance.
+
+## What ships in the product
+
+EvoZeus is one local product and one versioned release:
+
+| Surface | Purpose |
 | --- | --- |
-| `Promote to Skill` | Skill |
-| `Extract Factor` | Factor |
-| `Keep as Habit` | Habit |
-| `Fix Environment` | Environment Rule |
-| `Reject Pattern` | Rejected Pattern |
-| `Preserve` | Accepted Case |
-| `Open Case` | Pending Case |
+| Agent plugin | Natural-language entry and task routing |
+| User Skills | Review, capture, evolve, and maintenance workflows |
+| Product CLI | Stable/UAT alignment, Doctor, update, and rollback |
+| Built-in Runtime | Local evidence processing and reports |
+| Built-in Session Signal pack | Official review signals and Factor tools |
+| Optional CoEvolve extension | Evolution lifecycle for independent Skillware repositories |
 
-## <img src="assets/icons/evozeus-silver-128.png" alt="" width="24" align="absmiddle"> Use Paths
+Runtime and Session Signal are internal modules of this repository. They share the EvoZeus product version and do not require separate user updates.
 
-EvoZeus is currently an **install-skill + local CLI-first agent surface**. This README keeps the shortest paths here; the full rules live in docs and skills.
+## Stable and UAT
 
-| Goal | Start here | Output |
-| --- | --- | --- |
-| Register and install EvoZeus | [EvoZeus-Install Registration](skills/evozeus-install-registration/SKILL.md) | `~/.evozeus` registration state, skeleton, CLI, skills inventory |
-| Choose EvoZeus feature | `~/.evozeus/bin/evozeus features --json` | product feature menu by lifecycle |
-| Inspect execution capability | `~/.evozeus/bin/evozeus capabilities --json` | capability manifest and approval gates |
-| Analyze one Agent Session | `~/.evozeus/bin/evozeus review session --input <path|-> --json` | Session Verdict Card envelope |
-| Plan historical Session insights | `~/.evozeus/bin/evozeus insights plan --source codex --json` | infra route plan without reading raw stores |
-| Generate AI usage profile report | `~/.evozeus/bin/evozeus insights sessions --source codex --reuse-factors --html --json` | after approval, local AI Usage Profile HTML at `.evozeus/runtime/reports/ai-usage-profile/index.html` |
-| Preserve an artifact draft | `~/.evozeus/bin/evozeus preserve draft --from-report <path> --json` | local draft from an existing report |
-| Attach co-evolution harness | `~/.evozeus/bin/evozeus coevolve attach --target <path|url> --json` | wrapper handoff plan |
-| Inspect co-evolution status | `~/.evozeus/bin/evozeus coevolve status --target <path|url> --json` | wrapper manifest and route status |
-| Choose the right work scenario | [EvoZeus-Skill Index](skills/index/SKILL.md) | `EvoZeus-Development` / `EvoZeus-Community Contribution` / `EvoZeus-Reporting` / `EvoZeus-Runtime Routing` |
-| Develop EvoZeus itself | [EvoZeus-Development](skills/evozeus-development/SKILL.md) | small issue/branch/PR |
-| Contribute a Case or Candidate | [CONTRIBUTING.md](CONTRIBUTING.md) | redacted Case / Candidate PR |
-| Review PR rules | [docs/governance/pr-guidelines.md](docs/governance/pr-guidelines.md) | proof-backed PR |
-| Understand the semantic model | [docs/reference/ontology.md](docs/reference/ontology.md) | Candidate / Evidence / Verdict boundaries |
+- `stable` is an immutable formal release.
+- `uat` is one mutable test candidate.
+- A UAT fix replaces the current UAT candidate; it never creates a second user-visible UAT.
+- Stable and UAT use isolated code and local state.
+- Promotion publishes the exact verified UAT source as Stable.
 
-**AI usage profile execution note:** `evozeus insights sessions` is the approval-safe wrapper route. It reports the backend plan and permission boundary; it does not scan raw stores by itself. After the user approves local scanning and report writes, run the runtime command from an `EvoZeus-infra` checkout with the official factor checkout installed:
+Read [ADR-0003](docs/decisions/ADR-0003-stable-single-uat-channel-model.md) for channel semantics and [ADR-0005](docs/decisions/ADR-0005-plugin-first-monorepo-and-repo-scoped-harness.md) for the product architecture.
+
+## Repository evolution
+
+An Evolution Harness belongs to a Git repository, because Issues, PRs, ownership, UAT, releases, and rollback all live at that boundary.
+
+- one independent Git repository may own one root Harness;
+- packages, packs, apps, and Skill directories inherit their repository Harness;
+- nested Harness directories are rejected by CI;
+- Harness upgrades and pushes require verified `ADMIN` permission on the target repository.
+
+See the [Harness boundary policy](docs/governance/harness-boundary-policy.md).
+
+## Safety
+
+- Raw private sessions stay local by default.
+- EvoZeus does not upload sessions automatically.
+- EvoZeus asks before persistent local writes, GitHub changes, installs, updates, or external uploads.
+- Public artifacts must remove secrets, customer data, private paths, unnecessary identities, and unreleased code.
+- Running an older Skill does not silently overwrite the Stable installation.
+
+## For maintainers
 
 ```bash
-cd /path/to/EvoZeus-infra
-python3 -m pip install -e .
-python3 -m pip install -e "../EvoZeus-session-signal-skill[nlp]"
-evozeus-runtime session-insights \
-  --workspace "$HOME" \
-  --official-repo-root "../EvoZeus-session-signal-skill" \
-  --force \
-  --no-skip-fresh \
-  --project-min-sessions 1 \
-  --project-top-n 30
+npm ci
+npm test
+npm run test:python
+python3 scripts/check_pr_ready.py --allow-cross-layer
 ```
 
-The generated local report is `$HOME/.evozeus/runtime/reports/ai-usage-profile/index.html`.
+Key references:
 
-## <img src="assets/icons/evozeus-gold-128.png" alt="" width="24" align="absmiddle"> Safety Defaults
+- [Architecture and migration design](docs/design/active/design_doc-v0.5-plugin-monorepo.md)
+- [Canonical repository topology](docs/governance/repository-topology.md)
+- [Release and promotion policy](docs/governance/release-and-promotion-policy.md)
+- [Plugin user entry](skills/using-evozeus/SKILL.md)
+- [Maintainer Skills](maintainer/skills/index/SKILL.md)
+- [Contributing](CONTRIBUTING.md)
+- [Security](SECURITY.md)
 
-The default EvoZeus path is low-permission, reviewable, and reversible.
+## Related repository
 
-- **Zero-install entry**: reading `SKILL.md` should not install packages.
-- **Feature first**: after install, the first local action is `features --json`; use `capabilities --json` for execution risk and permission facts.
-- **Local-first evidence**: raw sessions stay local by default and do not go into public PRs.
-- **Redacted public artifacts**: public Cases, Candidates, and Reports must be redacted first.
-- **Markdown/JSON first**: base reports and schemas do not depend on dashboards, scanners, or cloud services.
-- **Opt-in runtime packs**: scanner, factor code, MCP, LLM, and visualization packs must be explicitly enabled.
-- **User-approved contribution**: only after user approval should an agent check `gh` and create an issue or PR.
+- [MetaInFlow/EvoZeus-CoEvolve](https://github.com/MetaInFLow/EvoZeus-CoEvolve) — optional evolution extension and Harness SDK for independent Skillware repositories.
 
-## <img src="assets/icons/evozeus-silver-128.png" alt="" width="24" align="absmiddle"> Contribution Quick Path
-
-The main path is agent-assisted, but merge authority stays with maintainers:
-
-```text
-Local Evidence Report -> Agent Review -> Case Draft -> User Approval -> PR -> Maintainer Review
-```
-
-Before development or PR review, run:
-
-```bash
-python3 scripts/check_pr_ready.py
-git diff --check
-```
-
-Minimal Case shape:
-
-```yaml
-session_id: redacted-session-id
-agent_runtime: codex | claude | cursor | other
-case_type: preserve | promote | fix | reject | open
-evidence: redacted command output, diff, tool trace, or report excerpt
-proposed_verdict: Preserve | Promote to Skill | Extract Factor | Keep as Habit | Fix Environment | Reject Pattern | Open Case
-privacy_note: what was removed or generalized
-```
-
-GitHub automation is dry-run by default: labeler, proof gate, privacy scan, dirty PR check, queue guard, and Candidate schema check may label and update marker comments, but they must not approve, merge, promote core Candidates, or auto-close PRs.
-
-## <img src="assets/icons/evozeus-gold-128.png" alt="" width="24" align="absmiddle"> Docs by Goal
-
-| Need | Read |
-| --- | --- |
-| Docs home | [docs/README.md](docs/README.md) |
-| Active repository topology | [docs/governance/repository-topology.md](docs/governance/repository-topology.md) |
-| Mega Repo retirement | [docs/governance/mega-repo-retirement-plan.md](docs/governance/mega-repo-retirement-plan.md) |
-| Evidence levels | [docs/reference/evidence-grading.md](docs/reference/evidence-grading.md) |
-| Review contract | [docs/reference/review-contract.md](docs/reference/review-contract.md) |
-| Verdict types | [docs/reference/verdicts.md](docs/reference/verdicts.md) |
-| Verdict Card | [docs/reference/verdict-card.md](docs/reference/verdict-card.md) |
-| Report templates | [docs/reference/report-templates.md](docs/reference/report-templates.md) |
-| Candidate Schema | [schemas/candidate.schema.json](schemas/candidate.schema.json) |
-| Privacy and redaction | [docs/governance/privacy-and-redaction.md](docs/governance/privacy-and-redaction.md) |
-| PR routing state machine | [docs/governance/pr-routing-policy.md](docs/governance/pr-routing-policy.md) |
-| Factor registry governance | [docs/governance/factor-registry-governance.md](docs/governance/factor-registry-governance.md) |
-| Launch readiness criteria | [docs/governance/launch-readiness-criteria.md](docs/governance/launch-readiness-criteria.md) |
-| Labels and protected paths | [docs/governance/labels.md](docs/governance/labels.md), [docs/governance/protected-paths.md](docs/governance/protected-paths.md) |
-
-## <img src="assets/icons/evozeus-silver-128.png" alt="" width="24" align="absmiddle"> What Exists Today
-
-| Area | Status |
-| --- | --- |
-| Protocol Surface | `SKILL.md`, scenario skills, Verdicts, Case templates, privacy gates |
-| Ontology Layer | Candidate taxonomy, evidence grading, negative patterns, review contract |
-| Developer Workflow | branch rules, PR templates, dry-run governance gates, pre-submit checks |
-| Public Examples | redacted Case, Evidence Report, valid/invalid Candidate examples |
-| Factor Surface | public Factor Candidate intake and registry pointers; executable packs live outside this repo |
-| Version Channels | Stable Release install, single UAT worktree, version/Doctor/update/rollback CLI |
-| Runtime Assembly | Version-pinned Infra, CoEvolve and Session Signal components with channel-isolated state |
-
-Available in the v0.3.5 release set:
-
-- Local CLI: `version`, `channel status/use`, `update`, `doctor`, feature and capability routing.
-- Stable/UAT isolation under `~/.evozeus/releases`, `~/.evozeus/worktrees`, and `~/.evozeus/state`.
-- Opt-in local Runtime reports through the pinned `EvoZeus-infra` component.
-
-Planned beyond this release:
-
-- TUI / desktop updater.
-- Expanded Community Library and browser companion.
-
-Not promised:
-
-- automatic raw session upload
-- default scanner / chart / MCP / cloud client installation
-- automatic PR creation
-- large-scale benchmark
-
-## <img src="assets/icons/evozeus-gold-128.png" alt="" width="24" align="absmiddle"> License
+## License
 
 MIT. See [LICENSE](LICENSE).

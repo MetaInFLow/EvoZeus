@@ -141,9 +141,12 @@ describe("evozeus-install", () => {
       assert.equal(manifest.cli.path, join(evozeusHome, "bin/evozeus"));
       assert.equal(manifest.cli.script, "scripts/evozeus-cli.mjs");
       assert.equal(typeof manifest.cli.capabilities_hash, "string");
-      assert.ok(manifest.skills_inventory.some((skill) => skill.name === "evozeus-install-registration"));
+      assert.ok(manifest.skills_inventory.some((skill) => skill.name === "using-evozeus"));
+      assert.ok(manifest.skills_inventory.some((skill) => skill.name === "maintain-evozeus"));
       assert.ok(existsSync(join(evozeusHome, "skeleton/SKILL.md")));
-      assert.ok(existsSync(join(evozeusHome, "skeleton/skills/index/SKILL.md")));
+      assert.ok(existsSync(join(evozeusHome, "skeleton/skills/using-evozeus/SKILL.md")));
+      assert.ok(existsSync(join(evozeusHome, "skeleton/packages/runtime/src/evozeus_runtime/cli/main.py")));
+      assert.ok(existsSync(join(evozeusHome, "skeleton/packs/session-signal/scripts/validate_official_factor_spec.py")));
       assert.ok(existsSync(join(evozeusHome, "skeleton/scripts/evozeus-cli.mjs")));
       assert.ok(existsSync(join(evozeusHome, "bin/evozeus")));
       assert.equal(existsSync(join(workspace, ".evozeus")), false);
@@ -151,8 +154,7 @@ describe("evozeus-install", () => {
       assert.ok(report.files_written.includes(join(evozeusHome, "bin/evozeus")));
       assert.ok(report.files_written.includes(join(evozeusHome, "install-manifest.json")));
       assert.match(report.approval_needed, /Ask before session analysis/);
-      assert.match(report.next_command, /evozeus features --json/);
-      assert.match(report.next_command, /evozeus capabilities --json/);
+      assert.match(report.next_command, /tell the EvoZeus plugin what you want/i);
     }));
 
   it("installs a local CLI shim that can describe features and capabilities", () =>
@@ -198,7 +200,7 @@ describe("evozeus-install", () => {
   it("repairs missing installed skeleton files", () =>
     withTempInstall(({ workspace, evozeusHome }) => {
       parseStdout(runInstall(workspace, evozeusHome, ["--approve-write"]));
-      const installedSkill = join(evozeusHome, "skeleton/skills/index/SKILL.md");
+      const installedSkill = join(evozeusHome, "skeleton/skills/using-evozeus/SKILL.md");
       unlinkSync(installedSkill);
       assert.equal(existsSync(installedSkill), false);
 

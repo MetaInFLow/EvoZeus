@@ -1,14 +1,14 @@
 # EvoZeus Install Onboarding Conversation Reference
 
-- Status: active
-- Last updated: 2026-07-07
+- Status: superseded by the EvoZeus plugin entry
+- Last updated: 2026-07-30
 - Audience: local agents guiding a user from community `/skill` to registration, install, capability selection, and the first meaningful next step
 
 ## Purpose
 
 This reference defines the user-facing conversation pattern for the EvoZeus install path. It prevents the agent from stopping at mechanical installation and makes the agent explain, in natural language, why registration matters, what EvoZeus can do for the user's current work, and what the safest next action is.
 
-Use this reference after resolving the EvoZeus source tree and reading `skills/evozeus-install-registration/SKILL.md`.
+Historical v0.3 install conversation follows below. New user interactions begin at `skills/using-evozeus/SKILL.md`; installation and channel maintenance route through `skills/maintain-evozeus/SKILL.md`.
 
 ## Public Copy Prompt
 

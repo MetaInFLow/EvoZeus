@@ -4,6 +4,8 @@ type:code:
           - "src/**"
           - "tests/**"
           - "scripts/**"
+          - "packages/runtime/**"
+          - "packs/session-signal/**"
 
 type:candidate:
   - changed-files:
@@ -22,6 +24,10 @@ type:skill-instruction:
       - any-glob-to-any-file:
           - "SKILL.md"
           - "skills/**"
+          - "maintainer/skills/**"
+          - ".codex-plugin/**"
+          - ".claude-plugin/**"
+          - "hooks/**"
 
 type:governance:
   - changed-files:

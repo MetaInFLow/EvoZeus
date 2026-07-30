@@ -1,7 +1,7 @@
 # Folder Declaration v0
 
 - Status: active
-- Last updated: 2026-06-18
+- Last updated: 2026-07-30
 
 ## Root Files
 
@@ -25,12 +25,15 @@
 | `assets/` | README and public visual assets |
 | `candidates/` | Candidate lifecycle directories: community, reviewed, core, deprecated |
 | `cases/` | Case library surface |
-| `factors/` | Factor registry pointer and semantic contract; not executable pack or scanner storage |
+| `factors/` | Factor semantic intake and third-party registry surface |
 | `patterns/` | Pattern library surface |
 | `examples/` | Redacted examples for Cases and reports |
 | `docs/` | Project documentation |
 | `schemas/` | JSON schemas for Candidate, Session, and Evidence Report artifacts |
-| `skills/` | Agent-readable scenario skills. User-facing local names use `EvoZeus-...`; machine names and folder paths stay lowercase `evozeus-*` |
+| `skills/` | Default user plugin Skills |
+| `maintainer/skills/` | Repository maintenance Skills; excluded from the default plugin surface |
+| `packages/runtime/` | Built-in local Runtime |
+| `packs/session-signal/` | Built-in official Session Signal Factor pack |
 | `scripts/` | Local repository checks and maintainer utility scripts |
 
 ## Important Subdirectories
@@ -41,14 +44,13 @@
 | `scripts/github/` | GitHub triage, proof, privacy, queue, schema, and marker comment scripts |
 | `docs/rfcs/` | Governance and workflow RFCs |
 
-## External Factor Repos
+## Independent extension Repos
 
 | Repo | Responsibility |
 | --- | --- |
-| `EvoZeus-factor-lab` | Factor pack and scanner module submissions, reviewed/rejected records, and incubation templates |
-| `EvoZeus-session-signal-skill` | Official Factor pack releases, manifests, checksums, SBOM, and attestations |
+| Independent third-party Factor pack Repo | Optional executable extension with its own Release, checksum, permissions and review |
 
-The main repo remains the public intake and canonical governance surface. It should not host executable Factor pack code or scanner modules directly.
+The main Repo hosts its built-in Runtime and Session Signal implementation. Third-party executable extensions keep an independent Repo boundary.
 
 ## Planned Runtime Directories
 

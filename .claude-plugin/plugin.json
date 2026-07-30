@@ -1,0 +1,19 @@
+{
+  "name": "evozeus",
+  "description": "Review real Agent work, capture lessons, preserve proven improvements, and evolve independent Skillware repositories.",
+  "version": "0.4.0-dev.0",
+  "author": {
+    "name": "MetaInFlow"
+  },
+  "homepage": "https://github.com/MetaInFLow/EvoZeus",
+  "repository": "https://github.com/MetaInFLow/EvoZeus",
+  "license": "MIT",
+  "keywords": [
+    "agent",
+    "session-review",
+    "lessons",
+    "skillware",
+    "continuous-evolution"
+  ]
+}
+

@@ -1,40 +1,29 @@
 {
-  "product_version": "v0.3.5",
+  "product_version": "v0.4.0",
   "core": {
-    "archive_url": "https://github.com/MetaInFLow/EvoZeus/releases/download/v0.3.5/evozeus-v0.3.5.tar.gz",
+    "archive_url": "https://github.com/MetaInFLow/EvoZeus/releases/download/v0.4.0/evozeus-v0.4.0.tar.gz",
     "required_paths": [
       "SKILL.md",
+      ".codex-plugin/plugin.json",
+      "skills/using-evozeus/SKILL.md",
       "scripts/evozeus-cli.mjs",
       "scripts/evozeus-channels.mjs",
       "scripts/evozeus-launcher.mjs",
       "scripts/evozeus-coevolve-dispatcher.py",
-      "schemas/product-channel-manifest.schema.json"
+      "schemas/product-channel-manifest.schema.json",
+      "packages/runtime/src/evozeus_runtime/cli/main.py",
+      "packs/session-signal/scripts/validate_official_factor_spec.py"
     ]
   },
   "components": {
-    "infra": {
-      "version": "v0.2.0",
-      "commit": "00b3e00bdc32b347c25220471454eb580c7a3651",
-      "source": {
-        "kind": "release_archive",
-        "url": "https://github.com/MetaInFLow/EvoZeus-infra/releases/download/v0.2.0/evozeus-infra-v0.2.0.tar.gz",
-        "ref": "v0.2.0",
-        "sha256": "sha256:e5ed65200b0fd366fb7720b3f7992c2f54dad4ea7ce87f2bfe04c995b6d47820"
-      },
-      "required_paths": [
-        "pyproject.toml",
-        "src/evozeus_runtime/cli/main.py",
-        "src/evozeus_runtime/ledger/paths.py"
-      ]
-    },
     "coevolve": {
-      "version": "v0.13.0",
-      "commit": "c414a8dc7a3cdc4c1ca3b2766d82a230420381e1",
+      "version": "v0.14.0",
+      "commit": "c3065c2745a7e3771cb790919d41777f3a9cb8ad",
       "source": {
         "kind": "release_archive",
-        "url": "https://github.com/MetaInFLow/EvoZeus-CoEvolve/releases/download/v0.13.0/evozeus-coevolve-v0.13.0.tar.gz",
-        "ref": "v0.13.0",
-        "sha256": "sha256:f687d2eeead62367ad6a673cfe55106dceb1e1d930c60357e21721d44f2d455d"
+        "url": "https://github.com/MetaInFLow/EvoZeus-CoEvolve/releases/download/v0.14.0/evozeus-coevolve-v0.14.0.tar.gz",
+        "ref": "v0.14.0",
+        "sha256": "sha256:5d77c84e715ede627d9b123744d0e2f27a7845088572c769c3cd6126a26c00fa"
       },
       "required_paths": [
         "SKILL.md",
@@ -44,16 +33,21 @@
         "templates/target/.evozeus_evoinfra/notice-policy.json",
         "contracts/v1/manifest.json"
       ]
+    }
+  },
+  "embedded": {
+    "runtime": {
+      "version": "v0.2.0",
+      "path": "packages/runtime",
+      "required_paths": [
+        "pyproject.toml",
+        "src/evozeus_runtime/cli/main.py",
+        "src/evozeus_runtime/ledger/paths.py"
+      ]
     },
     "session_signal": {
       "version": "v0.1.0",
-      "commit": "a9f8fd0308afe8e3b31dfdce2440b0f27b53b548",
-      "source": {
-        "kind": "release_archive",
-        "url": "https://github.com/MetaInFLow/EvoZeus-session-signal-skill/releases/download/v0.1.0/evozeus-session-signal-skill-v0.1.0.tar.gz",
-        "ref": "v0.1.0",
-        "sha256": "sha256:cbcaacdcaba80f9fb60fddec65ba46c77bddb3a5b092fa0499ea7d11f77413ae"
-      },
+      "path": "packs/session-signal",
       "required_paths": [
         "SKILL.md",
         "scripts/validate_official_factor_spec.py",

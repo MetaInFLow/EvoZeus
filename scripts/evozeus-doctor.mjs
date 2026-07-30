@@ -4,8 +4,10 @@ import { existsSync, readFileSync } from "node:fs";
 
 const REQUIRED_COMPONENTS = [
   "SKILL.md",
-  "skills/index/SKILL.md",
-  "skills/evozeus-install-registration/SKILL.md",
+  "skills/using-evozeus/SKILL.md",
+  "skills/maintain-evozeus/SKILL.md",
+  "packages/runtime/src/evozeus_runtime/cli/main.py",
+  "packs/session-signal/scripts/validate_official_factor_spec.py",
   "scripts/evozeus-cli.mjs",
   "scripts/evozeus-install.mjs",
   "scripts/evozeus-doctor.mjs"
@@ -18,8 +20,8 @@ const READY_CAPABILITIES = [
   "protocol-only judgment",
   "health doctor diagnostics",
   "component and release checks",
-  "fixture-only scanner/runner infra smoke",
-  "fixture-only official factor runner smoke"
+  "built-in Runtime health check",
+  "built-in Session Signal health check"
 ];
 
 const APPROVAL_REQUIRED_CAPABILITIES = [
@@ -63,18 +65,16 @@ function sectionOf(report, primaryKey, fallbackKey) {
 }
 
 function buildBaseDiagnosis(report, missingComponents) {
-  const infra = sectionOf(report, "infra", "runtime");
-  const factors = sectionOf(report, "factors", "factor");
+  const runtime = sectionOf(report, "runtime", "infra");
+  const sessionSignal = sectionOf(report, "session_signal", "factors");
 
   return {
     components_status: missingComponents.length > 0 ? "incomplete" : "complete",
     missing_components: missingComponents.length > 0 ? missingComponents.join(", ") : "none",
-    infra_release_status: statusOf(infra, "release"),
-    infra_download_status: statusOf(infra, "download"),
-    infra_smoke_status: statusOf(infra, "smoke"),
-    factor_release_status: statusOf(factors, "release"),
-    factor_download_status: statusOf(factors, "download"),
-    factor_smoke_status: statusOf(factors, "smoke")
+    runtime_distribution: "embedded_in_evozeus",
+    runtime_smoke_status: statusOf(runtime, "smoke"),
+    session_signal_distribution: "embedded_in_evozeus",
+    session_signal_smoke_status: statusOf(sessionSignal, "smoke")
   };
 }
 
@@ -84,38 +84,21 @@ function hasStatus(status, expected) {
 
 function runtimeEvidenceIsIncomplete(diagnosis) {
   return [
-    diagnosis.infra_release_status,
-    diagnosis.infra_download_status,
-    diagnosis.infra_smoke_status,
-    diagnosis.factor_release_status,
-    diagnosis.factor_download_status,
-    diagnosis.factor_smoke_status
+    diagnosis.runtime_smoke_status,
+    diagnosis.session_signal_smoke_status
   ].some((status) => status === "unknown" || status === "skipped" || status === "not_run");
 }
 
 function optionalComponentWarnings(diagnosis) {
   const warnings = [];
-  const incompleteStatuses = ["unknown", "skipped", "not_run"];
-  const unavailableStatuses = ["missing", "outdated", "not_installed", "failed"];
+  const incompleteStatuses = ["unknown", "skipped", "not_run", "failed"];
 
-  if (
-    [
-      diagnosis.infra_release_status,
-      diagnosis.infra_download_status,
-      diagnosis.infra_smoke_status
-    ].some((status) => incompleteStatuses.includes(status) || unavailableStatuses.includes(status))
-  ) {
-    warnings.push("infra optional path needs evidence or repair before runtime use");
+  if (incompleteStatuses.includes(diagnosis.runtime_smoke_status)) {
+    warnings.push("built-in Runtime needs smoke evidence before runtime use");
   }
 
-  if (
-    [
-      diagnosis.factor_release_status,
-      diagnosis.factor_download_status,
-      diagnosis.factor_smoke_status
-    ].some((status) => incompleteStatuses.includes(status) || unavailableStatuses.includes(status))
-  ) {
-    warnings.push("official factors optional path needs evidence or repair before factor use");
+  if (incompleteStatuses.includes(diagnosis.session_signal_smoke_status)) {
+    warnings.push("built-in Session Signal needs smoke evidence before factor use");
   }
 
   return warnings.length > 0 ? warnings.join("; ") : "none";
@@ -128,8 +111,8 @@ function diagnose(report) {
   const resolvedRef = String(release.resolved_ref ?? release.latest_tag ?? "resolved source");
   const missingComponents = checkComponents();
   const diagnosis = buildBaseDiagnosis(report, missingComponents);
-  const infra = sectionOf(report, "infra", "runtime");
-  const factors = sectionOf(report, "factors", "factor");
+  const runtime = sectionOf(report, "runtime", "infra");
+  const sessionSignal = sectionOf(report, "session_signal", "factors");
 
   if (missingComponents.length > 0) {
     return {
@@ -151,57 +134,21 @@ function diagnose(report) {
 
   const runtimeRequested = reason === "runtime";
 
-  if (runtimeRequested && hasStatus(diagnosis.infra_release_status, ["outdated", "not_installed"])) {
-    return {
-      ...diagnosis,
-      doctor_verdict: "install_or_update",
-      requires_user_approval: true,
-      next_step: `Ask the user before updating scanner/runner infra to ${refOf(infra)}. Do not checkout, clone, or overwrite work without approval.`
-    };
-  }
-
-  if (runtimeRequested && hasStatus(diagnosis.infra_download_status, ["missing", "outdated", "not_installed"])) {
-    return {
-      ...diagnosis,
-      doctor_verdict: "install_or_update",
-      requires_user_approval: true,
-      next_step: `Ask the user before installing scanner/runner infra from ${refOf(infra)}. Do not clone or overwrite local repos without approval.`
-    };
-  }
-
-  if (runtimeRequested && hasStatus(diagnosis.factor_release_status, ["outdated", "not_installed"])) {
-    return {
-      ...diagnosis,
-      doctor_verdict: "install_or_update",
-      requires_user_approval: true,
-      next_step: `Ask the user before updating official factors to ${refOf(factors)}. Do not install or overwrite factor packs without approval.`
-    };
-  }
-
-  if (runtimeRequested && hasStatus(diagnosis.factor_download_status, ["missing", "outdated", "not_installed"])) {
-    return {
-      ...diagnosis,
-      doctor_verdict: "install_or_update",
-      requires_user_approval: true,
-      next_step: `Ask the user before downloading official factors from ${refOf(factors)}. Do not install or overwrite factor packs without approval.`
-    };
-  }
-
-  if (runtimeRequested && diagnosis.infra_smoke_status === "failed") {
+  if (runtimeRequested && diagnosis.runtime_smoke_status === "failed") {
     return {
       ...diagnosis,
       doctor_verdict: "fix_environment",
       requires_user_approval: true,
-      next_step: `Fix scanner/runner infra smoke failure: ${summaryOf(infra.smoke)}. Rerun doctor before runtime use.`
+      next_step: `Fix the built-in Runtime smoke failure: ${summaryOf(runtime.smoke)}. Rerun Doctor before runtime use.`
     };
   }
 
-  if (runtimeRequested && diagnosis.factor_smoke_status === "failed") {
+  if (runtimeRequested && diagnosis.session_signal_smoke_status === "failed") {
     return {
       ...diagnosis,
       doctor_verdict: "fix_environment",
       requires_user_approval: true,
-      next_step: `Fix downloaded official factor smoke failure: ${summaryOf(factors.smoke)}. Rerun doctor before factor use.`
+      next_step: `Fix the built-in Session Signal smoke failure: ${summaryOf(sessionSignal.smoke)}. Rerun Doctor before factor use.`
     };
   }
 
@@ -211,7 +158,7 @@ function diagnose(report) {
       doctor_verdict: "collect_runtime_evidence",
       requires_user_approval: true,
       next_step:
-        "Run scanner/runner infra and official factor checks, including release, download, and smoke evidence, then rerun doctor."
+        "Run the built-in Runtime and Session Signal smoke checks, then rerun Doctor."
     };
   }
 
@@ -224,7 +171,7 @@ function diagnose(report) {
       doctor_verdict: "ready_for_protocol_judgment",
       requires_user_approval: true,
       next_step:
-        "Show available_capabilities and approval_required_capabilities, then run ~/.evozeus/bin/evozeus features --json and ~/.evozeus/bin/evozeus capabilities --json if installed. Ask the user whether to review a session, plan insights, co-evolve a target, or run maintenance. Do not scan local sessions or write files without approval."
+        "Report that EvoZeus is ready, then ask for the user's real task in normal language. Do not scan local sessions or write files without approval."
     };
   }
 

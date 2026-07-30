@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:,">
+  <title>{{ title }}</title>
+  <style>{{ style_css|safe }}</style>
+</head>
+<body>
+  <header class="site-nav">
+    <div class="nav-inner">
+      <a class="brand" href="#top">
+        <img src="assets/evozeus-gold-512.png" alt="">
+        <span>EvoZeus Insight</span>
+      </a>
+      <nav class="nav-links">
+        <a href="#overview">Overview</a>
+        <a href="#projects">Projects</a>
+        <a href="#evidence">Evidence</a>
+        <a class="nav-pill" href="{{ markdown_href }}">Markdown</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <div class="hero-bg" aria-hidden="true"></div>
+      <div class="hero-inner">
+        <div class="hero-grid">
+          <div>
+            <div class="kicker">Project Session Analysis</div>
+            <h1>把真实会话变成可复用的工作方法。</h1>
+            <p class="hero-copy">当前页保留原分析内容，重点区分跨 session 复现的长期习惯，以及单次任务内反复强调的执行卡点。</p>
+          </div>
+          <aside class="hero-panel" aria-label="analysis flow">
+            <div class="flow">
+              <div class="flow-step"><strong>Session</strong><span>按项目隔离真实协作记录</span></div>
+              <div class="flow-step is-gold"><strong>Evidence</strong><span>每条高频原话可展开到上下文</span></div>
+              <div class="flow-step"><strong>Insight</strong><span>从重复表达里沉淀工作协议</span></div>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <section class="metric-band" aria-label="summary metrics">
+      <div class="metric-grid">
+        {% for metric in metrics %}
+        <div class="metric"><strong>{{ metric.value }}</strong><span>{{ metric.label }}</span></div>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="section" id="overview">
+      <div class="section-inner">
+        <div class="section-head">
+          <h2>先看分布，再进入证据。</h2>
+          <p>项目热度、消息来源和工作协议放在同一屏，先判断哪里值得精读，再展开具体 user turn。</p>
+        </div>
+
+        <div class="scope-board">
+          {% for scope in scope_cards %}
+          <div class="scope"><strong>{{ scope.value }}</strong><span>{{ scope.label }}</span></div>
+          {% endfor %}
+        </div>
+
+        <div class="overview-grid">
+          <div class="distribution">
+            {% for bar in project_bars %}
+            <div class="bar-row">
+              <div class="bar-label">{{ bar.project }}</div>
+              <div class="bar-line" style="width:{{ bar.width }}%"></div>
+              <div class="bar-value">{{ bar.count }}</div>
+            </div>
+            {% endfor %}
+          </div>
+
+          <div class="matrix-card">
+            <div class="matrix-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th class="sticky-project">Project</th>
+                    {% for label in protocol_labels %}
+                    <th>{{ label }}</th>
+                    {% endfor %}
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for row in matrix_rows %}
+                  <tr>
+                    <th class="sticky-project">{{ row.project }}<small>总 {{ row.session_count }} / 主 {{ row.direct_session_count }}</small></th>
+                    {% for cell in row.cells %}
+                    <td {% if cell.background %}style="{{ cell.background }}"{% endif %}>{{ cell.value }}</td>
+                    {% endfor %}
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="projects">
+      <div class="section-inner">
+        <div class="section-head">
+          <h2>每个项目，都要分清长期习惯和单次卡点。</h2>
+          <p>跨 session 高频原话用于提炼方法论，单 session 内重复强调用于反查一次任务为什么需要多轮纠偏。</p>
+        </div>
+
+        <div class="project-nav">
+          {% for report in reports %}
+          <a href="#{{ report.anchor }}">{{ report.project }}</a>
+          {% endfor %}
+        </div>
+
+        <div class="projects" id="evidence">
+          {% for report in reports %}
+          <article class="project-card" id="{{ report.anchor }}">
+            <aside class="project-aside">
+              <div class="project-title">
+                <img src="assets/evozeus-gold-512.png" alt="">
+                <h3>{{ report.project }}</h3>
+              </div>
+              <div class="project-meta">
+                <div class="mini-stat"><strong>{{ report.session_count }}</strong><span>总 sessions</span></div>
+                <div class="mini-stat"><strong>{{ report.direct_session_count }}</strong><span>主用户 sessions</span></div>
+                <div class="mini-stat"><strong>{{ report.exact_phrases|length }}</strong><span>跨 session 原话</span></div>
+                <div class="mini-stat"><strong>{{ report.session_local_repeats|length }}</strong><span>单 session 重复</span></div>
+              </div>
+              <div class="protocol">
+                {% for item in report.protocol_top %}
+                <span><i>{{ item.text|dashsafe|clip(32) }}</i><b>{{ item.occurrence_count }}</b></span>
+                {% else %}
+                <span><i>暂无工作协议信号</i><b>0</b></span>
+                {% endfor %}
+              </div>
+            </aside>
+
+            <div class="insight-board">
+              <div class="primary-insights">
+                <section class="insight-panel gold">
+                  <div class="panel-head">
+                    <div><h4>跨 Session 高频原话</h4><p>至少 2 个 session 命中，优先用于沉淀方法论</p></div>
+                    <span class="panel-count">{{ report.exact_phrases|length }}</span>
+                  </div>
+                  {{ phrase_items(report.exact_phrases, "cross", 6)|safe }}
+                </section>
+
+                <section class="insight-panel">
+                  <div class="panel-head">
+                    <div><h4>单 Session 内重复强调</h4><p>同一次任务里多轮强调，优先用于定位执行卡点</p></div>
+                    <span class="panel-count">{{ report.session_local_repeats|length }}</span>
+                  </div>
+                  {{ phrase_items(report.session_local_repeats, "local", 5)|safe }}
+                </section>
+              </div>
+
+              <div class="secondary-insights">
+                <section class="insight-panel">
+                  <div class="panel-head">
+                    <div><h4>粘贴材料/低置信片段</h4><p>从主用户原话里剥离，避免污染偏好判断</p></div>
+                    <span class="panel-count">{{ report.quoted_material_phrases|length }}</span>
+                  </div>
+                  {{ plain_items(report.quoted_material_phrases, 4)|safe }}
+                </section>
+
+                <section class="insight-panel">
+                  <div class="panel-head">
+                    <div><h4>委派任务模板</h4><p>给 subagent 的任务书单独看</p></div>
+                    <span class="panel-count">{{ report.delegated_task_count }}</span>
+                  </div>
+                  {{ plain_items(report.delegated_task_phrases, 4)|safe }}
+                </section>
+
+                <section class="insight-panel">
+                  <div class="panel-head">
+                    <div><h4>主用户 Factor 关键句</h4><p>来自 factor 结果，作为辅助解释</p></div>
+                    <span class="panel-count">{{ report.key_sentence_labels|length }}</span>
+                  </div>
+                  {{ plain_items(report.key_sentence_labels, 4)|safe }}
+                </section>
+              </div>
+            </div>
+          </article>
+          {% endfor %}
+        </div>
+      </div>
+    </section>
+
+    <footer class="report-note">
+      <div class="section-inner">
+        <p><strong>口径：</strong>跨 Session 高频原话要求至少 2 个 session 命中；单 Session 内重复强调只说明一次任务内多轮强调。上下文来自本地 ledger 的 redacted preview。</p>
+        <p class="mono">{{ analysis_contract.id }} / local-first / upload-off / raw session not reloaded</p>
+      </div>
+    </footer>
+  </main>
+</body>
+</html>

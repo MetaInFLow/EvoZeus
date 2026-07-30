@@ -1,12 +1,12 @@
 # Release And Promotion Policy
 
 - Status: active
-- Last updated: 2026-07-26
+- Last updated: 2026-07-30
 
 ## Product release channels
 
-- Stable 是不可变 GitHub Release，必须提供产品清单、组件 exact commit、archive SHA-256 和验证记录。
-- UAT 只有一个 `uat/current`，由中央清单固定跨 Repo commits；修复覆盖同一候选。
+- Stable 是不可变 GitHub Release，必须提供产品清单、独立组件 exact commit、archive SHA-256、内嵌模块清单和验证记录。
+- UAT 只有一个 `uat/current`，由中央清单固定 EvoZeus 与 CoEvolve Commit；Runtime 与 Session Signal 跟随 EvoZeus Commit；修复覆盖同一候选。
 - `main`、普通 feature branch 和本地未发布 commit 不属于用户更新源。
 - Stable Release 失败不得影响上一版 Stable；UAT 更新失败不得影响上一版 UAT。
 
@@ -38,6 +38,11 @@ These require explicit maintainer review before merge or promotion:
 
 - `SKILL.md`
 - `skills/`
+- `maintainer/skills/`
+- `.codex-plugin/`
+- `.claude-plugin/`
+- `packages/runtime/`
+- `packs/session-signal/`
 - `.github/workflows/`
 - `.github/CODEOWNERS`
 - `scripts/github/`
@@ -50,7 +55,7 @@ These require explicit maintainer review before merge or promotion:
 - `docs/reference/evidence-grading.md`
 - future `factors/registry/`
 - future official Factor pack manifests
-- future scanner modules
+- Runtime scanner modules
 - future `schemas/`
 - future redaction, session, candidate extraction, or upload code
 

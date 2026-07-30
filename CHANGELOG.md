@@ -2,7 +2,23 @@
 
 ## [Unreleased]
 
-- None yet.
+### Changed
+
+- Adopted a plugin-first product architecture with five default user-task Skills; historical maintainer Skills moved out of the default plugin surface.
+- Defined and enforced the Repo-scoped Harness rule: only an independent Git Repo root may own an active Harness.
+- Embedded Runtime and Session Signal in the EvoZeus main Repo while keeping CoEvolve independent.
+- Upgraded the product channel manifest to v2: only EvoZeus and CoEvolve are independent install units; embedded module health remains visible and verified.
+- Reworked Harness attach/status/audit routing so a nested Skill path resolves to its Git Repo root and a non-Repo directory is ineligible.
+- Required verified target GitHub Repo `ADMIN` permission for Harness mutation, upgrade, and upload.
+- Added a read-only Claude Code `SessionStart` adapter that quietly loads the Lesson-check contract; Codex remains explicit or semantic Skill selection until its plugin manifest supports a session hook.
+- Replaced the component-heavy README with a user outcome, example, privacy, Stable/UAT, and maintainer entry.
+- Pinned the optional CoEvolve extension to the verified `v0.14.0` Release, including the Repo-root Harness and GitHub `ADMIN` mutation boundary.
+
+### Verification
+
+- Codex plugin manifest, Claude plugin hook contract, and all default user Skills pass their validators.
+- Harness boundary tests reject nested and legacy Harness layouts.
+- Main Node suites, Runtime tests, Session Signal tests, channel v2 generation, Stable/UAT isolation, and rollback pass.
 
 ## [v0.3.5] - 2026-07-27
 

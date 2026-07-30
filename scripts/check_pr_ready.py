@@ -105,6 +105,8 @@ LAYER_PATHS = {
     ),
     "execution": (
         "scripts/",
+        "packages/runtime/",
+        "packs/session-signal/",
     ),
     "governance": (
         ".github/",
@@ -112,6 +114,10 @@ LAYER_PATHS = {
         "CODE_OF_CONDUCT.md",
         "SKILL.md",
         "skills/",
+        "maintainer/skills/",
+        ".codex-plugin/",
+        ".claude-plugin/",
+        "hooks/",
         "docs/governance/",
         "docs/rfcs/",
         "ZEUS_STATUS.yml",
@@ -274,6 +280,9 @@ def check_skill_frontmatter(errors: list[str]) -> None:
     skills_dir = ROOT / "skills"
     if skills_dir.exists():
         paths.extend(sorted(skills_dir.glob("*/SKILL.md")))
+    maintainer_skills_dir = ROOT / "maintainer" / "skills"
+    if maintainer_skills_dir.exists():
+        paths.extend(sorted(maintainer_skills_dir.glob("*/SKILL.md")))
 
     for path in paths:
         text = path.read_text(encoding="utf-8")
