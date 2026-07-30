@@ -24,10 +24,12 @@ function assertOriginIsPinned(readme, origin, navigationMarker) {
   );
 }
 
-test("keeps the Anthony and Neil origin statement at the top of both READMEs", () => {
-  const english = readFileSync(resolve(root, "README.md"), "utf8");
-  const chinese = readFileSync(resolve(root, "docs/README.zh-CN.md"), "utf8");
+test("keeps the Anthony and Neil origin statement at the top of both root READMEs", () => {
+  const chinese = readFileSync(resolve(root, "README.md"), "utf8");
+  const english = readFileSync(resolve(root, "README.en.md"), "utf8");
+  const legacyChinese = readFileSync(resolve(root, "docs/README.zh-CN.md"), "utf8");
 
-  assertOriginIsPinned(english, englishOrigin, '<a href="docs/README.zh-CN.md">简体中文</a>');
-  assertOriginIsPinned(chinese, chineseOrigin, "[English](../README.md)");
+  assertOriginIsPinned(chinese, chineseOrigin, '<a href="README.en.md">English</a>');
+  assertOriginIsPinned(english, englishOrigin, '<a href="README.md">简体中文</a>');
+  assertOriginIsPinned(legacyChinese, chineseOrigin, "[返回默认中文 README](../README.md)");
 });
