@@ -10,7 +10,8 @@
 <p align="center">
   <a href="docs/README.zh-CN.md">简体中文</a> ·
   <a href="#see-evozeus-in-action">Demos</a> ·
-  <a href="#start-here">Start here</a> ·
+  <a href="#install-evozeus">Install</a> ·
+  <a href="#try-a-concrete-demo-skill">Demo Skill</a> ·
   <a href="#how-it-works">How it works</a> ·
   <a href="#safety">Safety</a> ·
   <a href="CHANGELOG.md">Changelog</a>
@@ -71,11 +72,44 @@ These two short demos show the complete business loop: first make a useful Skill
   </tr>
 </table>
 
-## Start here
+## Install EvoZeus
 
-Enable the EvoZeus plugin in a compatible Agent host, then ask for the outcome you want. The public plugin distribution is introduced with the v0.4 product line; until that release is published, this repository is the development source.
+The official website owns the installation and registration journey. Open a compatible Agent host and paste one line:
 
-Try one of these:
+```text
+加入 EvoZeus: https://evozeus-community.vercel.app/skill
+```
+
+The [official Install Skill](https://evozeus-community.vercel.app/skill) will:
+
+1. resolve the latest immutable Stable release and verify its checksum;
+2. explain the local writes and ask for approval before installation or registration;
+3. install Stable, then verify the active channel, version, product manifest, and Doctor result.
+
+The website remains the canonical installation handoff, so this README does not duplicate a second set of installer commands. UAT remains a separate, explicit choice after Stable is healthy.
+
+## Try a concrete Demo Skill
+
+[Enterprise AI Scenario Map Skill](https://github.com/MetaInFLow/Enterprise-ai-scenario-map-skill) is the concrete business demo for learning how EvoZeus is used around a real Skill. It researches a company, generates 30+ AI opportunities, prioritizes them, and proposes an implementation path.
+
+```text
+Use the Enterprise AI Scenario Map Skill to create a standard AI scenario map for a B2B software services company.
+```
+
+Follow one complete EvoZeus journey:
+
+| Moment | Business action | EvoZeus action |
+| --- | --- | --- |
+| 1. Run | Generate the scenario map with the Demo Skill | Show the EvoZeus product channel and identify the target Skill; include Harness identity when the target repository already has one |
+| 2. Correct | Point out a concrete gap, such as missing evidence or a missing Markdown deliverable | Finish the business correction and summarize one reusable Lesson |
+| 3. Confirm | Decide whether the Lesson should be recorded | Create a Skill Feedback Issue only after confirmation |
+| 4. Evolve | Separately authorize repository changes | Attach or follow the repository Harness, then route the approved change through Design, PR, verification, UAT, and Release |
+
+The Demo explains product usage. Installation and registration continue to use the official website `/skill` entry above.
+
+## Use EvoZeus
+
+After installation, try one of these:
 
 ```text
 复盘这次 Agent 执行，找出值得保留、修复或进化的内容。
