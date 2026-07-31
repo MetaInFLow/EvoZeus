@@ -49,7 +49,7 @@ def run_codex_official_visualization(
     started_at = perf_counter()
     if not source_dir.exists() or not source_dir.is_dir():
         raise ValueError(f"approved Codex history source must be an existing directory: {source_dir}")
-    paths = RuntimePaths.for_workspace(workspace_root).ensure()
+    paths = RuntimePaths.for_workspace(workspace_root)
     _emit(progress, f"runtime_root={paths.runtime_root}")
     _emit(progress, f"scan_start provider=codex source={source_dir}")
     scan_result = scan_sessions(workspace_root=workspace_root, provider="codex", source_dir=source_dir)

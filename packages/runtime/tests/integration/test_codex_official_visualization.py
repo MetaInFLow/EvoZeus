@@ -80,6 +80,27 @@ def test_run_codex_official_visualization_rejects_a_missing_approved_source(tmp_
     assert not (workspace / ".evozeus").exists()
 
 
+def test_run_codex_official_visualization_rejects_duplicate_session_ids_before_runtime_state(tmp_path):
+    source = tmp_path / "approved-codex-history"
+    source.mkdir()
+    fixture = Path("tests/fixtures/codex_sessions/session-minimal.jsonl").read_text(encoding="utf-8")
+    (source / "first.jsonl").write_text(fixture, encoding="utf-8")
+    (source / "second.jsonl").write_text(
+        fixture.replace("请扫描这个 session", "DUPLICATE SOURCE MUST NOT BE COMBINED"),
+        encoding="utf-8",
+    )
+    workspace = tmp_path / "workspace"
+
+    with pytest.raises(ValueError, match="duplicate embedded session ID 'session-minimal'"):
+        run_codex_official_visualization(
+            workspace_root=workspace,
+            source_dir=source,
+            official_repo_root=_official_repo_root(),
+        )
+
+    assert not (workspace / ".evozeus").exists()
+
+
 def test_run_codex_official_visualization_runs_only_pending_factor_ids(monkeypatch, tmp_path):
     calls: list[list[str]] = []
 
