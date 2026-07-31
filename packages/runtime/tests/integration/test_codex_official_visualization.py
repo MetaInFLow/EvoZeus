@@ -20,6 +20,7 @@ def test_run_codex_official_visualization_scans_runs_and_renders_html(monkeypatc
 
     result = run_codex_official_visualization(
         workspace_root=tmp_path / "workspace",
+        source_dir=source,
         official_repo_root=_official_repo_root(),
         force=True,
         project_min_sessions=1,
@@ -84,11 +85,13 @@ def test_run_codex_official_visualization_runs_only_pending_factor_ids(monkeypat
     usage_profile_html.parent.mkdir(parents=True, exist_ok=True)
     usage_profile_html.write_text("<html></html>", encoding="utf-8")
 
-    monkeypatch.setattr(
-        visualization_use_case,
-        "scan_sessions",
-        lambda **_: SimpleNamespace(session_count=1),
-    )
+    source = tmp_path / "approved-codex-history"
+
+    def fake_scan_sessions(**kwargs: object) -> SimpleNamespace:
+        assert kwargs["source_dir"] == source
+        return SimpleNamespace(session_count=1)
+
+    monkeypatch.setattr(visualization_use_case, "scan_sessions", fake_scan_sessions)
     monkeypatch.setattr(visualization_use_case, "OfficialFactorPackBuilder", FakePackBuilder)
     monkeypatch.setattr(visualization_use_case, "LedgerRepository", FakeLedger)
     monkeypatch.setattr(visualization_use_case, "run_factors", fake_run_factors)
@@ -120,6 +123,7 @@ def test_run_codex_official_visualization_runs_only_pending_factor_ids(monkeypat
 
     result = run_codex_official_visualization(
         workspace_root=tmp_path / "workspace",
+        source_dir=source,
         official_repo_root=tmp_path / "official",
         skip_fresh=True,
     )

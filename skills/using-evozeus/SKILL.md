@@ -25,7 +25,7 @@ Keep the rest of the response in normal conversational form. Do not print intern
 
 | User intent | Next route |
 | --- | --- |
-| Plan or generate an AI usage profile from local Codex history | Run `~/.evozeus/bin/evozeus insights plan --source codex --json` first. Codex is the only supported history provider in the current release. Show the sources, redaction policy, report destination, and approval boundary. Read Codex history, run Factors, or write the report only after explicit approval, then follow the returned built-in Runtime route. |
+| Plan or generate an AI usage profile from local Codex history | Ask the user to approve one exact Codex history directory, then run `~/.evozeus/bin/evozeus insights plan --source codex --source-path <approved-path> --json`. Codex is the only supported history provider in the current release. Show that exact source, redaction policy, report destination, and approval boundary. Read Codex history, run Factors, or write the report only after explicit approval. Limit history reads to the approved path, then follow the returned built-in Runtime route without dropping `--source-path`. |
 | Attach or inspect a CoEvolve Harness for a Skillware Repo | `../evolve-skillware-repo/SKILL.md` |
 | Review one session, task, output, diff, or execution | `../review-agent-session/SKILL.md` |
 | Record a confirmed Lesson or preserve an improvement | `../capture-evozeus-lesson/SKILL.md` |
