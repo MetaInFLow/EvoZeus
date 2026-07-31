@@ -67,6 +67,7 @@ Branch plan 对 Codex 与 Claude 使用完全相同的输入、判定和输出�
 - `resume`：调用方提供之前保存的 plan，resume key、owner、base ref/commit、完整 purpose（type/component/summary）和目标 branch 全部匹配，且 ownership 未过期。目标 worktree 已注册且目录可用时输出 `resume_existing_branch_in_isolated_worktree`；分支仍存在、目标路径不存在且未被其他 worktree 占用时输出零写入 `recreate_resume_worktree_for_existing_branch`；Git 仍保留 prunable registration 时输出 `prune_and_recreate_resume_worktree_for_existing_branch`。后续清理或创建仍需独立授权。
 - Resume 未显式提供 `--date` 时，仅从 purpose 完全匹配的既有 plan target branch 恢复原 `yyyymmdd`；无法验证时使用当前日期并由完整 ownership/branch identity 检查继续 fail closed。
 - 同名 branch 存在但缺少匹配 plan 时视为 collision。
+- Resume evidence 必须来自 blocker-free、`writes=false` 且 next action 可执行的既有 plan；blocked/error output 不能把 collision 转成 resume。目标 branch 还必须证明 saved canonical base 是其 ancestor。
 - owner、base、resume key 不匹配时继续阻断。仅 ownership 时间窗超期且其余身份完全匹配时，Owner 可在 `--resume-plan` 基础上显式增加 `--reconfirm-owner` 生成 refreshed resume plan；持久化 refreshed ledger 仍需独立的 `--approve-save-plan`。
 
 ## Fail-Closed Handling
@@ -79,6 +80,8 @@ Branch plan 对 Codex 与 Claude 使用完全相同的输入、判定和输出�
 | wrong/missing base | 阻断，重新取得 canonical ref 与 commit。 |
 | protected checkout direct write | 阻断，改用外部 worktree。 |
 | branch/worktree collision | 阻断，禁止复用来源不明的分支。 |
+| dangling symlink at requested path | 视为路径已占用并阻断。 |
+| blocked resume evidence / target branch wrong base | 阻断，重新取得有效 plan 或从 saved canonical base 重建 branch。 |
 | requested path nested in any registered worktree | 阻断，选择所有 worktree 外部的隔离路径。 |
 | stale ownership | 默认阻断；身份完全匹配时由 Owner 使用 `--reconfirm-owner` 刷新，身份不匹配继续阻断。 |
 | actor/permission evidence mismatch | 阻断，以 GitHub viewer 与 Repo 权限证据为准。 |

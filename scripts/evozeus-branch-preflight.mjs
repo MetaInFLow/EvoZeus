@@ -2,7 +2,7 @@
 
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { existsSync, readFileSync, realpathSync } from "node:fs";
+import { existsSync, lstatSync, readFileSync, realpathSync } from "node:fs";
 import { basename, dirname, isAbsolute, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -45,6 +45,16 @@ function isSameOrDescendant(path, ancestor) {
   const pathFromAncestor = relative(ancestor, path);
   return pathFromAncestor === ""
     || (pathFromAncestor !== ".." && !pathFromAncestor.startsWith(`..${sep}`) && !isAbsolute(pathFromAncestor));
+}
+
+function pathEntryExists(path) {
+  try {
+    lstatSync(path);
+    return true;
+  } catch (error) {
+    if (error?.code === "ENOENT" || error?.code === "ENOTDIR") return false;
+    return true;
+  }
 }
 
 function parseWorktrees(text) {
@@ -183,6 +193,12 @@ export function collectGitFacts(repoPath, baseRef, targetBranch) {
   const remoteCommit = targetBranch
     ? gitText(root, ["show-ref", "--verify", "--hash", `refs/remotes/origin/${targetBranch}`], false)
     : null;
+  const targetCommit = localCommit || remoteCommit;
+  const targetDescendsFromBase = Boolean(
+    baseCommit
+    && targetCommit
+    && git(root, ["merge-base", "--is-ancestor", baseCommit, targetCommit]).status === 0
+  );
   return {
     root,
     origin_url: originUrl,
@@ -193,7 +209,8 @@ export function collectGitFacts(repoPath, baseRef, targetBranch) {
     current_status: currentStatus,
     canonical_status: canonicalStatus,
     base_commit: baseCommit,
-    target_commit: localCommit || remoteCommit,
+    target_commit: targetCommit,
+    target_descends_from_base: targetDescendsFromBase,
     target_local: Boolean(localCommit),
     target_remote: Boolean(remoteCommit),
     worktrees
@@ -421,6 +438,11 @@ export function buildBranchPlan(options, contract, facts, permissionEvidence, is
   let ownerReconfirmed = false;
 
   if (resumePlan) {
+    const resumeEvidenceValid = resumePlan.writes === false
+      && Array.isArray(resumePlan.blockers)
+      && resumePlan.blockers.length === 0
+      && resumePlan.next_write_action !== "blocked"
+      && ["new", "resume"].includes(resumePlan.resume?.decision);
     const ownershipTime = Date.parse(resumePlan.ownership?.checked_at ?? "");
     const nowTime = Date.parse(options.now);
     const staleMs = contract.resume.stale_after_days * 86_400_000;
@@ -433,7 +455,9 @@ export function buildBranchPlan(options, contract, facts, permissionEvidence, is
       || !Number.isFinite(nowTime)
       || ownershipTime > nowTime
       || nowTime - ownershipTime > staleMs;
-    if (!ownershipMatches) {
+    if (!resumeEvidenceValid) {
+      addBlocker(blockers, "resume_evidence_invalid", "resume plan must be a prior blocker-free zero-write plan");
+    } else if (!ownershipMatches) {
       addBlocker(blockers, "stale_ownership", "resume plan owner, key, or branch does not match");
     } else if (ownershipStale && !options.reconfirm_owner) {
       addBlocker(blockers, "stale_ownership", "resume plan ownership window is stale; Owner reconfirmation is required");
@@ -441,6 +465,8 @@ export function buildBranchPlan(options, contract, facts, permissionEvidence, is
       addBlocker(blockers, "stale_base", "resume plan base commit no longer matches the canonical base");
     } else if (!facts.target_commit) {
       addBlocker(blockers, "resume_branch_missing", "resume plan target branch no longer exists");
+    } else if (!facts.target_descends_from_base) {
+      addBlocker(blockers, "resume_branch_wrong_base", "resume target branch does not descend from the saved canonical base");
     } else {
       decision = "resume";
       resumeValid = true;
@@ -459,7 +485,7 @@ export function buildBranchPlan(options, contract, facts, permissionEvidence, is
 
   const registeredAtPath = facts.worktrees.find((item) => item.path === requestedWorktree);
   const registeredForBranch = facts.worktrees.find((item) => item.branch === `refs/heads/${branchName}`);
-  const registeredPathExists = existsSync(requestedWorktree);
+  const registeredPathExists = pathEntryExists(requestedWorktree);
   const usableRegisteredAtPath = registeredAtPath && registeredPathExists && !registeredAtPath.prunable;
   if (registeredPathExists && !registeredAtPath) {
     addBlocker(blockers, "worktree_collision", "requested worktree path exists but is not registered");

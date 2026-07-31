@@ -154,7 +154,14 @@ test("contract exposes the four required profiles", () => {
   assert.equal(contract.resume.matching_branch_with_prunable_worktree,
     "prune_and_recreate_resume_worktree_for_existing_branch");
   assert.equal(contract.resume.missing_cli_date_source, "validated_resume_plan_target_branch");
+  assert.deepEqual(contract.resume.evidence_requirements, {
+    writes: false,
+    blockers: "empty",
+    decision: ["new", "resume"],
+    next_write_action: "not_blocked"
+  });
   assert.equal(contract.worktree.registered_worktree_descendant, "block");
+  assert.equal(contract.worktree.dangling_symlink_path, "occupied_and_blocked");
   assert.equal(contract.blocking_handling.current_checkout_status_unavailable, "block");
 });
 
@@ -270,6 +277,35 @@ test("offers cleanup and recreation when a matching registered worktree is pruna
   assert.equal(existsSync(fixture.worktree), false);
 });
 
+test("rejects a blocked plan as resume ownership evidence", (context) => {
+  const fixture = fixtureFor(context);
+  git(fixture.repo, "branch", "codex/dev/20260731-governance-branch-contract", "origin/main");
+  const blocked = runPlan(fixture).plan;
+  assert(blockerCodes(blocked).includes("branch_collision"));
+  const resumePath = join(fixture.root, "blocked-plan.json");
+  writeFileSync(resumePath, JSON.stringify(blocked));
+
+  const { result, plan } = runPlan(fixture, { resume_plan: resumePath });
+  assert.equal(result.status, 2);
+  assert(blockerCodes(plan).includes("resume_evidence_invalid"));
+  assert.equal(plan.resume.decision, "blocked");
+});
+
+test("blocks a resumed branch that does not descend from the saved base", (context) => {
+  const fixture = fixtureFor(context);
+  const initial = runPlan(fixture).plan;
+  const tree = git(fixture.repo, "rev-parse", "HEAD^{tree}");
+  const unrelated = git(fixture.repo, "commit-tree", tree, "-m", "unrelated root");
+  git(fixture.repo, "branch", initial.branch.target, unrelated);
+  const resumePath = join(fixture.root, "resume-plan.json");
+  writeFileSync(resumePath, JSON.stringify(initial));
+
+  const { result, plan } = runPlan(fixture, { resume_plan: resumePath });
+  assert.equal(result.status, 2);
+  assert(blockerCodes(plan).includes("resume_branch_wrong_base"));
+  assert.equal(plan.resume.decision, "blocked");
+});
+
 test("blocks a dirty tree", (context) => {
   const fixture = fixtureFor(context);
   writeFileSync(join(fixture.repo, "dirty.txt"), "dirty\n");
@@ -347,6 +383,17 @@ test("blocks a requested path nested under any registered contribution worktree"
   assert.equal(plan.worktree.isolated, false);
   assert.equal(existsSync(nested), false);
   assert.equal(git(outer, "status", "--porcelain=v1", "--untracked-files=all"), "");
+});
+
+test("treats a dangling symlink at the requested worktree path as occupied", (context) => {
+  const fixture = fixtureFor(context);
+  symlinkSync(join(fixture.root, "missing-target"), fixture.worktree, "dir");
+
+  const { result, plan } = runPlan(fixture);
+  assert.equal(result.status, 2);
+  assert(blockerCodes(plan).includes("worktree_collision"));
+  assert.equal(plan.next_write_action, "blocked");
+  assert.equal(existsSync(fixture.worktree), false);
 });
 
 test("accepts exact GitHub HTTPS, SSH, and scp-like origins and rejects lookalike hosts", (context) => {
