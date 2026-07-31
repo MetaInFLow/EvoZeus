@@ -160,7 +160,7 @@ function claudeMarketplace(version) {
       {
         name: PLUGIN_ID,
         source: `./plugins/${PLUGIN_ID}`,
-        description: "With explicit approval, turn local Agent history into an AI usage profile and attach a CoEvolve Harness to an independent Skillware repository.",
+        description: "With explicit approval, turn local Codex history into an AI usage profile and attach a CoEvolve Harness to an independent Skillware repository.",
         version
       }
     ]

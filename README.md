@@ -32,7 +32,7 @@
   <img src="assets/evozeus-banner.png" alt="EvoZeus 基于证据复盘 Agent 工作" width="100%">
 </p>
 
-EvoZeus 优先帮助用户看清自己如何使用 AI，并让已交付的 Skillware 持续吸收真实反馈。本机 Agent 历史读取、Factor 执行和报告写入都需要明确批准；目标 Repo 修改和 GitHub 操作也需要单独授权。
+EvoZeus 优先帮助用户看清自己如何使用 AI，并让已交付的 Skillware 持续吸收真实反馈。当前画像只支持本机 Codex 历史；历史读取、Factor 执行和报告写入都需要明确批准，目标 Repo 修改和 GitHub 操作也需要单独授权。
 
 ```text
 真实使用 → 证据 → 判断 → Lesson → 用户确认 → 修复验证 → 发布
@@ -40,7 +40,7 @@ EvoZeus 优先帮助用户看清自己如何使用 AI，并让已交付的 Skill
 
 ## 两项主功能
 
-1. **生成 AI 使用画像**：先生成只读扫描计划。用户明确批准本机 Agent 历史读取与报告写入后，生成 AI 使用习惯、优势与盲区、人格画像（例如 `INTJ 倾向`）报告。画像来自 Session 行为证据，证据不足时会明确说明。
+1. **生成 AI 使用画像**：当前只支持本机 Codex 历史，先生成只读扫描计划。用户明确批准 Codex 历史读取与报告写入后，生成 AI 使用习惯、优势与盲区、人格画像（例如 `INTJ 倾向`）报告。画像来自 Session 行为证据，证据不足时会明确说明。
 2. **让 Skillware 持续进化**：检查用户指定的 Skill、Plugin 或路径所在的独立 Git Repo，先生成接入计划，经批准后接入 [EvoZeus-CoEvolve](https://github.com/MetaInFLow/EvoZeus-CoEvolve) Harness，让真实反馈进入 Feedback、Design、PR、UAT 和 Release 闭环。
 
 单次 Session 复盘、Lesson 记录、功能发现、Stable/UAT、Doctor、更新和回滚继续作为支撑能力提供。
@@ -122,7 +122,7 @@ Demo 解释产品如何使用；安装和注册始终走上方官网 `/skill` �
 完成安装后，先从两项主功能开始：
 
 ```text
-先为我生成本机 Agent 历史扫描计划并等待明确批准；批准前不要读取历史。批准后生成 AI 使用习惯、优势与盲区、人格画像（例如 INTJ 倾向）报告。
+先为我生成本机 Codex 历史扫描计划并等待明确批准；当前只支持 Codex，批准前不要读取历史。批准后生成 AI 使用习惯、优势与盲区、人格画像（例如 INTJ 倾向）报告。
 ```
 
 ```text

@@ -4,7 +4,7 @@
 </h1>
 
 <p align="center">
-  <strong>Build an AI usage profile from approved local Agent history, and attach a governed evolution Harness to independent Skillware.</strong>
+  <strong>Build an AI usage profile from approved local Codex history, and attach a governed evolution Harness to independent Skillware.</strong>
 </p>
 
 > Origin: EvoZeus came from a retrospective between [Anthony](https://github.com/HaodiFan) and [Neil](https://github.com/orgs/MetaInFLow/people/Neillan96) after a hackathon that did not go well.
@@ -32,7 +32,7 @@
   <img src="assets/evozeus-banner.png" alt="EvoZeus reviews Agent work with evidence" width="100%">
 </p>
 
-EvoZeus first helps users understand how they work with AI and helps delivered Skillware absorb real feedback. Reading local Agent history, running Factors, and writing reports require explicit approval. Target-repository changes and GitHub actions require separate authorization.
+EvoZeus first helps users understand how they work with AI and helps delivered Skillware absorb real feedback. The current profile route supports local Codex history only. Reading that history, running Factors, and writing reports require explicit approval. Target-repository changes and GitHub actions require separate authorization.
 
 ```text
 Agent work → Evidence → Judgment → Lesson → Verified improvement
@@ -40,7 +40,7 @@ Agent work → Evidence → Judgment → Lesson → Verified improvement
 
 ## Two primary capabilities
 
-1. **Build an AI usage profile:** start with a read-only scan plan. After the user explicitly approves local Agent-history access and report writes, generate an evidence-backed view of AI usage habits, strengths, blind spots, and a session-derived personality tendency such as `INTJ tendency`. Thin evidence produces an explicit insufficient-evidence result.
+1. **Build an AI usage profile:** the current release supports local Codex history only. Start with a read-only scan plan. After the user explicitly approves Codex-history access and report writes, generate an evidence-backed view of AI usage habits, strengths, blind spots, and a session-derived personality tendency such as `INTJ tendency`. Thin evidence produces an explicit insufficient-evidence result.
 2. **Continuously evolve Skillware:** inspect the independent Git repository containing a specified Skill, plugin, or path, prepare an attachment plan, and attach the [EvoZeus-CoEvolve](https://github.com/MetaInFLow/EvoZeus-CoEvolve) Harness after approval so real feedback can enter a governed Feedback, Design, PR, UAT, and Release loop.
 
 Single-Session review, Lesson capture, feature discovery, Stable/UAT, Doctor, update, and rollback remain available as supporting capabilities.
@@ -134,7 +134,7 @@ The Demo explains product usage. Installation and registration continue to use t
 After installation, start with the two primary capabilities:
 
 ```text
-First prepare a plan to scan my local Agent history and wait for my explicit approval. Do not read history before approval. After approval, generate an AI usage profile covering habits, strengths, blind spots, and a session-derived personality tendency such as INTJ tendency.
+First prepare a plan to scan my local Codex history and wait for my explicit approval. Codex is the only supported history provider in the current release. Do not read history before approval. After approval, generate an AI usage profile covering habits, strengths, blind spots, and a session-derived personality tendency such as INTJ tendency.
 ```
 
 ```text

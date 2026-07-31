@@ -1,6 +1,6 @@
 {
   "name": "evozeus",
-  "description": "With explicit approval, turn local Agent history into an AI usage profile and attach a CoEvolve Harness to an independent Skillware repository.",
+  "description": "With explicit approval, turn local Codex history into an AI usage profile; Codex is the only supported history provider. Also attach a CoEvolve Harness to an independent Skillware repository.",
   "version": "0.4.1",
   "author": {
     "name": "MetaInFlow"
@@ -11,7 +11,7 @@
   "keywords": [
     "ai-usage-profile",
     "skillware-evolution",
-    "agent-history",
+    "codex-history",
     "coevolve-harness",
     "session-review",
     "lessons"

@@ -120,8 +120,8 @@ describe("evozeus-cli", () => {
     assert.equal(features.get("review.session").command, "evozeus review session --input <path|-> --json");
     assert.equal(features.get("insights.sessions").backend_owner, "EvoZeus");
     assert.equal(features.get("insights.sessions").command, "evozeus insights plan --source codex --json");
-    assert.match(features.get("insights.sessions").user_goal, /AI 使用习惯、优势与盲区、人格画像/);
-    assert.match(features.get("insights.sessions").approval_boundary, /explicit approval/);
+    assert.match(features.get("insights.sessions").user_goal, /当前只支持 Codex/);
+    assert.match(features.get("insights.sessions").approval_boundary, /supports Codex history only/);
     assert.ok(features.get("insights.sessions").related_capabilities.includes("insights.plan"));
     assert.equal(features.get("preserve.artifact").command, "evozeus preserve draft --from-report <path> --json");
     assert.equal(features.get("coevolve.target").backend_owner, "EvoZeus-CoEvolve");
@@ -134,10 +134,10 @@ describe("evozeus-cli", () => {
     assert.equal(result.status, 0, result.stderr);
     assert.match(result.stdout, /EvoZeus Features/);
     assert.ok(
-      result.stdout.indexOf("Build an AI usage profile from approved local Agent history") <
+      result.stdout.indexOf("Build an AI usage profile from approved local Codex history") <
         result.stdout.indexOf("Review one explicit session")
     );
-    assert.match(result.stdout, /Build an AI usage profile from approved local Agent history/);
+    assert.match(result.stdout, /Build an AI usage profile from approved local Codex history/);
     assert.match(result.stdout, /Attach a CoEvolve Harness to an independent Skillware repository/);
     assert.match(result.stdout, /Review one explicit session/);
     assert.match(result.stdout, /Preserve a Verdict \/ report as an artifact draft/);
@@ -286,6 +286,23 @@ describe("evozeus-cli", () => {
     assert.ok(report.data.backend.command.argv.includes("session-insights"));
     assert.ok(report.data.insights_plan.forbidden_in_this_command.includes("reading raw session files"));
   }));
+
+  it("rejects unsupported insight providers before planning or backend execution", () =>
+    withTempWorkspace((workspace) => {
+      for (const args of [
+        ["insights", "plan", "--source", "claude", "--json"],
+        ["insights", "sessions", "--source", "claude", "--json"]
+      ]) {
+        const result = runCli(args, { cwd: workspace });
+        const report = parseJson(result, 1);
+
+        assert.equal(report.ok, false);
+        assert.equal(report.error.code, "UNSUPPORTED_INSIGHTS_SOURCE");
+        assert.match(report.error.message, /Codex history only/);
+        assert.equal("data" in report, false);
+        assert.equal(existsSync(join(workspace, ".evozeus")), false);
+      }
+    }));
 
   it("requires explicit approval before running session insights", () => {
     const result = runCli(["insights", "sessions", "--source", "codex", "--reuse-factors", "--html", "--json"]);
