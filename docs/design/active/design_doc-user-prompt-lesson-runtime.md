@@ -42,7 +42,9 @@ UserPromptSubmit
 - 活动渠道只接受 `stable` / `uat`，并校验 canonical product-manifest digest。
 - Core、Session Signal root 和每个文件都必须处于已验证 install root 内，且路径链不能含 symlink。
 - attachment contract 归 Core，并由产品渠道固定；Session Signal repo 不保存 checksum manifest。
+- attachment 自身的 SHA-256 固定在渠道安装的 Core dispatcher 中；修改 attachment 与 entrypoint 不能形成自签名信任链。
 - 输入上限为 256 KiB，prompt 上限为 32,000 chars，targets 上限为 256；stdout 与 stderr 在读取期间分别限制为 16 KiB。
+- 注册目标发现读取到第 257 个有效目标后立即停止并 fail-open，不继续遍历剩余 registry。
 - Core 用 `-I -B` 运行摘要固定的纯方法源文件，不把 component 的 scripts/src 目录加入 import path；未列入 attachment 的同名模块无法参与 import。
 - 输出不能包含 raw prompt、cwd、canonical path、component path、stderr 或内部诊断。
 - `UserPromptSubmit` 不运行 SessionStart 自动更新，不写本地状态，不访问网络。

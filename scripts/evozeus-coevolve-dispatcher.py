@@ -21,6 +21,9 @@ AUTO_UPDATE_TIMEOUT_SECONDS = 120
 USER_PROMPT_EVENT = "UserPromptSubmit"
 USER_PROMPT_RUNTIME_API = "evozeus.user-prompt.lesson-runtime.v1"
 SESSION_SIGNAL_ATTACHMENT_PATH = Path("contracts/v1/user-prompt-lesson-runtime.json")
+SESSION_SIGNAL_ATTACHMENT_SHA256 = (
+    "b01cb1fb190fc419843273d4773d13888c27fa41fbf62eaf67b8387c177966ff"
+)
 PROJECTS_DIR = Path(".evozeus/.projects")
 MANIFEST_CANDIDATES = (
     Path(".evozeus-wrapper/wrapper.json"),
@@ -117,7 +120,12 @@ def _regular_file_under(root: Path, relative_value: object) -> Path | None:
     return resolved
 
 
-def _validated_attachment(core_root: Path, manifest: dict[str, Any]) -> dict[str, Any] | None:
+def _validated_attachment(
+    core_root: Path,
+    manifest: dict[str, Any],
+    *,
+    attachment_sha256: str,
+) -> dict[str, Any] | None:
     components = manifest.get("components")
     core_component = components.get("evozeus") if isinstance(components, dict) else None
     required_paths = core_component.get("required_paths") if isinstance(core_component, dict) else None
@@ -128,7 +136,16 @@ def _validated_attachment(core_root: Path, manifest: dict[str, Any]) -> dict[str
     path = _regular_file_under(core_root, SESSION_SIGNAL_ATTACHMENT_PATH.as_posix())
     if path is None:
         return None
-    attachment = _read_json(path)
+    try:
+        attachment_bytes = path.read_bytes()
+        attachment = json.loads(attachment_bytes.decode("utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        return None
+    if (
+        _sha256_bytes(attachment_bytes) != attachment_sha256
+        or not isinstance(attachment, dict)
+    ):
+        return None
     component = attachment.get("component")
     if (
         attachment.get("schema_version") != "evozeus.user-prompt.lesson-runtime-attachment.v1"
@@ -146,7 +163,11 @@ def _validated_attachment(core_root: Path, manifest: dict[str, Any]) -> dict[str
     return attachment
 
 
-def resolve_session_signal_component(product_home: Path) -> dict[str, Any] | None:
+def resolve_session_signal_component(
+    product_home: Path,
+    *,
+    attachment_sha256: str = SESSION_SIGNAL_ATTACHMENT_SHA256,
+) -> dict[str, Any] | None:
     """Resolve the Core-owned, digest-bound Session Signal method attachment."""
     active = _read_json(product_home / "active-channel.json")
     channel = active.get("channel")
@@ -183,7 +204,11 @@ def resolve_session_signal_component(product_home: Path) -> dict[str, Any] | Non
         or not _contains(core_root, session_root)
     ):
         return None
-    attachment = _validated_attachment(core_root, manifest)
+    attachment = _validated_attachment(
+        core_root,
+        manifest,
+        attachment_sha256=attachment_sha256,
+    )
     if attachment is None:
         return None
     component = attachment["component"]
@@ -248,7 +273,7 @@ def _read_skill_name(path: Path) -> str | None:
     return match.group(1).strip() if match else None
 
 
-def discover_wrapped_targets(user_home: Path) -> list[dict[str, Any]]:
+def discover_wrapped_targets(user_home: Path) -> list[dict[str, Any]] | None:
     projects_root = user_home.expanduser().resolve() / PROJECTS_DIR
     targets: list[dict[str, Any]] = []
     if not projects_root.is_dir() or projects_root.is_symlink():
@@ -285,6 +310,8 @@ def discover_wrapped_targets(user_home: Path) -> list[dict[str, Any]]:
                 or _version_key(wrapper_version) is None
             ):
                 continue
+            if len(targets) >= SESSION_SIGNAL_MAX_TARGETS:
+                return None
             aliases = [expected_repo, pointer.name]
             instruction_surface = wrapper_manifest.get("instruction_surface") or "SKILL.md"
             surface = _regular_file_under(canonical, instruction_surface)
@@ -520,6 +547,7 @@ def evaluate_user_prompt_submit(
     hook_input: dict[str, Any],
     *,
     runner=None,
+    attachment_sha256: str = SESSION_SIGNAL_ATTACHMENT_SHA256,
 ) -> dict[str, Any]:
     if hook_input.get("hook_event_name") != USER_PROMPT_EVENT:
         return {"continue": True}
@@ -527,10 +555,15 @@ def evaluate_user_prompt_submit(
     if not isinstance(prompt, str) or len(prompt) > SESSION_SIGNAL_MAX_PROMPT_CHARS:
         return {"continue": True}
     try:
-        component = resolve_session_signal_component(product_home.expanduser().resolve())
+        component = resolve_session_signal_component(
+            product_home.expanduser().resolve(),
+            attachment_sha256=attachment_sha256,
+        )
         if component is None:
             return {"continue": True}
         targets = discover_wrapped_targets(user_home)
+        if targets is None:
+            return {"continue": True}
         request = _lesson_component_request(hook_input, targets, api=component["api"])
         response = _invoke_lesson_component(component, request, runner=runner)
     except Exception:

@@ -16,10 +16,12 @@
 - Preserved durable-rule scope across natural comma clauses and generalized reporting-verb attribution to named sources and caller-defined roles.
 - Recognized comma-delimited log milliseconds and stopped inferring unregistered repository basenames as target aliases.
 - Distinguished Chinese report nouns from reporting verbs, accepted contracted durable prohibitions, and filtered RFC 3339 `Z` log timestamps.
+- Distinguished past-participle answer modifiers, scoped Python ExceptionGroup tracebacks, and aligned lowercase direct-answer sentence boundaries.
+- Required log levels after timestamps, added bare result/output corrections, and recognized sentence-initial `Never` prohibitions.
 
 ### Verification
 
-- Added 127 deterministic Lesson candidate tests, including pasted-log, attribution, durable-scope, question-scope, alias and subprocess privacy regressions.
+- Added 138 deterministic Lesson candidate tests, including pasted-log, attribution, traceback, durable-scope, question-scope, alias and subprocess privacy regressions.
 
 ## [v0.1.0] - 2026-07-26
 

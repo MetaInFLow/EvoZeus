@@ -11,6 +11,8 @@ import sys
 import tempfile
 import textwrap
 import unittest
+from unittest import mock
+from typing import Any
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -43,7 +45,7 @@ class UserPromptLessonRuntimeTest(unittest.TestCase):
             encoding="utf-8",
         )
         pointer = user_home / ".evozeus" / ".projects" / "MetaInFLow" / name
-        pointer.parent.mkdir(parents=True)
+        pointer.parent.mkdir(parents=True, exist_ok=True)
         pointer.symlink_to(target)
         return target
 
@@ -52,7 +54,7 @@ class UserPromptLessonRuntimeTest(unittest.TestCase):
         root: Path,
         *,
         companion_root: Path | None = None,
-    ) -> dict[str, Path]:
+    ) -> dict[str, Any]:
         user_home = root / "user-home"
         product_home = root / "custom-product-home"
         install_root = product_home / "releases" / "fixture"
@@ -127,6 +129,7 @@ class UserPromptLessonRuntimeTest(unittest.TestCase):
             json.dumps(attachment, ensure_ascii=False, indent=2) + "\n",
             encoding="utf-8",
         )
+        attachment_sha256 = hashlib.sha256(contract_path.read_bytes()).hexdigest()
         required_component_paths = [
             entry["path"] for entry in attachment["component"]["files"]
         ]
@@ -186,10 +189,11 @@ class UserPromptLessonRuntimeTest(unittest.TestCase):
             "session_root": session_root,
             "script": script,
             "contract": contract_path,
+            "attachment_sha256": attachment_sha256,
             "target": target,
         }
 
-    def _invoke(self, fixture: dict[str, Path], prompt: str, **kwargs):
+    def _invoke(self, fixture: dict[str, Any], prompt: str, **kwargs):
         return runtime.evaluate_user_prompt_submit(
             fixture["product_home"],
             fixture["user_home"],
@@ -198,6 +202,7 @@ class UserPromptLessonRuntimeTest(unittest.TestCase):
                 "cwd": str(fixture["target"]),
                 "prompt": prompt,
             },
+            attachment_sha256=fixture["attachment_sha256"],
             **kwargs,
         )
 
@@ -209,6 +214,10 @@ class UserPromptLessonRuntimeTest(unittest.TestCase):
             "evozeus.user-prompt.lesson-runtime-attachment.v1",
         )
         self.assertEqual(attachment["runtime_api"], runtime.USER_PROMPT_RUNTIME_API)
+        self.assertEqual(
+            hashlib.sha256(ATTACHMENT.read_bytes()).hexdigest(),
+            runtime.SESSION_SIGNAL_ATTACHMENT_SHA256,
+        )
         self.assertEqual(attachment["component"]["version"], "v0.1.1")
         self.assertEqual(
             attachment["component"]["entrypoint"],
@@ -265,8 +274,34 @@ class UserPromptLessonRuntimeTest(unittest.TestCase):
 
             self.assertEqual(self._invoke(fixture, "neutral"), {"continue": True})
 
+    def test_target_discovery_stops_at_257th_valid_registration(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            user_home = root / "user-home"
+            for index in range(runtime.SESSION_SIGNAL_MAX_TARGETS + 2):
+                self._target(user_home, root, f"repo-{index:03d}")
+
+            with mock.patch.object(
+                runtime,
+                "_read_json",
+                wraps=runtime._read_json,
+            ) as read_json:
+                targets = runtime.discover_wrapped_targets(user_home)
+
+            self.assertIsNone(targets)
+            self.assertEqual(
+                read_json.call_count,
+                runtime.SESSION_SIGNAL_MAX_TARGETS + 1,
+            )
+
     def test_invalid_channel_evidence_and_component_files_fail_open(self):
-        for failure in ("manifest_digest", "version", "damaged", "symlink"):
+        for failure in (
+            "manifest_digest",
+            "version",
+            "damaged",
+            "self_blessed",
+            "symlink",
+        ):
             with self.subTest(failure=failure), tempfile.TemporaryDirectory() as tmp:
                 fixture = self._fixture(Path(tmp))
                 state_path = fixture["product_home"] / "channel-state.json"
@@ -279,6 +314,18 @@ class UserPromptLessonRuntimeTest(unittest.TestCase):
                     entry["manifest_digest"] = runtime._product_manifest_digest(entry["manifest"])
                 elif failure == "damaged":
                     fixture["script"].write_text("# damaged\n", encoding="utf-8")
+                elif failure == "self_blessed":
+                    fixture["script"].write_text("# attacker-controlled\n", encoding="utf-8")
+                    attachment = json.loads(
+                        fixture["contract"].read_text(encoding="utf-8")
+                    )
+                    attachment["component"]["files"][-1]["sha256"] = hashlib.sha256(
+                        fixture["script"].read_bytes()
+                    ).hexdigest()
+                    fixture["contract"].write_text(
+                        json.dumps(attachment, ensure_ascii=False, indent=2) + "\n",
+                        encoding="utf-8",
+                    )
                 else:
                     outside = Path(tmp) / "outside.py"
                     outside.write_bytes(fixture["script"].read_bytes())
@@ -357,7 +404,10 @@ class UserPromptLessonRuntimeTest(unittest.TestCase):
     def test_cli_user_prompt_skips_session_auto_update_and_persistence(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            fixture = self._fixture(root)
+            fixture = self._fixture(
+                root,
+                companion_root=ROOT / "packs" / "session-signal",
+            )
             marker = root / "auto-update-was-called"
             executable = fixture["product_home"] / "bin" / "evozeus"
             executable.parent.mkdir(parents=True)
@@ -383,7 +433,7 @@ class UserPromptLessonRuntimeTest(unittest.TestCase):
                     {
                         "hook_event_name": "UserPromptSubmit",
                         "cwd": str(fixture["target"]),
-                        "prompt": "candidate",
+                    "prompt": "这个结果不对，遗漏了验收标准。",
                     }
                 ),
                 text=True,
