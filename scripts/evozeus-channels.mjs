@@ -29,6 +29,7 @@ export const DEFAULT_MANIFEST_SOURCES = {
 
 const CHANNEL_RECOVERY_FAILURE_CODES = new Set([
   "UPDATE_ROLLBACK_FAILED",
+  "ACTIVATION_ROLLBACK_FAILED",
   "BOOTSTRAP_ROLLBACK_FAILED",
   "ROLLBACK_TRANSACTION_FAILED"
 ]);
@@ -1088,6 +1089,25 @@ function installedEntryIntegrity(evozeusHome, entry, manifest, { historical = fa
   }
   const active = historical ? null : readActiveChannel(home);
   if (!historical && active?.channel === manifest.channel) {
+    for (const file of CHANNEL_BOOTSTRAP_FILES) {
+      const source = coreRoot ? join(coreRoot, "scripts", file) : null;
+      const target = join(home, "skeleton", "scripts", file);
+      const sourceSafety = coreRoot ? containedPathSafety(coreRoot, source, "file") : "missing";
+      const targetSafety = homeSafety === "ready" ? containedPathSafety(home, target, "file") : homeSafety;
+      if (sourceSafety === "unsafe") unsafe.push(`bootstrap_source:${file}:unsafe`);
+      if (sourceSafety === "missing") issues.push(`bootstrap_source:${file}:missing`);
+      if (targetSafety === "unsafe") unsafe.push(`bootstrap:${file}:unsafe`);
+      if (targetSafety === "missing") issues.push(`bootstrap:${file}:missing`);
+      if (sourceSafety === "ready" && targetSafety === "ready") {
+        try {
+          if (!readFileSync(source).equals(readFileSync(target))) {
+            issues.push(`bootstrap:${file}:content_mismatch`);
+          }
+        } catch {
+          unsafe.push(`bootstrap:${file}:unreadable`);
+        }
+      }
+    }
     const hooksRoot = join(home, "hooks");
     const hooksSafety = containedPathSafety(home, hooksRoot, "directory");
     if (hooksSafety === "unsafe") unsafe.push("dispatcher:unsafe_hooks_root");
@@ -1519,7 +1539,36 @@ export async function applyChannelUpdate({
     };
   }
   if (plan.decision === "activate" && existing?.install_root && existsSync(existing.install_root)) {
-    const active = activateInstalledChannel(home, channel, autoRefresh);
+    let active;
+    try {
+      active = activateInstalledChannel(home, channel, autoRefresh);
+      refreshChannelBootstrap(home, existing.component_roots.evozeus, { copyImpl: bootstrapCopy });
+    } catch (error) {
+      let rollbackError = null;
+      try {
+        const priorEntry = activeBefore?.channel ? stateBefore.channels[activeBefore.channel] : null;
+        if (!activeBefore?.channel || !priorEntry?.component_roots?.evozeus) {
+          throw new Error("no prior active channel is available for recovery");
+        }
+        activateInstalledChannel(home, activeBefore.channel, activeBefore.auto_refresh === true);
+        refreshChannelBootstrap(home, priorEntry.component_roots.evozeus);
+        atomicWriteJson(join(home, "active-channel.json"), activeBefore);
+      } catch (caughtRollbackError) {
+        rollbackError = caughtRollbackError;
+      }
+      if (rollbackError) {
+        throw new ChannelError(
+          "ACTIVATION_ROLLBACK_FAILED",
+          "channel activation failed and the prior active channel could not be restored",
+          {
+            activation_error: error.message,
+            rollback_error: rollbackError.message,
+            recovery: activeBefore?.channel ?? null
+          }
+        );
+      }
+      throw error;
+    }
     return {
       status: "activated",
       ...plan,

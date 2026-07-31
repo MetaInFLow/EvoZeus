@@ -344,7 +344,12 @@ function installedCliJson(cliPath, args, options) {
 
 describe("product channel manifest", () => {
   it("classifies channel rollback failures as incomplete recovery", () => {
-    for (const code of ["UPDATE_ROLLBACK_FAILED", "BOOTSTRAP_ROLLBACK_FAILED", "ROLLBACK_TRANSACTION_FAILED"]) {
+    for (const code of [
+      "UPDATE_ROLLBACK_FAILED",
+      "ACTIVATION_ROLLBACK_FAILED",
+      "BOOTSTRAP_ROLLBACK_FAILED",
+      "ROLLBACK_TRANSACTION_FAILED"
+    ]) {
       assert.equal(channelRecoveryIncomplete({ code }), true, code);
     }
     assert.equal(channelRecoveryIncomplete({ code: "SMOKE_FAILED" }), false);
@@ -639,7 +644,10 @@ describe("channel transactions", () => {
         manifestSource: path,
         smokeRunner: noSmoke
       });
-      writeFileSync(join(home, "skeleton/scripts/evozeus-channels.mjs"), "legacy bootstrap\n");
+      const stateBefore = readFileSync(join(home, "channel-state.json"), "utf8");
+      const activeBefore = readFileSync(join(home, "active-channel.json"), "utf8");
+      const bootstrapPath = join(home, "skeleton/scripts/evozeus-channels.mjs");
+      const bootstrapBefore = readFileSync(bootstrapPath, "utf8");
       const second = await applyChannelUpdate({
         evozeusHome: home,
         channel: "uat",
@@ -650,10 +658,148 @@ describe("channel transactions", () => {
       assert.equal(second.decision, "healthy_noop");
       assert.equal(second.writes_now, false);
       assert.equal(second.install_root, first.install_root);
-      assert.equal(
-        readFileSync(join(home, "skeleton/scripts/evozeus-channels.mjs"), "utf8"),
-        "legacy bootstrap\n"
+      assert.equal(readFileSync(join(home, "channel-state.json"), "utf8"), stateBefore);
+      assert.equal(readFileSync(join(home, "active-channel.json"), "utf8"), activeBefore);
+      assert.equal(readFileSync(bootstrapPath, "utf8"), bootstrapBefore);
+    }));
+
+  it("routes damaged or missing active bootstrap files through repair", async () =>
+    fixture(async (root) => {
+      const home = join(root, "home");
+      const components = Object.fromEntries(
+        Object.keys(COMPONENT_PATHS).map((componentId) => [componentId, initComponent(root, componentId)])
       );
+      const manifestPath = writeManifest(root, "uat-bootstrap-repair.json", uatManifest(components));
+      const installed = await applyChannelUpdate({
+        evozeusHome: home,
+        channel: "uat",
+        manifestSource: manifestPath,
+        smokeRunner: noSmoke
+      });
+      const bootstrapPath = join(home, "skeleton", "scripts", "evozeus-channels.mjs");
+      const sourceBootstrap = join(installed.component_roots.evozeus, "scripts", "evozeus-channels.mjs");
+      const stateBefore = readFileSync(join(home, "channel-state.json"), "utf8");
+      const activeBefore = readFileSync(join(home, "active-channel.json"), "utf8");
+
+      writeFileSync(bootstrapPath, "damaged bootstrap\n");
+      const damaged = await prepareChannelUpdate({
+        evozeusHome: home,
+        channel: "uat",
+        manifestSource: manifestPath
+      });
+      assert.equal(damaged.decision, "repair");
+      assert.ok(damaged.current_integrity.issues.includes("bootstrap:evozeus-channels.mjs:content_mismatch"));
+      assert.equal(readFileSync(bootstrapPath, "utf8"), "damaged bootstrap\n");
+      assert.equal(readFileSync(join(home, "channel-state.json"), "utf8"), stateBefore);
+      assert.equal(readFileSync(join(home, "active-channel.json"), "utf8"), activeBefore);
+
+      writeFileSync(bootstrapPath, readFileSync(sourceBootstrap));
+      rmSync(bootstrapPath);
+      const missing = await prepareChannelUpdate({
+        evozeusHome: home,
+        channel: "uat",
+        manifestSource: manifestPath
+      });
+      assert.equal(missing.decision, "repair");
+      assert.ok(missing.current_integrity.issues.includes("bootstrap:evozeus-channels.mjs:missing"));
+      assert.equal(existsSync(bootstrapPath), false);
+      assert.equal(readFileSync(join(home, "channel-state.json"), "utf8"), stateBefore);
+      assert.equal(readFileSync(join(home, "active-channel.json"), "utf8"), activeBefore);
+
+      const repaired = await applyChannelUpdate({
+        evozeusHome: home,
+        channel: "uat",
+        manifestSource: manifestPath,
+        smokeRunner: noSmoke
+      });
+      assert.equal(repaired.status, "repaired");
+      assert.equal(repaired.decision, "repair");
+      assert.notEqual(repaired.install_root, installed.install_root);
+      assert.equal(
+        readFileSync(bootstrapPath, "utf8"),
+        readFileSync(join(repaired.component_roots.evozeus, "scripts", "evozeus-channels.mjs"), "utf8")
+      );
+      assert.equal(channelSnapshot(home).health, "healthy");
+    }));
+
+  it("refreshes bootstrap on activation and restores the prior active channel when refresh fails", async () =>
+    fixture(async (root) => {
+      const home = join(root, "home");
+      const stable = stableManifest(join(root, "activation-stable"), "v0.4.0", "1");
+      await applyChannelUpdate({
+        evozeusHome: home,
+        channel: "stable",
+        manifestSource: writeManifest(root, "activation-stable.json", stable),
+        fetchImpl: fileFetch,
+        smokeRunner: noSmoke,
+        embeddedSmokeRunner: noSmoke
+      });
+      const components = Object.fromEntries(
+        Object.keys(COMPONENT_PATHS).map((componentId) => [componentId, initComponent(root, componentId)])
+      );
+      const uat = uatManifest(components, "v0.4.1");
+      uat.components.coevolve.version = "v0.14.0";
+      const uatPath = writeManifest(root, "activation-uat.json", uat);
+      await applyChannelUpdate({
+        evozeusHome: home,
+        channel: "uat",
+        manifestSource: uatPath,
+        smokeRunner: noSmoke,
+        embeddedSmokeRunner: noSmoke
+      });
+      const state = readChannelState(home);
+      const stableEntry = state.channels.stable;
+      const uatEntry = state.channels.uat;
+      const bootstrapPath = join(home, "skeleton", "scripts", "evozeus-launcher.mjs");
+
+      activateInstalledChannel(home, "stable");
+      refreshChannelBootstrap(home, stableEntry.component_roots.evozeus);
+      assert.match(readFileSync(bootstrapPath, "utf8"), /fixture bootstrap: v0\.4\.0-evozeus/);
+
+      const activated = await applyChannelUpdate({
+        evozeusHome: home,
+        channel: "uat",
+        manifestSource: uatPath,
+        smokeRunner: noSmoke,
+        embeddedSmokeRunner: noSmoke
+      });
+      assert.equal(activated.status, "activated");
+      assert.equal(activated.decision, "activate");
+      assert.equal(readActiveChannel(home).channel, "uat");
+      assert.equal(
+        readFileSync(bootstrapPath, "utf8"),
+        readFileSync(join(uatEntry.component_roots.evozeus, "scripts", "evozeus-launcher.mjs"), "utf8")
+      );
+      assert.equal(readJsonReport(join(home, "hooks", "state.json")).installed_version, "v0.14.0");
+
+      activateInstalledChannel(home, "stable");
+      refreshChannelBootstrap(home, stableEntry.component_roots.evozeus);
+      const stateBefore = readFileSync(join(home, "channel-state.json"), "utf8");
+      const activeBefore = readFileSync(join(home, "active-channel.json"), "utf8");
+      const bootstrapBefore = readFileSync(bootstrapPath, "utf8");
+      const dispatcherBefore = readJsonReport(join(home, "hooks", "state.json"));
+
+      await assert.rejects(
+        applyChannelUpdate({
+          evozeusHome: home,
+          channel: "uat",
+          manifestSource: uatPath,
+          smokeRunner: noSmoke,
+          embeddedSmokeRunner: noSmoke,
+          bootstrapCopy: () => {
+            throw new Error("simulated activation bootstrap failure");
+          }
+        }),
+        /simulated activation bootstrap failure/
+      );
+      assert.equal(readFileSync(join(home, "channel-state.json"), "utf8"), stateBefore);
+      assert.equal(readFileSync(join(home, "active-channel.json"), "utf8"), activeBefore);
+      assert.equal(readFileSync(bootstrapPath, "utf8"), bootstrapBefore);
+      const dispatcherAfter = readJsonReport(join(home, "hooks", "state.json"));
+      assert.equal(dispatcherAfter.wrapper_source, dispatcherBefore.wrapper_source);
+      assert.equal(dispatcherAfter.installed_version, dispatcherBefore.installed_version);
+      assert.equal(readActiveChannel(home).channel, "stable");
+      assert.equal(channelSnapshot(home).health, "healthy");
     }));
 
   it("repairs a damaged same-version UAT from a new verified root and retains rollback", async () =>
@@ -1505,7 +1651,7 @@ describe("channel transactions", () => {
       assert.equal(channelSnapshot(home).health, "healthy");
     }));
 
-  it("uses the active core when the skeleton host module is missing without rewriting it", async () =>
+  it("uses the active core to repair a missing skeleton host module", async () =>
     fixture(async (root) => {
       const home = join(root, "home");
       const components = Object.fromEntries(
@@ -1538,8 +1684,16 @@ describe("channel transactions", () => {
       );
 
       assert.equal(result.status, 0, result.stderr);
-      assert.equal(existsSync(bootstrapHostModule), false);
+      assert.equal(existsSync(bootstrapHostModule), true);
+      assert.equal(
+        readFileSync(bootstrapHostModule, "utf8"),
+        readFileSync(
+          join(readChannelState(home).channels.uat.component_roots.evozeus, "scripts", "evozeus-hosts.mjs"),
+          "utf8"
+        )
+      );
       assert.equal(readChannelState(home).channels.uat.manifest.product_version, "v0.4.1");
+      assert.equal(channelSnapshot(home).health, "healthy");
     }));
 
   it("auto-refreshes the same active UAT and continues the previous UAT when a later refresh fails", async () =>
