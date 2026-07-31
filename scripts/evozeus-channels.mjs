@@ -1214,6 +1214,19 @@ function installedEntryIntegrity(evozeusHome, entry, manifest, { historical = fa
       if (dispatcher.installed_version !== manifest.components.coevolve.version) {
         issues.push("dispatcher:version_mismatch");
       }
+      const dispatcherPath = join(hooksRoot, "evozeus_wrapper_dispatcher.py");
+      const dispatcherSource = coreRoot
+        ? join(coreRoot, "scripts", "evozeus-coevolve-dispatcher.py")
+        : null;
+      if (dispatcherSource && existsSync(dispatcherPath) && existsSync(dispatcherSource)) {
+        try {
+          if (!readFileSync(dispatcherPath).equals(readFileSync(dispatcherSource))) {
+            issues.push("dispatcher:content_mismatch");
+          }
+        } catch {
+          unsafe.push("dispatcher:unreadable");
+        }
+      }
     }
   }
   if (unsafe.length > 0) {

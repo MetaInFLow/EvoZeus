@@ -988,6 +988,53 @@ describe("channel transactions", () => {
       assert.equal(channelSnapshot(home).health, "healthy");
     }));
 
+  it("repairs a byte-modified dispatcher that retains its marker and version state", async () =>
+    fixture(async (root) => {
+      const home = join(root, "home");
+      const manifest = stableManifest(join(root, "dispatcher-content-archives"));
+      const manifestPath = writeManifest(root, "stable-dispatcher-content-repair.json", manifest);
+      const installed = await applyChannelUpdate({
+        evozeusHome: home,
+        channel: "stable",
+        manifestSource: manifestPath,
+        fetchImpl: fileFetch,
+        smokeRunner: noSmoke
+      });
+      const dispatcherPath = join(home, "hooks", "evozeus_wrapper_dispatcher.py");
+      writeFileSync(
+        dispatcherPath,
+        `${readFileSync(dispatcherPath, "utf8")}\n# modified but keeps evozeus.channel-coevolve-dispatcher.v2\n`
+      );
+
+      const plan = await prepareChannelUpdate({
+        evozeusHome: home,
+        channel: "stable",
+        manifestSource: manifestPath,
+        fetchImpl: fileFetch
+      });
+
+      assert.equal(plan.decision, "repair");
+      assert.ok(plan.current_integrity.issues.includes("dispatcher:content_mismatch"));
+
+      const repaired = await applyChannelUpdate({
+        evozeusHome: home,
+        channel: "stable",
+        manifestSource: manifestPath,
+        fetchImpl: fileFetch,
+        smokeRunner: noSmoke
+      });
+      const expected = join(
+        repaired.component_roots.evozeus,
+        "scripts",
+        "evozeus-coevolve-dispatcher.py"
+      );
+
+      assert.equal(repaired.status, "repaired");
+      assert.notEqual(repaired.install_root, installed.install_root);
+      assert.equal(readFileSync(dispatcherPath, "utf8"), readFileSync(expected, "utf8"));
+      assert.equal(channelSnapshot(home).health, "healthy");
+    }));
+
   it("repairs a current link that no longer targets the installed entry", async () =>
     fixture(async (root) => {
       const home = join(root, "home");
