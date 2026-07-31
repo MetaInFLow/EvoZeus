@@ -3,7 +3,7 @@
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync, realpathSync } from "node:fs";
-import { dirname, isAbsolute, resolve } from "node:path";
+import { basename, dirname, isAbsolute, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
@@ -28,7 +28,23 @@ function gitText(repoPath, args, required = true) {
 
 function canonicalPath(path) {
   const absolute = resolve(path);
-  return existsSync(absolute) ? realpathSync.native(absolute) : absolute;
+  if (existsSync(absolute)) return realpathSync.native(absolute);
+
+  const missingSegments = [];
+  let existingAncestor = absolute;
+  while (!existsSync(existingAncestor)) {
+    const parent = dirname(existingAncestor);
+    if (parent === existingAncestor) return absolute;
+    missingSegments.unshift(basename(existingAncestor));
+    existingAncestor = parent;
+  }
+  return resolve(realpathSync.native(existingAncestor), ...missingSegments);
+}
+
+function isSameOrDescendant(path, ancestor) {
+  const pathFromAncestor = relative(ancestor, path);
+  return pathFromAncestor === ""
+    || (pathFromAncestor !== ".." && !pathFromAncestor.startsWith(`..${sep}`) && !isAbsolute(pathFromAncestor));
 }
 
 function parseWorktrees(text) {
@@ -204,6 +220,7 @@ export function collectGitHubPermissionEvidence(repo, checkedAt, runner = spawnS
 }
 
 function resolvePermission(evidence) {
+  if (evidence.source !== "github_api") return "local";
   if (!evidence.identity.available || !evidence.repository.permission_available) return "local";
   if (["ADMIN", "MAINTAIN", "WRITE"].includes(evidence.repository.viewer_permission)) return "direct";
   if (
@@ -284,11 +301,12 @@ export function buildBranchPlan(options, contract, facts, permissionEvidence, re
 
   const requestedWorktree = canonicalPath(options.worktree);
   const canonicalCheckout = facts.worktrees[0]?.path ?? facts.root;
+  const insideCanonicalCheckout = isSameOrDescendant(requestedWorktree, canonicalCheckout);
   const currentProtected = isProtectedRef(facts.current_branch, contract);
   if (currentProtected && requestedWorktree === facts.root) {
     addBlocker(blockers, "protected_checkout_write", "protected checkout cannot be the contribution worktree");
-  } else if (requestedWorktree === canonicalCheckout) {
-    addBlocker(blockers, "canonical_checkout_write", "canonical checkout cannot be the contribution worktree");
+  } else if (insideCanonicalCheckout) {
+    addBlocker(blockers, "canonical_checkout_write", "canonical checkout and its descendants cannot be the contribution worktree");
   }
 
   const resumeKey = resumeKeyFor([
@@ -386,7 +404,7 @@ export function buildBranchPlan(options, contract, facts, permissionEvidence, re
       path: requestedWorktree,
       current_repo_path: facts.root,
       canonical_checkout_path: canonicalCheckout,
-      isolated: requestedWorktree !== canonicalCheckout,
+      isolated: !insideCanonicalCheckout,
       registered: Boolean(registeredAtPath),
       current_checkout: {
         status_available: facts.current_status.available,

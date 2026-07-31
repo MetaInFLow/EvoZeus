@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -58,19 +58,30 @@ function snapshot(repo) {
   };
 }
 
-function fakeGitHubRunner({ login = "alice", viewerPermission = "WRITE", repository, unavailable = false } = {}) {
+function fakeGitHubRunner({
+  login = "alice",
+  viewerPermission = "WRITE",
+  repository,
+  unavailable = false,
+  identityUnavailable = false,
+  permissionUnavailable = false,
+  repositoryUnavailable = false
+} = {}) {
   repository ||= { private: false, archived: false, disabled: false, allow_forking: true };
   return (command, args) => {
     assert.equal(command, "gh");
     if (unavailable) return { status: 1, stdout: "", stderr: "unavailable" };
     if (args[0] === "api" && args[1] === "user") {
+      if (identityUnavailable) return { status: 1, stdout: "", stderr: "identity unavailable" };
       return { status: 0, stdout: JSON.stringify({ login }), stderr: "" };
     }
     if (args[0] === "api" && args[1] === "graphql") {
+      if (permissionUnavailable) return { status: 1, stdout: "", stderr: "permission unavailable" };
       const data = { data: { repository: { viewerPermission } } };
       return { status: 0, stdout: JSON.stringify(data), stderr: "" };
     }
     if (args[0] === "api" && args[1] === "repos/MetaInFLow/EvoZeus") {
+      if (repositoryUnavailable) return { status: 1, stdout: "", stderr: "repository unavailable" };
       return { status: 0, stdout: JSON.stringify(repository), stderr: "" };
     }
     return { status: 1, stdout: "", stderr: "unexpected request" };
@@ -222,6 +233,24 @@ test("blocks direct use of a protected checkout as the contribution worktree", (
   assert(blockerCodes(plan).includes("protected_checkout_write"));
 });
 
+test("blocks a nonexistent worktree nested under the canonical checkout", (context) => {
+  const fixture = fixtureFor(context);
+  const nestedWorktree = join(fixture.repo, "nested", "planned-worktree");
+  const { result, plan } = runPlan(fixture, { worktree: nestedWorktree });
+  assert.equal(result.status, 2);
+  assert(blockerCodes(plan).includes("canonical_checkout_write"));
+  assert.equal(plan.worktree.isolated, false);
+  assert.equal(existsSync(nestedWorktree), false);
+
+  const canonicalAlias = join(fixture.root, "canonical-alias");
+  const nestedThroughAlias = join(canonicalAlias, "missing", "planned-worktree");
+  symlinkSync(fixture.repo, canonicalAlias, "dir");
+  const aliased = runPlan(fixture, { worktree: nestedThroughAlias }).plan;
+  assert(blockerCodes(aliased).includes("canonical_checkout_write"));
+  assert.equal(aliased.worktree.isolated, false);
+  assert.equal(existsSync(nestedThroughAlias), false);
+});
+
 test("blocks a new plan when HEAD is not the requested base commit", (context) => {
   const fixture = fixtureFor(context);
   writeFileSync(join(fixture.repo, "fixture.txt"), "new head\n");
@@ -306,6 +335,40 @@ test("GitHub unavailability fails closed to local and cannot grant direct or for
   assert.deepEqual(local.blockers, []);
   assert.equal(local.permission_path.push_allowed, false);
   assert.equal(local.permission_path.pull_request_allowed, false);
+});
+
+test("partial GitHub evidence always fails closed to local", (context) => {
+  const cases = [
+    { label: "missing identity", github: { identityUnavailable: true } },
+    { label: "missing permission", github: { permissionUnavailable: true } },
+    { label: "missing fork policy for WRITE", github: { repositoryUnavailable: true } },
+    {
+      label: "missing fork policy for READ",
+      github: { viewerPermission: "READ", repositoryUnavailable: true },
+      values: { profile: "community_contribution", type: "docs", component: "docs", permission: "fork" }
+    },
+    {
+      label: "identity evidence only",
+      github: { permissionUnavailable: true, repositoryUnavailable: true }
+    },
+    {
+      label: "permission evidence only",
+      github: { identityUnavailable: true, repositoryUnavailable: true }
+    },
+    {
+      label: "fork-policy evidence only",
+      github: { identityUnavailable: true, permissionUnavailable: true }
+    }
+  ];
+  const fixtures = cases.map(() => createFixture());
+  context.after(() => fixtures.forEach(({ root }) => rmSync(root, { recursive: true, force: true })));
+
+  for (const [index, scenario] of cases.entries()) {
+    const plan = runPlan(fixtures[index], { ...scenario.values, github: scenario.github }).plan;
+    assert.equal(plan.permission_evidence.source, "github_api_partial", scenario.label);
+    assert.equal(plan.permission_path.resolved, "local", scenario.label);
+    assert(blockerCodes(plan).includes("permission_expectation_mismatch"), scenario.label);
+  }
 });
 
 test("keeps UAT repair on a development branch without a user channel claim", (context) => {
