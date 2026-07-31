@@ -5,8 +5,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "npm run test:plugin && npm run test:plugin-hosts && npm run test:user-visible-events && npm run test:readme-origin && npm run test:harness-boundary && npm run test:release-notes && npm run test:cli && npm run test:install && npm run test:doctor && npm run test:channels && npm run test:github-gates",
+    "test": "npm run test:plugin && npm run test:user-prompt-runtime && npm run test:plugin-hosts && npm run test:user-visible-events && npm run test:readme-origin && npm run test:harness-boundary && npm run test:release-notes && npm run test:cli && npm run test:install && npm run test:doctor && npm run test:channels && npm run test:github-gates",
     "test:plugin": "node --test scripts/evozeus-plugin.test.mjs",
+    "test:user-prompt-runtime": "PYTHONDONTWRITEBYTECODE=1 python3 scripts/evozeus-user-prompt-runtime.test.py",
     "test:plugin-hosts": "node --test scripts/evozeus-hosts.test.mjs",
     "test:user-visible-events": "node --test scripts/user-visible-events.test.mjs",
     "test:readme-origin": "node --test scripts/readme-origin.test.mjs",

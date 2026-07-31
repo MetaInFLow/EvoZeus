@@ -2,7 +2,17 @@
 
 ## [Unreleased]
 
-No changes yet.
+### Added
+
+- Added the Core-owned `evozeus.user-prompt.lesson-runtime.v1` path for normal Chat Lesson candidates, with a product-owned Session Signal attachment contract.
+
+### Security
+
+- Added active-channel digest verification, root containment, non-symlink file checks, bounded subprocess transport, private-output rejection and silent fail-open handling.
+
+### Verification
+
+- Added isolated custom-product-home, fixed project-registry, damaged/stale/symlinked component, timeout, zero-persistence and real companion subprocess regressions.
 
 ## [v0.4.1] - 2026-07-31
 
