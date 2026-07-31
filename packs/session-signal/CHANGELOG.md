@@ -11,9 +11,14 @@
 
 - The method performs no persistence or network access and does not return raw prompts, local paths or signal identifiers.
 
+### Fixed
+
+- Preserved durable-rule scope across natural comma clauses and generalized reporting-verb attribution to named sources and caller-defined roles.
+- Recognized comma-delimited log milliseconds and stopped inferring unregistered repository basenames as target aliases.
+
 ### Verification
 
-- Added 114 deterministic Lesson candidate tests, including pasted-log, attribution, question-scope, alias and subprocess privacy regressions.
+- Added 121 deterministic Lesson candidate tests, including pasted-log, attribution, durable-scope, question-scope, alias and subprocess privacy regressions.
 
 ## [v0.1.0] - 2026-07-26
 
