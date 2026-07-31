@@ -19,6 +19,19 @@ Community contribution is evidence contribution first. It does not grant broad p
 
 External contributors should keep at most 3 open Candidate PRs and at most 1 open code PR.
 
+## Contributor Branch Gate
+
+After implementation is separately authorized and before the first business-file write, run the Core contributor branch preflight with profile `community_contribution` as defined in [`contracts/v1/contributor-branch-contract.json`](../../../contracts/v1/contributor-branch-contract.json).
+
+- Declare the expected GitHub login and permission path. The planner verifies login, Repo `viewerPermission`, and fork policy from read-only GitHub API evidence; command arguments cannot grant permission.
+- `ADMIN`, `MAINTAIN`, or `WRITE` evidence resolves direct. `READ` or `TRIAGE` plus an allowed fork policy resolves fork.
+- Missing GitHub evidence or unavailable PR capability resolves local; the plan must keep push and PR disabled and end in an exportable local patch. Any expectation mismatch blocks.
+- Every participant uses an independent branch/worktree and resume key. A branch owned by another participant cannot be resumed.
+- Stop on dirty tree, protected checkout, wrong base, collision, stale ownership, or any other blocker.
+- Issue authorization does not authorize branch/worktree creation, commit, push, or PR.
+
+Display the read-only plan before executing its separately authorized next write action. Full human guidance is in [`docs/governance/contributor-branch-contract.md`](../../../docs/governance/contributor-branch-contract.md).
+
 ## Candidate Boundary
 
 A Candidate PR may touch candidate assets and supporting redacted examples. It must not casually change:
