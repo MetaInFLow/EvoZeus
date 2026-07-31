@@ -131,6 +131,26 @@ function resumeKeyFor(fields) {
   return `branch_v1_${createHash("sha256").update(source).digest("hex").slice(0, 24)}`;
 }
 
+export function resolvePlanDate(options, resumePlan, fallbackDate = new Date().toISOString().slice(0, 10).replaceAll("-", "")) {
+  if (options.date) return options.date;
+  const target = resumePlan?.branch?.target;
+  const purpose = resumePlan?.purpose;
+  const prefix = `codex/${options.type}/`;
+  const suffix = `-${options.component}-${options.summary}`;
+  if (
+    typeof target === "string"
+    && purpose?.type === options.type
+    && purpose?.component === options.component
+    && purpose?.summary === options.summary
+    && target.startsWith(prefix)
+    && target.endsWith(suffix)
+  ) {
+    const date = target.slice(prefix.length, target.length - suffix.length);
+    if (/^20[0-9]{6}$/.test(date)) return date;
+  }
+  return fallbackDate;
+}
+
 function readJson(path) {
   return JSON.parse(readFileSync(path, "utf8"));
 }
@@ -554,7 +574,6 @@ function parseArguments(argv) {
   if (options.reconfirm_owner && !options.resume_plan) {
     throw new Error("--reconfirm-owner requires --resume-plan");
   }
-  options.date ||= new Date().toISOString().slice(0, 10).replaceAll("-", "");
   options.now = new Date().toISOString();
   return options;
 }
@@ -564,12 +583,13 @@ function main() {
   try {
     const options = parseArguments(process.argv.slice(2));
     const contract = loadContributorBranchContract();
+    const resumePlan = options.resume_plan ? readJson(resolve(options.resume_plan)) : null;
+    options.date = resolvePlanDate(options, resumePlan);
     const provisionalBranch = `codex/${options.type}/${options.date}-${options.component}-${options.summary}`;
     const facts = collectGitFacts(resolve(options.repo_path), options.base, provisionalBranch);
     const permissionEvidence = collectGitHubPermissionEvidence(options.repo, options.now);
     const parsedIssue = parseIssue(options.issue, options.repo);
     const issueEvidence = collectGitHubIssueEvidence(options.repo, parsedIssue?.number, options.now);
-    const resumePlan = options.resume_plan ? readJson(resolve(options.resume_plan)) : null;
     plan = buildBranchPlan(options, contract, facts, permissionEvidence, issueEvidence, resumePlan);
   } catch (error) {
     plan = {

@@ -11,7 +11,8 @@ import {
   collectGitFacts,
   collectGitHubIssueEvidence,
   collectGitHubPermissionEvidence,
-  loadContributorBranchContract
+  loadContributorBranchContract,
+  resolvePlanDate
 } from "./evozeus-branch-preflight.mjs";
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
@@ -119,13 +120,14 @@ function runPlan(fixture, overrides = {}) {
   delete values.github;
   delete values.resume_plan;
 
+  const resumePlan = resumePlanPath ? JSON.parse(readFileSync(resumePlanPath, "utf8")) : null;
+  values.date = resolvePlanDate(values, resumePlan, "20260801");
   const before = snapshot(fixture.repo);
   const branch = `codex/${values.type}/${values.date}-${values.component}-${values.summary}`;
   const facts = collectGitFacts(values.repo_path, values.base, branch);
   const evidence = collectGitHubPermissionEvidence(values.repo, values.now, fakeGitHubRunner(github));
   const issueNumber = Number(String(values.issue).split("#").at(-1));
   const issueEvidence = collectGitHubIssueEvidence(values.repo, issueNumber, values.now, fakeGitHubRunner(github));
-  const resumePlan = resumePlanPath ? JSON.parse(readFileSync(resumePlanPath, "utf8")) : null;
   const plan = buildBranchPlan(values, contract, facts, evidence, issueEvidence, resumePlan);
   const result = { status: plan.blockers.length > 0 ? 2 : 0, stderr: "" };
   const after = snapshot(fixture.repo);
@@ -151,6 +153,7 @@ test("contract exposes the four required profiles", () => {
     "recreate_resume_worktree_for_existing_branch");
   assert.equal(contract.resume.matching_branch_with_prunable_worktree,
     "prune_and_recreate_resume_worktree_for_existing_branch");
+  assert.equal(contract.resume.missing_cli_date_source, "validated_resume_plan_target_branch");
   assert.equal(contract.worktree.registered_worktree_descendant, "block");
   assert.equal(contract.blocking_handling.current_checkout_status_unavailable, "block");
 });
@@ -218,6 +221,20 @@ test("resumes only the matching owner, base, key, branch, and worktree", (contex
   assert.equal(plan.resume.decision, "resume");
   assert.equal(plan.worktree.registered, true);
   assert.equal(plan.next_write_action, "resume_existing_branch_in_isolated_worktree");
+});
+
+test("recovers the original branch date from a matching resume plan", (context) => {
+  const fixture = fixtureFor(context);
+  const initial = runPlan(fixture).plan;
+  git(fixture.repo, "worktree", "add", "-b", initial.branch.target, fixture.worktree, "origin/main");
+  const resumePath = join(fixture.root, "resume-plan.json");
+  writeFileSync(resumePath, JSON.stringify(initial));
+
+  const { result, plan } = runPlan(fixture, { date: undefined, resume_plan: resumePath });
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(plan.resume.decision, "resume");
+  assert.equal(plan.branch.target, initial.branch.target);
+  assert.equal(plan.branch.target.includes("20260801"), false);
 });
 
 test("offers an explicit zero-write recovery action for a matching resume branch without a worktree", (context) => {
