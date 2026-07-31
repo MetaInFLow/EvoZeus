@@ -1155,11 +1155,16 @@ def _default_codex_source_dirs() -> list[Path]:
 def _discover_source_paths(request: ScanRequest) -> list[tuple[Path, dict[str, str]]]:
     direct_paths: list[tuple[Path, dict[str, str]]] = []
     bridged_paths: list[tuple[Path, dict[str, str]]] = []
+    bridge_search_dirs = [request.source_dir] if request.source_dir is not None else _default_codex_source_dirs()
     for source_dir in _source_dirs(request):
         if not source_dir.exists():
             continue
-        direct_paths.extend((path, {}) for path in sorted(source_dir.rglob("*.jsonl")) if _is_direct_session_source(path))
-        bridged_paths.extend(_resolve_source_id_manifests(source_dir))
+        direct_paths.extend(
+            (path, {})
+            for path in sorted(source_dir.rglob("*.jsonl"))
+            if _is_direct_session_source(path) and _is_contained_source_file(source_dir, path)
+        )
+        bridged_paths.extend(_resolve_source_id_manifests(source_dir, search_dirs=bridge_search_dirs))
     return _dedupe_source_paths(direct_paths + bridged_paths)
 
 
@@ -1171,11 +1176,19 @@ def _is_source_id_manifest(path: Path) -> bool:
     return path.name in SOURCE_ID_MANIFEST_NAMES
 
 
-def _resolve_source_id_manifests(source_dir: Path) -> list[tuple[Path, dict[str, str]]]:
+def _resolve_source_id_manifests(
+    source_dir: Path,
+    *,
+    search_dirs: list[Path],
+) -> list[tuple[Path, dict[str, str]]]:
     resolved: list[tuple[Path, dict[str, str]]] = []
-    for manifest_path in sorted(path for path in source_dir.rglob("*.jsonl") if _is_source_id_manifest(path)):
+    for manifest_path in sorted(
+        path
+        for path in source_dir.rglob("*.jsonl")
+        if _is_source_id_manifest(path) and _is_contained_source_file(source_dir, path)
+    ):
         for source_id in _read_source_ids(manifest_path):
-            source_path = _resolve_codex_source_id(source_id)
+            source_path = _resolve_codex_source_id(source_id, search_dirs=search_dirs)
             if source_path is None:
                 continue
             resolved.append(
@@ -1205,16 +1218,20 @@ def _read_source_ids(manifest_path: Path) -> list[str]:
     return source_ids
 
 
-def _resolve_codex_source_id(source_id: str) -> Path | None:
+def _resolve_codex_source_id(source_id: str, *, search_dirs: list[Path]) -> Path | None:
     source_id = source_id.strip()
     if not source_id:
         return None
 
     all_candidates: list[Path] = []
-    for source_dir in _default_codex_source_dirs():
+    for source_dir in search_dirs:
         if not source_dir.exists():
             continue
-        candidates = sorted(path for path in source_dir.rglob("*.jsonl") if path.name not in SOURCE_ID_MANIFEST_NAMES)
+        candidates = sorted(
+            path
+            for path in source_dir.rglob("*.jsonl")
+            if path.name not in SOURCE_ID_MANIFEST_NAMES and _is_contained_source_file(source_dir, path)
+        )
         for path in candidates:
             if path.stem == source_id:
                 return path
@@ -1224,6 +1241,14 @@ def _resolve_codex_source_id(source_id: str) -> Path | None:
         if _discover_session_id(path) == source_id:
             return path
     return None
+
+
+def _is_contained_source_file(source_dir: Path, path: Path) -> bool:
+    try:
+        path.resolve(strict=True).relative_to(source_dir.resolve(strict=True))
+    except (OSError, ValueError):
+        return False
+    return path.is_file()
 
 
 def _dedupe_source_paths(items: list[tuple[Path, dict[str, str]]]) -> list[tuple[Path, dict[str, str]]]:

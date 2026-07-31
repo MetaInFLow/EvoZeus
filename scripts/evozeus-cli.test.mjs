@@ -361,7 +361,21 @@ describe("evozeus-cli", () => {
     assert.equal(report.operation, "insights.projectSessions");
     assert.equal(report.data.project.project_key, "daxing");
     assert.equal(report.data.project.project_mode, "keyword");
-    assert.ok(report.data.backend.command.argv.includes("project-insights"));
+    assert.ok(report.data.backend.command.argv.includes("session-insights"));
+    assert.deepEqual(
+      report.data.backend.command.argv.slice(
+        report.data.backend.command.argv.indexOf("--source-path"),
+        report.data.backend.command.argv.indexOf("--source-path") + 2
+      ),
+      ["--source-path", "/approved/codex/sessions"]
+    );
+    assert.deepEqual(
+      report.data.backend.command.argv.slice(
+        report.data.backend.command.argv.indexOf("--project"),
+        report.data.backend.command.argv.indexOf("--project") + 2
+      ),
+      ["--project", "daxing"]
+    );
     assert.ok(report.data.backend.command.argv.includes("--contains"));
   });
 

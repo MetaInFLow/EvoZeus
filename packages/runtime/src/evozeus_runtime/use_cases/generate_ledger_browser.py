@@ -22,11 +22,16 @@ def generate_ledger_browser(
     *,
     workspace_root: Path,
     output_path: Path | None = None,
+    session_ids: tuple[str, ...] | None = None,
 ) -> GenerateLedgerBrowserResult:
     paths = RuntimePaths.for_workspace(workspace_root).ensure()
     ledger = LedgerRepository(paths)
     statuses = ledger.list_session_statuses()
     events = ledger.list_session_events()
+    if session_ids is not None:
+        allowed_session_ids = set(session_ids)
+        statuses = [status for status in statuses if status.session_id in allowed_session_ids]
+        events = [event for event in events if event.session_id in allowed_session_ids]
     factor_results = [
         result
         for status in statuses
