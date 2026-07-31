@@ -6,6 +6,10 @@
 
 - Added the Core-owned `evozeus.user-prompt.lesson-runtime.v1` path for normal Chat Lesson candidates, with a product-owned Session Signal attachment contract.
 
+### Fixed
+
+- Bound channel dispatcher reconciliation to the newly installed Core source and byte content, so Core-only updates cannot retain the prior dispatcher.
+
 ### Security
 
 - Added active-channel digest verification, root containment, non-symlink file checks, streaming stdout/stderr limits, isolated component execution, private-output rejection and silent fail-open handling.
