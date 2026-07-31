@@ -1631,6 +1631,49 @@ describe("channel transactions", () => {
       assert.match(updated.stderr, /EvoZeus · 自动更新完成/);
     }));
 
+  it("reports recovery required when an isolated repair fails before switching roots", async () =>
+    fixture(async (root) => {
+      const home = join(root, "home");
+      const manifest = stableManifest(join(root, "stable-pre-switch-repair"), "v0.4.0", "1");
+      const manifestPath = writeManifest(root, "stable-pre-switch-repair.json", manifest);
+      await applyChannelUpdate({
+        evozeusHome: home,
+        channel: "stable",
+        manifestSource: manifestPath,
+        fetchImpl: fileFetch,
+        smokeRunner: noSmoke,
+        embeddedSmokeRunner: noSmoke
+      });
+      const beforeEntry = readChannelState(home).channels.stable;
+      const missingSkill = join(beforeEntry.component_roots.evozeus, "SKILL.md");
+      rmSync(missingSkill);
+      writeFileSync(new URL(manifest.components.evozeus.source.url), "corrupted archive\n");
+
+      const result = spawnSync(process.execPath, [LAUNCHER, "version", "--json"], {
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          EVOZEUS_HOME: home,
+          EVOZEUS_STABLE_MANIFEST: manifestPath,
+          EVOZEUS_HOSTS_AVAILABLE: "none",
+          EVOZEUS_UPDATE_CHECK_INTERVAL_SECONDS: "0"
+        }
+      });
+
+      assert.equal(result.status, 0, result.stderr);
+      const afterEntry = readChannelState(home).channels.stable;
+      const report = readJsonReport(join(home, "state", "stable", "auto-update-last.json"));
+      assert.equal(afterEntry.install_root, beforeEntry.install_root);
+      assert.equal(existsSync(missingSkill), false);
+      assert.equal(report.status, "failed_recovery_required");
+      assert.equal(report.recovery.status, "incomplete");
+      assert.equal(report.recovery.product, "damaged_previous_retained");
+      assert.equal(report.recovery.plugin, "unchanged");
+      assert.equal(report.recovery.error.code, "REPAIR_FAILED_BEFORE_SWITCH");
+      assert.equal(report.error.code, "ARCHIVE_CHECKSUM_MISMATCH");
+      assert.match(result.stderr, /恢复未完成/);
+    }));
+
   it("rolls back a cross-version auto-update and Plugin after real host registration fails", async () =>
     fixture(async (root) => {
       const home = join(root, "home");
@@ -1914,6 +1957,72 @@ function readJsonReport(path) {
 }
 
 describe("legacy diagnosis", () => {
+  it("plans and applies a recognized v1 channel migration without retaining it as rollback", async () =>
+    fixture(async (root) => {
+      const home = join(root, ".evozeus");
+      const legacyRoot = join(home, "worktrees", "uat", "legacy");
+      const currentLink = join(home, "worktrees", "uat", "current");
+      mkdirSync(legacyRoot, { recursive: true });
+      writeFileSync(join(legacyRoot, "legacy-marker.txt"), "preserved\n");
+      symlinkSync(relative(dirname(currentLink), legacyRoot), currentLink, "dir");
+      writeFileSync(
+        join(home, "active-channel.json"),
+        `${JSON.stringify({ schema_version: "evozeus.active-channel.v1", channel: "uat", auto_refresh: false })}\n`
+      );
+      const legacyEntry = {
+        manifest: {
+          schema_version: "evozeus.product-channel.v1",
+          product_version: "v0.3.5",
+          channel: "uat",
+          components: {
+            evozeus: { version: "v0.3.5", commit: "a".repeat(40) },
+            coevolve: { version: "v0.13.1", commit: "b".repeat(40) }
+          }
+        },
+        manifest_digest: `sha256:${"e".repeat(64)}`,
+        install_root: legacyRoot,
+        component_roots: {}
+      };
+      writeFileSync(
+        join(home, "channel-state.json"),
+        `${JSON.stringify({
+          schema_version: "evozeus.channel-state.v1",
+          channels: { stable: null, uat: legacyEntry },
+          last_transaction: null
+        }, null, 2)}\n`
+      );
+      const components = Object.fromEntries(
+        Object.keys(COMPONENT_PATHS).map((componentId) => [
+          componentId,
+          initComponent(join(root, "migration-components"), componentId)
+        ])
+      );
+      const manifestPath = writeManifest(root, "uat-v1-migration.json", uatManifest(components, "v0.4.1"));
+      const stateBefore = readFileSync(join(home, "channel-state.json"), "utf8");
+
+      const plan = await prepareChannelUpdate({ evozeusHome: home, channel: "uat", manifestSource: manifestPath });
+      assert.equal(plan.decision, "migrate");
+      assert.equal(plan.migration_required, true);
+      assert.equal(plan.current_integrity.status, "migration_required");
+      assert.equal(plan.writes_now, false);
+      assert.equal(readFileSync(join(home, "channel-state.json"), "utf8"), stateBefore);
+
+      const migrated = await applyChannelUpdate({
+        evozeusHome: home,
+        channel: "uat",
+        manifestSource: manifestPath,
+        smokeRunner: noSmoke,
+        embeddedSmokeRunner: noSmoke
+      });
+      const current = readChannelState(home).channels.uat;
+      assert.equal(migrated.status, "migrated");
+      assert.equal(migrated.rollback, null);
+      assert.equal(current.manifest.schema_version, "evozeus.product-channel.v2");
+      assert.equal(current.previous, null);
+      assert.equal(existsSync(join(legacyRoot, "legacy-marker.txt")), true);
+      assert.equal(channelSnapshot(home).health, "healthy");
+    }));
+
   it("reports an active v1 channel as migration_required without crashing", () =>
     fixture((root) => {
       const home = join(root, ".evozeus");

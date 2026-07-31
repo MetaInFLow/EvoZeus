@@ -263,17 +263,29 @@ async function autoUpdateActiveChannel() {
   if (!lock) return;
 
   const beforeVersion = currentEntry?.manifest?.product_version ?? "unknown";
+  let plan = null;
   let update = null;
   let pluginAlignmentStarted = false;
   try {
     const manifestSource = currentChannel === "stable"
       ? process.env.EVOZEUS_STABLE_MANIFEST || DEFAULT_MANIFEST_SOURCES.stable
       : process.env.EVOZEUS_UAT_MANIFEST || DEFAULT_MANIFEST_SOURCES.uat;
-    const plan = await prepareChannelUpdate({
+    plan = await prepareChannelUpdate({
       evozeusHome: home,
       channel: currentChannel,
       manifestSource
     });
+
+    if (plan.decision === "migrate") {
+      writeUpdateReport(currentChannel, {
+        status: "migration_required",
+        product_version: beforeVersion,
+        latest_product_version: plan.target_product_version,
+        manifest_digest: plan.manifest_digest,
+        next_action: `evozeus align --channel ${currentChannel} --host auto --json`
+      });
+      return;
+    }
 
     if (!plan.update_available) {
       if (plan.decision === "repair") {
@@ -353,6 +365,17 @@ async function autoUpdateActiveChannel() {
         hosts,
         pluginAlignmentStarted
       });
+    } else if (plan?.decision === "repair") {
+      recovery = {
+        attempted: true,
+        status: "incomplete",
+        product: "damaged_previous_retained",
+        plugin: "unchanged",
+        error: {
+          code: "REPAIR_FAILED_BEFORE_SWITCH",
+          message: "the isolated repair failed before a verified replacement became active"
+        }
+      };
     } else {
       recovery = { attempted: false, status: "transaction_not_applied" };
     }

@@ -1295,7 +1295,8 @@ function inspectControlDocuments(evozeusHome) {
   return { homeSafety, channelState, active, issues };
 }
 
-function channelPlanDecision({ installed, currentEvidenceValid, sameManifest, currentIntegrity, activeChannel, channel }) {
+function channelPlanDecision({ installed, currentEvidenceValid, legacyMigration, sameManifest, currentIntegrity, activeChannel, channel }) {
+  if (legacyMigration) return "migrate";
   if (!currentEvidenceValid || currentIntegrity.status === "unsafe") return "unsafe_stop";
   if (activeChannel === channel && !installed) return "repair";
   if (!installed) return "install";
@@ -1398,6 +1399,7 @@ export async function prepareChannelUpdate({
       decision: "unsafe_stop",
       healthy_current: false,
       activation_required: false,
+      migration_required: false,
       repair_required: false,
       update_available: false,
       install_required: false,
@@ -1408,25 +1410,38 @@ export async function prepareChannelUpdate({
   }
   const manifest = await loadProductManifest(source, channel, fetchImpl);
   const digest = productManifestDigest(manifest);
-  const currentManifestIssues = installed
+  const legacyMigration = Boolean(
+    installed &&
+    active?.channel === channel &&
+    isObject(current.manifest) &&
+    current.manifest.schema_version === "evozeus.product-channel.v1" &&
+    current.manifest.channel === channel &&
+    /^v\d+\.\d+\.\d+$/.test(current.manifest.product_version || "")
+  );
+  const currentManifestIssues = installed && !legacyMigration
     ? validateProductManifest(current.manifest, channel)
     : [];
-  const currentEvidenceValid = !installed || (
+  const currentEvidenceValid = !installed || legacyMigration || (
     currentManifestIssues.length === 0
     && current.manifest_digest === productManifestDigest(current.manifest)
   );
-  const sameManifest = currentEvidenceValid && installed && current.manifest_digest === digest;
-  const installedIntegrity = currentEvidenceValid && installed
+  const sameManifest = currentEvidenceValid && !legacyMigration && installed && current.manifest_digest === digest;
+  const installedIntegrity = currentEvidenceValid && !legacyMigration && installed
     ? installedEntryIntegrity(evozeusHome, current, current.manifest)
     : null;
-  const previousSafety = currentEvidenceValid && installed
+  const previousSafety = currentEvidenceValid && !legacyMigration && installed
     ? historicalEntrySafety(evozeusHome, current.previous)
     : { status: "not_available", issues: [] };
   const unsafeIssues = [
     ...(installedIntegrity?.status === "unsafe" ? installedIntegrity.issues : []),
     ...(previousSafety.status === "unsafe" ? previousSafety.issues : [])
   ];
-  const currentIntegrity = !currentEvidenceValid
+  const currentIntegrity = legacyMigration
+    ? {
+        status: "migration_required",
+        issues: ["installed_manifest:evozeus.product-channel.v1"]
+      }
+    : !currentEvidenceValid
     ? {
         status: "unsafe",
         issues: [
@@ -1445,6 +1460,7 @@ export async function prepareChannelUpdate({
   const decision = channelPlanDecision({
     installed,
     currentEvidenceValid,
+    legacyMigration,
     sameManifest,
     currentIntegrity,
     activeChannel: active?.channel,
@@ -1462,6 +1478,7 @@ export async function prepareChannelUpdate({
     decision,
     healthy_current: decision === "healthy_noop",
     activation_required: decision === "activate",
+    migration_required: decision === "migrate",
     repair_required: decision === "repair",
     update_available: decision === "update",
     install_required: decision === "install",
@@ -1513,6 +1530,7 @@ export async function applyChannelUpdate({
   }
 
   const repairing = plan.decision === "repair";
+  const migrating = plan.decision === "migrate";
   const installRoot = repairing
     ? repairRootFor(home, plan.manifest, plan.manifest_digest)
     : installRootFor(home, plan.manifest, plan.manifest_digest);
@@ -1588,7 +1606,7 @@ export async function applyChannelUpdate({
       component_roots: componentRoots,
       embedded_roots: embeddedRoots,
       installed_at: now,
-      previous: existing ? { ...existing, previous: null } : null,
+      previous: existing && !migrating ? { ...existing, previous: null } : null,
       migration_backup: backupPath ? String(backupPath) : null
     };
     const nextState = {
@@ -1613,7 +1631,7 @@ export async function applyChannelUpdate({
     }
     refreshChannelBootstrap(home, coreRoot, { copyImpl: bootstrapCopy });
     return {
-      status: repairing ? "repaired" : reuseExistingRoot ? "reused_verified" : "installed",
+      status: migrating ? "migrated" : repairing ? "repaired" : reuseExistingRoot ? "reused_verified" : "installed",
       ...plan,
       writes_now: true,
       install_root: installRoot,
@@ -1622,7 +1640,7 @@ export async function applyChannelUpdate({
       embedded_roots: embeddedRoots,
       migration_backup: backupPath ? String(backupPath) : null,
       active,
-      rollback: existing?.install_root
+      rollback: existing?.install_root && !migrating
         ? { channel, install_root: existing.install_root, manifest_digest: existing.manifest_digest }
         : null
     };
