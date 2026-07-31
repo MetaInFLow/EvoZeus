@@ -9,6 +9,7 @@ import { fileURLToPath } from "node:url";
 import {
   buildBranchPlan,
   collectGitFacts,
+  collectGitHubIssueEvidence,
   collectGitHubPermissionEvidence,
   loadContributorBranchContract
 } from "./evozeus-branch-preflight.mjs";
@@ -65,9 +66,12 @@ function fakeGitHubRunner({
   unavailable = false,
   identityUnavailable = false,
   permissionUnavailable = false,
-  repositoryUnavailable = false
+  repositoryUnavailable = false,
+  issue,
+  issueUnavailable = false
 } = {}) {
   repository ||= { private: false, archived: false, disabled: false, allow_forking: true };
+  issue ||= { number: 44, state: "open", title: "Contributor branch contract", labels: [{ name: "governance" }] };
   return (command, args) => {
     assert.equal(command, "gh");
     if (unavailable) return { status: 1, stdout: "", stderr: "unavailable" };
@@ -83,6 +87,10 @@ function fakeGitHubRunner({
     if (args[0] === "api" && args[1] === "repos/MetaInFLow/EvoZeus") {
       if (repositoryUnavailable) return { status: 1, stdout: "", stderr: "repository unavailable" };
       return { status: 0, stdout: JSON.stringify(repository), stderr: "" };
+    }
+    if (args[0] === "api" && args[1] === "repos/MetaInFLow/EvoZeus/issues/44") {
+      if (issueUnavailable) return { status: 1, stdout: "", stderr: "issue unavailable" };
+      return { status: 0, stdout: JSON.stringify(issue), stderr: "" };
     }
     return { status: 1, stdout: "", stderr: "unexpected request" };
   };
@@ -114,8 +122,10 @@ function runPlan(fixture, overrides = {}) {
   const branch = `codex/${values.type}/${values.date}-${values.component}-${values.summary}`;
   const facts = collectGitFacts(values.repo_path, values.base, branch);
   const evidence = collectGitHubPermissionEvidence(values.repo, values.now, fakeGitHubRunner(github));
+  const issueNumber = Number(String(values.issue).split("#").at(-1));
+  const issueEvidence = collectGitHubIssueEvidence(values.repo, issueNumber, values.now, fakeGitHubRunner(github));
   const resumePlan = resumePlanPath ? JSON.parse(readFileSync(resumePlanPath, "utf8")) : null;
-  const plan = buildBranchPlan(values, contract, facts, evidence, resumePlan);
+  const plan = buildBranchPlan(values, contract, facts, evidence, issueEvidence, resumePlan);
   const result = { status: plan.blockers.length > 0 ? 2 : 0, stderr: "" };
   const after = snapshot(fixture.repo);
   assert.deepEqual(after, before, "branch planner must not mutate Git state");
@@ -144,9 +154,9 @@ test("plans a clean new direct contribution with zero writes", (context) => {
   assert.equal(result.status, 0, result.stderr);
   const actual = [plan.resume.decision, plan.repo.canonical, plan.base.ref, plan.issue.reference,
     plan.actor.id, plan.actor.verified, plan.permission_path.resolved, plan.permission_evidence.source,
-    plan.permission_evidence.checked_at, plan.worktree.isolated];
+    plan.permission_evidence.checked_at, plan.issue_evidence.source, plan.worktree.isolated];
   const expected = ["new", "MetaInFLow/EvoZeus", "origin/main", "MetaInFLow/EvoZeus#44",
-    "alice", true, "direct", "github_api", FIXED_NOW, true];
+    "alice", true, "direct", "github_api", FIXED_NOW, "github_api", true];
   assert.deepEqual(actual, expected);
   assert.equal(plan.branch.target, "codex/dev/20260731-governance-branch-contract");
   assert.equal(plan.next_write_action, "create_direct_branch_in_isolated_worktree");
@@ -314,7 +324,7 @@ test("selects deterministic fork-only and local-patch fallbacks", (context) => {
   assert.equal(local.next_write_action, "create_local_patch_branch_in_isolated_worktree");
 });
 
-test("GitHub unavailability fails closed to local and cannot grant direct or fork", (context) => {
+test("GitHub unavailability resolves permission to local and blocks unverified Issue execution", (context) => {
   const directFixture = createFixture();
   const localFixture = createFixture();
   context.after(() => rmSync(directFixture.root, { recursive: true, force: true }));
@@ -332,9 +342,50 @@ test("GitHub unavailability fails closed to local and cannot grant direct or for
     permission: "local",
     github: { unavailable: true }
   }).plan;
-  assert.deepEqual(local.blockers, []);
+  assert(blockerCodes(local).includes("issue_evidence_unavailable"));
   assert.equal(local.permission_path.push_allowed, false);
   assert.equal(local.permission_path.pull_request_allowed, false);
+});
+
+test("requires a live open Issue and Skill-feedback classification for CoEvolve", (context) => {
+  const fixtures = Array.from({ length: 7 }, () => createFixture());
+  context.after(() => fixtures.forEach(({ root }) => rmSync(root, { recursive: true, force: true })));
+
+  const unavailable = runPlan(fixtures[0], { github: { issueUnavailable: true } }).plan;
+  assert(blockerCodes(unavailable).includes("issue_evidence_unavailable"));
+
+  const closed = runPlan(fixtures[1], {
+    github: { issue: { number: 44, state: "closed", title: "Contributor branch contract", labels: [] } }
+  }).plan;
+  assert(blockerCodes(closed).includes("issue_not_open"));
+
+  const pullRequest = runPlan(fixtures[2], {
+    github: { issue: { number: 44, state: "open", title: "PR-shaped entity", labels: [], pull_request: {} } }
+  }).plan;
+  assert(blockerCodes(pullRequest).includes("issue_is_pull_request"));
+
+  const mismatched = runPlan(fixtures[3], {
+    github: { issue: { number: 45, state: "open", title: "Different Issue", labels: [] } }
+  }).plan;
+  assert(blockerCodes(mismatched).includes("issue_evidence_mismatch"));
+
+  const notFeedback = runPlan(fixtures[4], { profile: "coevolve_target_skillware_consumer" }).plan;
+  assert(blockerCodes(notFeedback).includes("issue_not_feedback"));
+
+  const labelFeedback = runPlan(fixtures[5], {
+    profile: "coevolve_target_skillware_consumer",
+    github: {
+      issue: { number: 44, state: "open", title: "Reusable defect", labels: [{ name: "skill-feedback" }] }
+    }
+  }).plan;
+  assert.deepEqual(labelFeedback.blockers, []);
+  assert.deepEqual(labelFeedback.issue_evidence.labels, ["skill-feedback"]);
+
+  const titleFeedback = runPlan(fixtures[6], {
+    profile: "coevolve_target_skillware_consumer",
+    github: { issue: { number: 44, state: "open", title: "[Skill Feedback] Reusable defect", labels: [] } }
+  }).plan;
+  assert.deepEqual(titleFeedback.blockers, []);
 });
 
 test("partial GitHub evidence always fails closed to local", (context) => {

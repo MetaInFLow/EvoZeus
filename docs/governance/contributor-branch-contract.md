@@ -20,7 +20,7 @@ codex/<type>/<yyyymmdd>-<component>-<summary>
 | `evozeus_core_direct` | EvoZeus 主仓维护者直接贡献 | 主仓默认分支 | direct | 业务修改必须离开默认分支并进入独立 worktree。 |
 | `uat_repair_development` | 唯一 UAT 候选的修复开发 | 当前 UAT ref | direct | 产物始终是 development branch；不得把分支名或状态描述成用户 UAT 渠道。 |
 | `community_contribution` | 社区 docs、bug、test 或小型维护 | 主仓默认分支 | direct / fork / local | GitHub 一手权限证据确定 direct、fork 或 local patch。 |
-| `coevolve_target_skillware_consumer` | CoEvolve 管理的独立 Skillware Repo | 目标 Repo 默认分支 | direct / fork / local | 由 CoEvolve #36 消费本合同并保持目标 Repo 的 Owner、Issue、PR 与 Release 边界。 |
+| `coevolve_target_skillware_consumer` | CoEvolve 管理的独立 Skillware Repo | 目标 Repo 默认分支 | direct / fork / local | 关联项必须是目标 Repo 中 OPEN 的 Issue，并带 `skill-feedback` 标签或 `[Skill Feedback]` 标题前缀。 |
 
 ## 写入前 Preflight
 
@@ -42,7 +42,11 @@ node scripts/evozeus-branch-preflight.mjs plan \
   --json
 ```
 
-输出固定包含 repo、base ref/commit、目标 branch、Issue、actor、permission path 及其 evidence/source/timestamp、worktree、resume/new decision、next write action、blockers 和 `writes=false`。Preflight 不创建或切换 branch/worktree，不修改 Git config，不 commit、push 或创建 PR；存在 blocker 时以非零状态退出。
+输出固定包含 repo、base ref/commit、目标 branch、Issue 及其 evidence/source/timestamp、actor、permission path 及其 evidence/source/timestamp、worktree、resume/new decision、next write action、blockers 和 `writes=false`。Preflight 不创建或切换 branch/worktree，不修改 Git config，不 commit、push 或创建 PR；存在 blocker 时以非零状态退出。
+
+## Issue Verification
+
+Planner 通过只读 GitHub API 查询声明的 Issue，并核验 Repo、编号、OPEN 状态与实体类型。查询不可用、返回对象不匹配、Issue 已关闭或编号实际指向 Pull Request 时均阻断。`coevolve_target_skillware_consumer` profile 还要求 `skill-feedback` 标签或 `[Skill Feedback]` 标题前缀，用于确认该 Issue 属于 Skill feedback 治理入口。
 
 ## Identity 与 Permission Resolution
 
@@ -53,7 +57,7 @@ node scripts/evozeus-branch-preflight.mjs plan \
 - 无可验证身份、权限证据不完整、Repo 禁止 fork 或无 PR 能力时解析为 local patch。
 - 预期 actor/permission 与证据不一致时阻断。`--repo` 还必须匹配本地 `remote.origin`。
 
-GitHub 不可用时，输出保留 `source=unavailable` 与检查时间，只允许显式预期为 `local` 的 local patch 计划继续；该路径固定 `push_allowed=false`、`pull_request_allowed=false`。Repo 内容、合同覆盖文件或命令参数均不能授予 direct/fork 权限。
+GitHub 权限证据不可用时，权限路径解析为 local patch，且固定 `push_allowed=false`、`pull_request_allowed=false`。Issue 证据不可用时整个计划阻断，因此恢复 API 取证前不得开始业务写入。Repo 内容、合同覆盖文件或命令参数均不能授予 direct/fork 权限。
 
 Branch plan 对 Codex 与 Claude 使用完全相同的输入、判定和输出；Host 不参与身份或权限解析，也不产生分支规则分叉。
 
@@ -75,7 +79,10 @@ Branch plan 对 Codex 与 Claude 使用完全相同的输入、判定和输出�
 | branch/worktree collision | 阻断，禁止复用来源不明的分支。 |
 | stale ownership | 阻断，重新确认 owner 与 base 后生成新 plan。 |
 | actor/permission evidence mismatch | 阻断，以 GitHub viewer 与 Repo 权限证据为准。 |
-| GitHub evidence unavailable | 解析为 local patch；direct/fork 预期会阻断。 |
+| permission evidence unavailable | 权限路径解析为 local patch；direct/fork 预期会阻断。 |
+| Issue evidence unavailable/mismatched | 阻断，重新取得 live GitHub Issue 证据。 |
+| Issue closed or resolves to Pull Request | 阻断，关联 OPEN 的 Issue。 |
+| CoEvolve Issue classification missing | 阻断，补齐 `skill-feedback` 标签或 `[Skill Feedback]` 标题前缀。 |
 
 ## Approval Boundaries
 
