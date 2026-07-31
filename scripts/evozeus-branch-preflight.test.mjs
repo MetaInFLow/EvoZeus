@@ -291,6 +291,27 @@ test("blocks stale ownership metadata", (context) => {
   assert(blockerCodes(plan).includes("stale_ownership"));
 });
 
+test("allows explicit Owner reconfirmation only for a matching stale resume plan", (context) => {
+  const fixture = fixtureFor(context);
+  const initial = runPlan(fixture).plan;
+  git(fixture.repo, "branch", initial.branch.target, "origin/main");
+  initial.ownership.checked_at = "2026-06-01T00:00:00.000Z";
+  const resumePath = join(fixture.root, "stale-plan.json");
+  writeFileSync(resumePath, JSON.stringify(initial));
+
+  const refreshed = runPlan(fixture, { resume_plan: resumePath, reconfirm_owner: true }).plan;
+  assert.deepEqual(refreshed.blockers, []);
+  assert.equal(refreshed.resume.decision, "resume");
+  assert.equal(refreshed.resume.owner_reconfirmed, true);
+  assert.equal(refreshed.ownership.checked_at, FIXED_NOW);
+
+  initial.actor.id = "mallory";
+  writeFileSync(resumePath, JSON.stringify(initial));
+  const mismatched = runPlan(fixture, { resume_plan: resumePath, reconfirm_owner: true }).plan;
+  assert(blockerCodes(mismatched).includes("stale_ownership"));
+  assert.equal(mismatched.resume.owner_reconfirmed, false);
+});
+
 test("selects deterministic fork-only and local-patch fallbacks", (context) => {
   const forkFixture = createFixture();
   const localFixture = createFixture();

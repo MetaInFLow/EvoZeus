@@ -66,7 +66,7 @@ Branch plan 对 Codex 与 Claude 使用完全相同的输入、判定和输出�
 - `new`：目标分支不存在，当前 checkout clean 且 HEAD 与 canonical base commit 一致，计划指向新的隔离 worktree。
 - `resume`：调用方提供之前保存的 plan，resume key、owner、base ref/commit 和目标 branch 全部匹配，且 ownership 未过期。
 - 同名 branch 存在但缺少匹配 plan 时视为 collision。
-- owner、base、resume key 不匹配或 ownership 超期时视为 stale ownership，需要 Owner 重新确认。
+- owner、base、resume key 不匹配时继续阻断。仅 ownership 时间窗超期且其余身份完全匹配时，Owner 可在 `--resume-plan` 基础上显式增加 `--reconfirm-owner` 生成 refreshed resume plan；持久化 refreshed ledger 仍需独立的 `--approve-save-plan`。
 
 ## Fail-Closed Handling
 
@@ -77,7 +77,7 @@ Branch plan 对 Codex 与 Claude 使用完全相同的输入、判定和输出�
 | wrong/missing base | 阻断，重新取得 canonical ref 与 commit。 |
 | protected checkout direct write | 阻断，改用外部 worktree。 |
 | branch/worktree collision | 阻断，禁止复用来源不明的分支。 |
-| stale ownership | 阻断，重新确认 owner 与 base 后生成新 plan。 |
+| stale ownership | 默认阻断；身份完全匹配时由 Owner 使用 `--reconfirm-owner` 刷新，身份不匹配继续阻断。 |
 | actor/permission evidence mismatch | 阻断，以 GitHub viewer 与 Repo 权限证据为准。 |
 | permission evidence unavailable | 权限路径解析为 local patch；direct/fork 预期会阻断。 |
 | Issue evidence unavailable/mismatched | 阻断，重新取得 live GitHub Issue 证据。 |
