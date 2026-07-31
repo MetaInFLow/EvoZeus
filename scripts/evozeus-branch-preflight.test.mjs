@@ -12,7 +12,8 @@ import {
   collectGitHubIssueEvidence,
   collectGitHubPermissionEvidence,
   loadContributorBranchContract,
-  resolvePlanDate
+  resolvePlanDate,
+  targetBranchFor
 } from "./evozeus-branch-preflight.mjs";
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
@@ -98,8 +99,24 @@ function fakeGitHubRunner({
   };
 }
 
+function fakeGitFactsRunner({ heads = {}, unavailable = false, invalid = false } = {}) {
+  return (command, args, options) => {
+    if (command === "git" && args.includes("ls-remote")) {
+      if (unavailable) return { status: 1, stdout: "", stderr: "remote unavailable" };
+      const ref = args.at(-1);
+      const branch = ref.replace(/^refs\/heads\//, "");
+      const commit = heads[branch];
+      if (!commit) return { status: 2, stdout: "", stderr: "" };
+      if (invalid) return { status: 0, stdout: "invalid output\n", stderr: "" };
+      return { status: 0, stdout: `${commit}\t${ref}\n`, stderr: "" };
+    }
+    return spawnSync(command, args, options);
+  };
+}
+
 function runPlan(fixture, overrides = {}) {
   const github = overrides.github;
+  const gitRemote = overrides.git_remote;
   const resumePlanPath = overrides.resume_plan;
   const values = {
     profile: "evozeus_core_direct",
@@ -118,14 +135,21 @@ function runPlan(fixture, overrides = {}) {
     ...overrides
   };
   delete values.github;
+  delete values.git_remote;
   delete values.resume_plan;
 
   const resumePlan = resumePlanPath ? JSON.parse(readFileSync(resumePlanPath, "utf8")) : null;
   values.date = resolvePlanDate(values, resumePlan, "20260801");
   const before = snapshot(fixture.repo);
-  const branch = `codex/${values.type}/${values.date}-${values.component}-${values.summary}`;
-  const facts = collectGitFacts(values.repo_path, values.base, branch);
   const evidence = collectGitHubPermissionEvidence(values.repo, values.now, fakeGitHubRunner(github));
+  const branch = targetBranchFor(values, evidence.identity.login || values.actor);
+  const facts = collectGitFacts(
+    values.repo_path,
+    values.base,
+    branch,
+    values.worktree,
+    fakeGitFactsRunner(gitRemote)
+  );
   const issueNumber = Number(String(values.issue).split("#").at(-1));
   const issueEvidence = collectGitHubIssueEvidence(values.repo, issueNumber, values.now, fakeGitHubRunner(github));
   const plan = buildBranchPlan(values, contract, facts, evidence, issueEvidence, resumePlan);
@@ -163,9 +187,13 @@ test("contract exposes the four required profiles", () => {
   assert.equal(contract.worktree.registered_worktree_descendant, "block");
   assert.equal(contract.worktree.dangling_symlink_path, "occupied_and_blocked");
   assert.equal(contract.blocking_handling.current_checkout_status_unavailable, "block");
+  assert.equal(contract.branch_naming.template, "codex/{type}/{yyyymmdd}-{actor}-{component}-{summary}");
+  assert.equal(contract.worktree.requested_registered_worktree_status_evidence, "required");
   assert.equal(contract.permission_resolution.direct_repository_state, "not_archived_and_not_disabled");
   assert.equal(contract.remote_resolution.push_urls,
     "every_effective_origin_push_url_must_match_canonical_github_repo");
+  assert.equal(contract.remote_resolution.target_branch_state,
+    "live_git_ls_remote_effective_origin_required");
 });
 
 test("plans a clean new direct contribution with zero writes", (context) => {
@@ -178,7 +206,7 @@ test("plans a clean new direct contribution with zero writes", (context) => {
   const expected = ["new", "MetaInFLow/EvoZeus", "origin/main", "MetaInFLow/EvoZeus#44",
     "alice", true, "direct", "github_api", FIXED_NOW, "github_api", true];
   assert.deepEqual(actual, expected);
-  assert.equal(plan.branch.target, "codex/dev/20260731-governance-branch-contract");
+  assert.equal(plan.branch.target, "codex/dev/20260731-alice-governance-branch-contract");
   assert.equal(plan.next_write_action, "create_direct_branch_in_isolated_worktree");
   assert.deepEqual(plan.blockers, []);
 });
@@ -192,6 +220,19 @@ test("resolves ADMIN and WRITE viewers to direct from GitHub evidence", (context
     assert.equal(plan.permission_path.resolved, "direct");
     assert.equal(plan.permission_evidence.repository.viewer_permission, viewerPermission);
   }
+});
+
+test("binds deterministic target branches to the verified actor", (context) => {
+  const fixture = fixtureFor(context);
+  const alice = runPlan(fixture).plan;
+  const bob = runPlan(fixture, { actor: "bob", github: { login: "bob" } }).plan;
+
+  assert.deepEqual(alice.blockers, []);
+  assert.deepEqual(bob.blockers, []);
+  assert.equal(alice.branch.target, "codex/dev/20260731-alice-governance-branch-contract");
+  assert.equal(bob.branch.target, "codex/dev/20260731-bob-governance-branch-contract");
+  assert.notEqual(alice.branch.target, bob.branch.target);
+  assert.notEqual(alice.resume.key, bob.resume.key);
 });
 
 test("resolves archived or disabled repositories away from direct", (context) => {
@@ -255,6 +296,22 @@ test("resumes only the matching owner, base, key, branch, and worktree", (contex
   assert.equal(plan.next_write_action, "resume_existing_branch_in_isolated_worktree");
 });
 
+test("blocks a dirty requested resume worktree", (context) => {
+  const fixture = fixtureFor(context);
+  const initial = runPlan(fixture).plan;
+  git(fixture.repo, "worktree", "add", "-b", initial.branch.target, fixture.worktree, "origin/main");
+  writeFileSync(join(fixture.worktree, "untracked.txt"), "unknown edits\n");
+  const resumePath = join(fixture.root, "resume-plan.json");
+  writeFileSync(resumePath, JSON.stringify(initial));
+
+  const { result, plan } = runPlan(fixture, { resume_plan: resumePath });
+  assert.equal(result.status, 2);
+  assert(blockerCodes(plan).includes("requested_worktree_dirty"));
+  assert.equal(plan.worktree.registered, false);
+  assert.equal(plan.worktree.requested_checkout.status_available, true);
+  assert.equal(plan.worktree.requested_checkout.dirty_entry_count, 1);
+});
+
 test("recovers the original branch date from a matching resume plan", (context) => {
   const fixture = fixtureFor(context);
   const initial = runPlan(fixture).plan;
@@ -304,7 +361,7 @@ test("offers cleanup and recreation when a matching registered worktree is pruna
 
 test("rejects a blocked plan as resume ownership evidence", (context) => {
   const fixture = fixtureFor(context);
-  git(fixture.repo, "branch", "codex/dev/20260731-governance-branch-contract", "origin/main");
+  git(fixture.repo, "branch", "codex/dev/20260731-alice-governance-branch-contract", "origin/main");
   const blocked = runPlan(fixture).plan;
   assert(blockerCodes(blocked).includes("branch_collision"));
   const resumePath = join(fixture.root, "blocked-plan.json");
@@ -460,6 +517,33 @@ test("validates every effective origin push URL after Git rewrites", (context) =
   assert(blockerCodes(rewrittenPlan).includes("missing_origin_push_identity"));
 });
 
+test("uses live origin target state and blocks local divergence or unavailable evidence", (context) => {
+  const target = "codex/dev/20260731-alice-governance-branch-contract";
+  const liveFixture = createFixture();
+  const staleFixture = createFixture();
+  const divergedFixture = createFixture();
+  const unavailableFixture = createFixture();
+  const fixtures = [liveFixture, staleFixture, divergedFixture, unavailableFixture];
+  context.after(() => fixtures.forEach(({ root }) => rmSync(root, { recursive: true, force: true })));
+
+  const liveCommit = git(liveFixture.repo, "rev-parse", "HEAD");
+  const live = runPlan(liveFixture, { git_remote: { heads: { [target]: liveCommit } } }).plan;
+  assert(blockerCodes(live).includes("branch_collision"));
+
+  git(staleFixture.repo, "update-ref", `refs/remotes/origin/${target}`, "HEAD");
+  const stale = runPlan(staleFixture).plan;
+  assert.deepEqual(stale.blockers, []);
+
+  git(divergedFixture.repo, "branch", target, "origin/main");
+  const diverged = runPlan(divergedFixture, {
+    git_remote: { heads: { [target]: "f".repeat(40) } }
+  }).plan;
+  assert(blockerCodes(diverged).includes("target_branch_remote_mismatch"));
+
+  const unavailable = runPlan(unavailableFixture, { git_remote: { unavailable: true } }).plan;
+  assert(blockerCodes(unavailable).includes("target_remote_status_unavailable"));
+});
+
 test("blocks a new plan when HEAD is not the requested base commit", (context) => {
   const fixture = fixtureFor(context);
   writeFileSync(join(fixture.repo, "fixture.txt"), "new head\n");
@@ -472,7 +556,7 @@ test("blocks a new plan when HEAD is not the requested base commit", (context) =
 
 test("blocks a branch collision without matching resume metadata", (context) => {
   const fixture = fixtureFor(context);
-  git(fixture.repo, "branch", "codex/dev/20260731-governance-branch-contract", "origin/main");
+  git(fixture.repo, "branch", "codex/dev/20260731-alice-governance-branch-contract", "origin/main");
   const { result, plan } = runPlan(fixture);
   assert.equal(result.status, 2);
   assert(blockerCodes(plan).includes("branch_collision"));

@@ -5,12 +5,12 @@
 - Core issue: [MetaInFLow/EvoZeus#44](https://github.com/MetaInFLow/EvoZeus/issues/44)
 - Harness consumer issue: [MetaInFLow/EvoZeus-CoEvolve#36](https://github.com/MetaInFLow/EvoZeus-CoEvolve/issues/36)
 
-任何业务文件写入都必须发生在可追踪的贡献分支与隔离 worktree 中。Contributor branch plan 是首次写入前的治理门禁；机器可执行值只由 v1 JSON contract 定义，本文负责解释使用方式。
+任何业务文件写入都必须发生在可追踪的贡献分支与隔离 worktree 中。Contributor branch plan 是首次写入前的治理门禁；机器可执行值只由 v1.3.0 JSON contract 定义，本文负责解释使用方式。
 
 沿用现有分支格式：
 
 ```text
-codex/<type>/<yyyymmdd>-<component>-<summary>
+codex/<type>/<yyyymmdd>-<verified-actor>-<component>-<summary>
 ```
 
 ## Profiles
@@ -44,6 +44,8 @@ node scripts/evozeus-branch-preflight.mjs plan \
 
 输出固定包含 repo、base ref/commit、目标 branch、Issue 及其 evidence/source/timestamp、actor、permission path 及其 evidence/source/timestamp、worktree、resume/new decision、next write action、blockers 和 `writes=false`。Preflight 不创建或切换 branch/worktree，不修改 Git config，不 commit、push 或创建 PR；存在 blocker 时以非零状态退出。
 
+目标 branch 使用 live verified GitHub actor 的小写 login 作为所有权段，确保同一日期和 purpose 下的不同参与者得到不同分支。
+
 ## Issue Verification
 
 Planner 通过只读 GitHub API 查询声明的 Issue，并核验 Repo、编号、OPEN 状态与实体类型。查询不可用、返回对象不匹配、Issue 已关闭或编号实际指向 Pull Request 时均阻断。`coevolve_target_skillware_consumer` profile 还要求 `skill-feedback` 标签或 `[Skill Feedback]` 标题前缀，用于确认该 Issue 属于 Skill feedback 治理入口。
@@ -55,7 +57,7 @@ Planner 通过只读 GitHub API 查询声明的 Issue，并核验 Repo、编号�
 - `ADMIN`、`MAINTAIN`、`WRITE` 且 Repo 未 archived/disabled 时解析为 direct。
 - `READ`、`TRIAGE` 且目标 Repo 允许 fork 时解析为 fork。
 - 无可验证身份、权限证据不完整、Repo 禁止 fork 或无 PR 能力时解析为 local patch。
-- 预期 actor/permission 与证据不一致时阻断。`--repo` 还必须匹配本地 `remote.origin` 的有效 fetch URL 及全部有效 push URL；`pushurl`、`insteadOf` 或 `pushInsteadOf` 重写后的目标同样参与校验。
+- 预期 actor/permission 与证据不一致时阻断。`--repo` 还必须匹配本地 `remote.origin` 的有效 fetch URL 及全部有效 push URL；`pushurl`、`insteadOf` 或 `pushInsteadOf` 重写后的目标同样参与校验。目标 branch 是否存在通过有效 origin 的 live `git ls-remote` 取证，查询不可用或本地/live remote 同名分支分叉时阻断。
 
 GitHub 权限证据不可用时，权限路径解析为 local patch，且固定 `push_allowed=false`、`pull_request_allowed=false`。Issue 证据不可用时整个计划阻断，因此恢复 API 取证前不得开始业务写入。Repo 内容、合同覆盖文件或命令参数均不能授予 direct/fork 权限。
 
@@ -64,7 +66,7 @@ Branch plan 对 Codex 与 Claude 使用完全相同的输入、判定和输出�
 ## New 与 Resume
 
 - `new`：目标分支不存在，当前 checkout clean 且 HEAD 与 canonical base commit 一致，计划指向新的隔离 worktree。目标路径不得位于任何已注册 worktree 内。
-- `resume`：调用方提供之前保存的 plan，resume key、owner、base ref/commit、完整 purpose（type/component/summary）和目标 branch 全部匹配，且 ownership 未过期。目标 worktree 已注册且目录可用时输出 `resume_existing_branch_in_isolated_worktree`；分支仍存在、目标路径不存在且未被其他 worktree 占用时输出零写入 `recreate_resume_worktree_for_existing_branch`；Git 仍保留 prunable registration 时输出 `prune_and_recreate_resume_worktree_for_existing_branch`。后续清理或创建仍需独立授权。
+- `resume`：调用方提供之前保存的 plan，resume key、owner、base ref/commit、完整 purpose（type/component/summary）和含 actor 所有权段的目标 branch 全部匹配，且 ownership 未过期。目标 worktree 已注册、目录可用且自身 clean 时输出 `resume_existing_branch_in_isolated_worktree`；分支仍存在、目标路径不存在且未被其他 worktree 占用时输出零写入 `recreate_resume_worktree_for_existing_branch`；Git 仍保留 prunable registration 时输出 `prune_and_recreate_resume_worktree_for_existing_branch`。后续清理或创建仍需独立授权。
 - Resume 未显式提供 `--date` 时，仅从 purpose 完全匹配的既有 plan target branch 恢复原 `yyyymmdd`；无法验证时使用当前日期并由完整 ownership/branch identity 检查继续 fail closed。
 - 同名 branch 存在但缺少匹配 plan 时视为 collision。
 - Resume evidence 必须来自 blocker-free、`writes=false` 且 next action 可执行的既有 plan；blocked/error output 不能把 collision 转成 resume。目标 branch 还必须证明 saved canonical base 是其 ancestor。
@@ -77,6 +79,8 @@ Branch plan 对 Codex 与 Claude 使用完全相同的输入、判定和输出�
 | dirty tree | 阻断，先由 Owner 处理已有改动。 |
 | current checkout status unavailable | 阻断，修复当前 checkout/index 后重新取证。 |
 | canonical checkout dirty/unavailable | 即使当前隔离 worktree clean 也阻断，并输出独立 status evidence。 |
+| requested registered worktree dirty/unavailable | 阻断，处理该 resume worktree 的已有改动或 status 错误后重新取证。 |
+| live target remote state unavailable/diverged | 阻断，恢复有效 origin 查询并对齐本地/live remote 同名分支。 |
 | wrong/missing base | 阻断，重新取得 canonical ref 与 commit。 |
 | protected checkout direct write | 阻断，改用外部 worktree。 |
 | branch/worktree collision | 阻断，禁止复用来源不明的分支。 |
