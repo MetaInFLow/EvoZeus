@@ -8,6 +8,7 @@ import { describe, it } from "node:test";
 import Ajv2020 from "ajv/dist/2020.js";
 import {
   MIN_AVAILABLE_BYTES,
+  collectSystemSnapshot,
   inspectLocalInstallState,
   runInstallPreflight
 } from "./evozeus-install-preflight.mjs";
@@ -250,6 +251,32 @@ describe("install pre-fetch gate", () => {
         assert.equal(report.blockers[0].code, "LOCAL_STATE_PATH_UNSAFE", evozeusHome);
         assert.equal(report.network.head_requests, 0, evozeusHome);
         assert.equal(report.network.asset_get_count, 0, evozeusHome);
+      }
+    }));
+
+  it("blocks an existing empty EVOZEUS_HOME that is not writable", () =>
+    withTempRoot((root) => {
+      const evozeusHome = join(root, "empty-read-only-home");
+      const bin = join(root, "bin");
+      mkdirSync(evozeusHome);
+      mkdirSync(bin);
+      writeExecutable(join(bin, "node"), "printf '%s\\n' 'v20.12.2'");
+      writeExecutable(join(bin, "python3"), "printf '%s\\n' 'Python 3.12.2'");
+      for (const command of ["curl", "shasum", "tar", "codex"]) {
+        writeExecutable(join(bin, command), "exit 0");
+      }
+      writeExecutable(join(bin, "uname"), "if [ \"$1\" = '-s' ]; then echo Linux; else echo x86_64; fi");
+      chmodSync(evozeusHome, 0o500);
+      try {
+        const snapshot = collectSystemSnapshot({ evozeusHome });
+        assert.equal(snapshot.targetParentAccess, false);
+
+        const report = parsePrefetch(runPrefetch({ path: bin, env: { EVOZEUS_HOME: evozeusHome } }));
+        assert.equal(report.blockers[0].code, "TARGET_PARENT_ACCESS_BLOCKED");
+        assert.equal(report.network.head_requests, 0);
+        assert.equal(report.network.asset_get_count, 0);
+      } finally {
+        chmodSync(evozeusHome, 0o700);
       }
     }));
 

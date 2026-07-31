@@ -92,7 +92,7 @@ function availableBytes(path) {
 }
 
 export function collectSystemSnapshot({ evozeusHome = join(homedir(), ".evozeus") } = {}) {
-  const targetParent = closestExistingParent(dirname(resolve(evozeusHome)));
+  const targetAccessRoot = closestExistingParent(resolve(evozeusHome));
   const tempRoot = resolve(tmpdir());
   const hostOverride = String(process.env.EVOZEUS_HOSTS_AVAILABLE || "").trim();
   const hostCommands = hostOverride
@@ -117,9 +117,9 @@ export function collectSystemSnapshot({ evozeusHome = join(homedir(), ".evozeus"
       ...hostCommands
     },
     tempAccess: hasAccess(tempRoot),
-    targetParentAccess: hasAccess(targetParent),
+    targetParentAccess: hasAccess(targetAccessRoot),
     tempAvailableBytes: availableBytes(tempRoot),
-    targetAvailableBytes: availableBytes(targetParent)
+    targetAvailableBytes: availableBytes(targetAccessRoot)
   };
 }
 

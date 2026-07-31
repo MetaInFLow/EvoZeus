@@ -977,21 +977,23 @@ function containedPathSafety(root, target, finalKind = "any") {
   return "ready";
 }
 
-function installedEntryIntegrity(evozeusHome, entry, manifest) {
+function installedEntryIntegrity(evozeusHome, entry, manifest, { historical = false } = {}) {
   if (!entry) return { status: "not_installed", issues: [] };
   const issues = [];
   const unsafe = [];
   const home = resolve(evozeusHome);
   const homeSafety = absoluteDirectorySafety(home);
   if (homeSafety !== "ready") unsafe.push(`evozeus_home:${homeSafety}`);
-  for (const [name, path, required] of [
-    ["active_channel", join(home, "active-channel.json"), true],
-    ["channel_state", join(home, "channel-state.json"), true],
-    ["registration", join(home, "registration.json"), false]
-  ]) {
-    const safety = homeSafety === "ready" ? containedPathSafety(home, path, "file") : homeSafety;
-    if (safety === "unsafe") unsafe.push(`${name}:unsafe`);
-    if (required && safety === "missing") issues.push(`${name}:missing`);
+  if (!historical) {
+    for (const [name, path, required] of [
+      ["active_channel", join(home, "active-channel.json"), true],
+      ["channel_state", join(home, "channel-state.json"), true],
+      ["registration", join(home, "registration.json"), false]
+    ]) {
+      const safety = homeSafety === "ready" ? containedPathSafety(home, path, "file") : homeSafety;
+      if (safety === "unsafe") unsafe.push(`${name}:unsafe`);
+      if (required && safety === "missing") issues.push(`${name}:missing`);
+    }
   }
   const installRootSafety = homeSafety === "ready"
     ? containedPathSafety(home, entry.install_root, "directory")
@@ -1000,25 +1002,34 @@ function installedEntryIntegrity(evozeusHome, entry, manifest) {
   if (installRootSafety === "missing") {
     issues.push("install_root_missing");
   }
-  const currentLink = currentLinkFor(home, manifest.channel);
-  const currentParentSafety = containedPathSafety(home, dirname(currentLink), "directory");
-  if (currentParentSafety === "unsafe") unsafe.push("current_link:unsafe_parent");
-  if (currentParentSafety === "missing") issues.push("current_link:missing_parent");
-  if (currentParentSafety === "ready") {
-    const currentNode = lstatEvidence(currentLink);
-    if (currentNode.status === "missing") {
-      issues.push("current_link:missing");
-    } else if (currentNode.status !== "ready" || !currentNode.stats.isSymbolicLink()) {
-      unsafe.push("current_link:unsafe_node");
-    } else {
-      const target = linkTarget(currentLink);
-      if (!target || resolve(target) !== resolve(entry.install_root)) {
-        issues.push("current_link:target_mismatch");
+  if (!historical) {
+    const currentLink = currentLinkFor(home, manifest.channel);
+    const currentParentSafety = containedPathSafety(home, dirname(currentLink), "directory");
+    if (currentParentSafety === "unsafe") unsafe.push("current_link:unsafe_parent");
+    if (currentParentSafety === "missing") issues.push("current_link:missing_parent");
+    if (currentParentSafety === "ready") {
+      const currentNode = lstatEvidence(currentLink);
+      if (currentNode.status === "missing") {
+        issues.push("current_link:missing");
+      } else if (currentNode.status !== "ready" || !currentNode.stats.isSymbolicLink()) {
+        unsafe.push("current_link:unsafe_node");
+      } else {
+        const target = linkTarget(currentLink);
+        if (!target || resolve(target) !== resolve(entry.install_root)) {
+          issues.push("current_link:target_mismatch");
+        }
       }
     }
   }
   for (const componentId of PRODUCT_COMPONENTS) {
     const componentRoot = entry.component_roots?.[componentId];
+    if (
+      typeof componentRoot === "string" &&
+      typeof entry.install_root === "string" &&
+      resolve(componentRoot) !== resolve(join(entry.install_root, componentId))
+    ) {
+      issues.push(`component:${componentId}:root_mismatch`);
+    }
     const rootSafety = installRootSafety === "ready"
       ? containedPathSafety(entry.install_root, componentRoot, "directory")
       : installRootSafety;
@@ -1049,6 +1060,12 @@ function installedEntryIntegrity(evozeusHome, entry, manifest) {
   for (const componentId of EMBEDDED_COMPONENTS) {
     const embedded = manifest.embedded[componentId];
     const embeddedRoot = coreRoot ? join(coreRoot, embedded.path) : null;
+    const recordedEmbeddedRoot = entry.embedded_roots?.[componentId];
+    if (typeof recordedEmbeddedRoot !== "string") {
+      issues.push(`embedded:${componentId}:recorded_root_missing`);
+    } else if (embeddedRoot && resolve(recordedEmbeddedRoot) !== resolve(embeddedRoot)) {
+      issues.push(`embedded:${componentId}:root_mismatch`);
+    }
     const rootSafety = coreRoot
       ? containedPathSafety(coreRoot, embeddedRoot, "directory")
       : "missing";
@@ -1068,8 +1085,8 @@ function installedEntryIntegrity(evozeusHome, entry, manifest) {
       issues.push(`embedded:${componentId}:${inspected.status}`);
     }
   }
-  const active = readActiveChannel(home);
-  if (active?.channel === manifest.channel) {
+  const active = historical ? null : readActiveChannel(home);
+  if (!historical && active?.channel === manifest.channel) {
     const hooksRoot = join(home, "hooks");
     const hooksSafety = containedPathSafety(home, hooksRoot, "directory");
     if (hooksSafety === "unsafe") unsafe.push("dispatcher:unsafe_hooks_root");
@@ -1125,6 +1142,45 @@ function historicalEntrySafety(evozeusHome, entry) {
   return {
     status: unsafe.length === 0 ? "safe" : "unsafe",
     issues: [...new Set(unsafe)]
+  };
+}
+
+function rollbackEntryIntegrity(
+  evozeusHome,
+  entry,
+  manifest,
+  { smokeRunner = fixedComponentSmoke, embeddedSmokeRunner = fixedEmbeddedSmoke } = {}
+) {
+  const structural = installedEntryIntegrity(evozeusHome, entry, manifest, { historical: true });
+  if (structural.status !== "healthy") {
+    return {
+      status: structural.status === "unsafe" ? "unsafe" : "unhealthy",
+      issues: structural.issues.map((issue) => `previous:${issue}`)
+    };
+  }
+  const issues = [];
+  try {
+    validateInstalledCompatibility(manifest, entry.component_roots);
+  } catch (error) {
+    issues.push(`previous:compatibility:${error.code || "validation_failed"}`);
+  }
+  for (const componentId of PRODUCT_COMPONENTS) {
+    try {
+      smokeRunner(componentId, entry.component_roots[componentId]);
+    } catch (error) {
+      issues.push(`previous:component:${componentId}:smoke:${error.code || "failed"}`);
+    }
+  }
+  for (const componentId of EMBEDDED_COMPONENTS) {
+    try {
+      embeddedSmokeRunner(componentId, entry.embedded_roots[componentId]);
+    } catch (error) {
+      issues.push(`previous:embedded:${componentId}:smoke:${error.code || "failed"}`);
+    }
+  }
+  return {
+    status: issues.length === 0 ? "healthy" : "unhealthy",
+    issues: [...new Set(issues)]
   };
 }
 
@@ -1601,7 +1657,15 @@ export async function applyChannelUpdate({
   }
 }
 
-export function rollbackChannel(evozeusHome, channel, { bootstrapCopy = cpSync } = {}) {
+export function rollbackChannel(
+  evozeusHome,
+  channel,
+  {
+    bootstrapCopy = cpSync,
+    smokeRunner = fixedComponentSmoke,
+    embeddedSmokeRunner = fixedEmbeddedSmoke
+  } = {}
+) {
   const home = resolve(evozeusHome);
   if (!CHANNELS.includes(channel)) {
     throw new ChannelError("INVALID_CHANNEL", "channel must be stable or uat");
@@ -1619,21 +1683,27 @@ export function rollbackChannel(evozeusHome, channel, { bootstrapCopy = cpSync }
     throw new ChannelError("ROLLBACK_NOT_AVAILABLE", `no verified ${channel} rollback is available`);
   }
   const previousIssues = validateProductManifest(previous.manifest, channel);
-  const previousSafety = historicalEntrySafety(home, previous);
   const previousDigestMatches = previousIssues.length === 0
     && previous.manifest_digest === productManifestDigest(previous.manifest);
-  if (
-    previousIssues.length > 0 ||
-    !previousDigestMatches ||
-    previousSafety.status !== "safe"
-  ) {
+  if (previousIssues.length > 0 || !previousDigestMatches) {
     throw new ChannelError("ROLLBACK_STATE_UNSAFE", `the previous ${channel} rollback is unsafe or unverifiable`, {
       issues: [
         ...previousIssues.map((issue) => `previous_manifest:${issue}`),
-        ...(!previousDigestMatches ? ["previous_manifest_digest_mismatch"] : []),
-        ...previousSafety.issues
+        ...(!previousDigestMatches ? ["previous_manifest_digest_mismatch"] : [])
       ]
     });
+  }
+  const previousIntegrity = rollbackEntryIntegrity(home, previous, previous.manifest, {
+    smokeRunner,
+    embeddedSmokeRunner
+  });
+  if (previousIntegrity.status !== "healthy") {
+    const unsafe = previousIntegrity.status === "unsafe";
+    throw new ChannelError(
+      unsafe ? "ROLLBACK_STATE_UNSAFE" : "ROLLBACK_STATE_UNHEALTHY",
+      `the previous ${channel} rollback is ${unsafe ? "unsafe or unverifiable" : "not healthy enough to activate"}`,
+      { issues: previousIntegrity.issues }
+    );
   }
   const currentLink = currentLinkFor(home, channel);
   const linkBefore = linkTarget(currentLink);

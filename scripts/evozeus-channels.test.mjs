@@ -435,6 +435,79 @@ describe("channel transactions", () => {
       assert.equal(readActiveChannel(home).channel, "uat");
     }));
 
+  it("refuses to activate rollback history that fails structure, compatibility, or smoke checks", async () =>
+    fixture(async (root) => {
+      const home = join(root, "home");
+      const first = stableManifest(join(root, "rollback-integrity-one"), "v0.4.0", "1");
+      await applyChannelUpdate({
+        evozeusHome: home,
+        channel: "stable",
+        manifestSource: writeManifest(root, "rollback-integrity-one.json", first),
+        fetchImpl: fileFetch,
+        smokeRunner: noSmoke,
+        embeddedSmokeRunner: noSmoke
+      });
+      const second = stableManifest(join(root, "rollback-integrity-two"), "v0.4.1", "4");
+      await applyChannelUpdate({
+        evozeusHome: home,
+        channel: "stable",
+        manifestSource: writeManifest(root, "rollback-integrity-two.json", second),
+        fetchImpl: fileFetch,
+        smokeRunner: noSmoke,
+        embeddedSmokeRunner: noSmoke
+      });
+
+      const previous = readChannelState(home).channels.stable.previous;
+      const stateBefore = readFileSync(join(home, "channel-state.json"), "utf8");
+      const currentLink = join(home, "releases", "stable", "current");
+      const linkBefore = readlinkSync(currentLink);
+      const bootstrapPath = join(home, "skeleton", "scripts", "evozeus-launcher.mjs");
+      const bootstrapBefore = readFileSync(bootstrapPath, "utf8");
+      const assertRejectedWithoutActivation = (expectedIssue) => {
+        assert.throws(
+          () => rollbackChannel(home, "stable"),
+          (error) => error.code === "ROLLBACK_STATE_UNHEALTHY"
+            && error.details.issues.some((issue) => issue.includes(expectedIssue))
+        );
+        assert.equal(readFileSync(join(home, "channel-state.json"), "utf8"), stateBefore);
+        assert.equal(readlinkSync(currentLink), linkBefore);
+        assert.equal(readFileSync(bootstrapPath, "utf8"), bootstrapBefore);
+      };
+
+      const skillPath = join(previous.component_roots.evozeus, "SKILL.md");
+      const skillBefore = readFileSync(skillPath, "utf8");
+      rmSync(skillPath);
+      assertRejectedWithoutActivation("component:evozeus:missing:SKILL.md");
+      writeFileSync(skillPath, skillBefore);
+
+      const embeddedPath = join(previous.embedded_roots.runtime, "pyproject.toml");
+      const embeddedBefore = readFileSync(embeddedPath, "utf8");
+      rmSync(embeddedPath);
+      assertRejectedWithoutActivation("embedded:runtime:missing:pyproject.toml");
+      writeFileSync(embeddedPath, embeddedBefore);
+
+      const contractPath = join(previous.component_roots.coevolve, "contracts", "v1", "manifest.json");
+      const contractBefore = readFileSync(contractPath, "utf8");
+      writeFileSync(contractPath, `${JSON.stringify({
+        bundle_version: "v9.0.0",
+        runtime_compatibility: { min_inclusive: "0.1.0", max_exclusive: "0.3.0" }
+      })}\n`);
+      assertRejectedWithoutActivation("compatibility:COEVOLVE_CONTRACT_MISMATCH");
+      writeFileSync(contractPath, contractBefore);
+
+      const cliPath = join(previous.component_roots.evozeus, "scripts", "evozeus-cli.mjs");
+      const cliBefore = readFileSync(cliPath, "utf8");
+      writeFileSync(cliPath, "process.exit(17);\n");
+      assertRejectedWithoutActivation("component:evozeus:smoke:COMMAND_FAILED");
+      writeFileSync(cliPath, cliBefore);
+
+      const runtimeCliPath = join(previous.embedded_roots.runtime, "src", "evozeus_runtime", "cli", "main.py");
+      const runtimeCliBefore = readFileSync(runtimeCliPath, "utf8");
+      writeFileSync(runtimeCliPath, "raise SystemExit(17)\n");
+      assertRejectedWithoutActivation("embedded:runtime:smoke:COMMAND_FAILED");
+      writeFileSync(runtimeCliPath, runtimeCliBefore);
+    }));
+
   it("restores the active channel bootstrap when an inactive-channel rollback fails", async () =>
     fixture(async (root) => {
       const home = join(root, "home");
@@ -1607,7 +1680,7 @@ describe("channel transactions", () => {
       assert.match(result.stderr, /继续使用Stable v0\.4\.0/);
     }));
 
-  it("rolls back a same-version auto-repair after real Plugin registration fails", async () =>
+  it("keeps a verified repair active when its damaged predecessor cannot be rolled back", async () =>
     fixture(async (root) => {
       const home = join(root, "home");
       const manifest = stableManifest(join(root, "stable-repair-plugin-rollback"), "v0.4.0", "1");
@@ -1648,17 +1721,22 @@ describe("channel transactions", () => {
       const afterEntry = readChannelState(home).channels.stable;
       const report = readJsonReport(join(home, "state", "stable", "auto-update-last.json"));
       const restoredPluginState = readJsonReport(pluginStatePath);
-      assert.equal(afterEntry.install_root, beforeEntry.install_root);
+      assert.notEqual(afterEntry.install_root, beforeEntry.install_root);
+      assert.equal(afterEntry.previous.install_root, beforeEntry.install_root);
       assert.equal(afterEntry.manifest_digest, beforeEntry.manifest_digest);
-      assert.equal(resolve(dirname(currentLink), readlinkSync(currentLink)), beforeLink);
-      assert.equal(existsSync(join(afterEntry.component_roots.evozeus, "SKILL.md")), false);
-      assert.equal(restoredPluginState.commit, beforeEntry.manifest.components.evozeus.commit);
-      assert.equal(report.status, "failed_continuing_previous");
-      assert.equal(report.recovery.status, "restored_previous");
-      assert.equal(report.recovery.product, "rolled_back");
-      assert.equal(report.recovery.plugin, "realigned_previous");
+      assert.notEqual(resolve(dirname(currentLink), readlinkSync(currentLink)), beforeLink);
+      assert.equal(resolve(dirname(currentLink), readlinkSync(currentLink)), afterEntry.install_root);
+      assert.equal(existsSync(join(afterEntry.component_roots.evozeus, "SKILL.md")), true);
+      assert.equal(restoredPluginState.commit, "f".repeat(40));
+      assert.equal(report.status, "failed_recovery_required");
+      assert.equal(report.product_version, "v0.4.0");
+      assert.equal(report.recovery.status, "incomplete");
+      assert.equal(report.recovery.product, "unchanged");
+      assert.equal(report.recovery.plugin, "pending");
+      assert.equal(report.recovery.error.code, "ROLLBACK_STATE_UNHEALTHY");
+      assert.match(report.recovery.error.message, /not healthy enough to activate/);
       assert.match(report.error.message, /injected Plugin registration failure/);
-      assert.match(result.stderr, /继续使用Stable v0\.4\.0/);
+      assert.match(result.stderr, /恢复未完成/);
     }));
 
   it("reports recovery required when the previous Plugin cannot be re-registered", async () =>

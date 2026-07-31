@@ -138,11 +138,10 @@ if home_has_entries; then
   emit_blocked "local_state" "EXISTING_INSTALL_REQUIRES_LOCAL_STATE_CHECK" "Existing EvoZeus state must be classified before checker acquisition." "Run the installed CLI version and Doctor checks with automatic refresh disabled; use the state-specific route." "local_state" "step_0_before_environment_or_network"
 fi
 
-target_parent="${HOME_ROOT%/*}"
-[ -n "${target_parent}" ] || target_parent="/"
-while [ ! -e "${target_parent}" ] && [ "${target_parent}" != "/" ]; do
-  target_parent="${target_parent%/*}"
-  [ -n "${target_parent}" ] || target_parent="/"
+target_access_root="${HOME_ROOT}"
+while [ ! -e "${target_access_root}" ] && [ "${target_access_root}" != "/" ]; do
+  target_access_root="${target_access_root%/*}"
+  [ -n "${target_access_root}" ] || target_access_root="/"
 done
 
 command -v node >/dev/null 2>&1 || emit_blocked "node" "NODE_MISSING" "Node.js is required before the checker can run." "Install Node.js 18.17.0 or newer, then rerun the pre-fetch gate."
@@ -220,11 +219,11 @@ case "${arch_name}" in
 esac
 
 [ -d "${TEMP_ROOT}" ] && [ -r "${TEMP_ROOT}" ] && [ -w "${TEMP_ROOT}" ] && [ -x "${TEMP_ROOT}" ] || emit_blocked "temp_access" "TEMP_ACCESS_BLOCKED" "The temporary directory is not accessible." "Restore read, write, and traversal access to the temporary directory."
-[ -d "${target_parent}" ] && [ -r "${target_parent}" ] && [ -w "${target_parent}" ] && [ -x "${target_parent}" ] || emit_blocked "target_parent_access" "TARGET_PARENT_ACCESS_BLOCKED" "The EvoZeus target parent directory is not accessible." "Restore read, write, and traversal access to the EvoZeus target parent directory."
+[ -d "${target_access_root}" ] && [ -r "${target_access_root}" ] && [ -w "${target_access_root}" ] && [ -x "${target_access_root}" ] || emit_blocked "target_parent_access" "TARGET_PARENT_ACCESS_BLOCKED" "The EvoZeus target path or closest existing parent directory is not accessible." "Restore read, write, and traversal access to the EvoZeus target path or closest existing parent directory."
 
 command -v df >/dev/null 2>&1 || emit_blocked "disk_space" "DF_MISSING" "df is required for the read-only disk-space check." "Install df, then rerun the pre-fetch gate."
 temp_available=$(available_kb "${TEMP_ROOT}" || true)
-target_available=$(available_kb "${target_parent}" || true)
+target_available=$(available_kb "${target_access_root}" || true)
 case "${temp_available}:${target_available}" in
   *[!0-9:]*|:*) emit_blocked "disk_space" "DISK_SPACE_UNKNOWN" "Available disk space could not be verified." "Make df available and rerun the pre-fetch gate." ;;
 esac
