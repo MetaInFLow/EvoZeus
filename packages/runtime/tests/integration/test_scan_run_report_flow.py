@@ -52,6 +52,7 @@ def test_scan_run_report_flow_writes_local_artifacts(tmp_path):
     )
 
     assert scan_result.session_count == 1
+    assert scan_result.session_ids == ("session-minimal",)
     assert scan_result.ledger_path.exists()
 
     run_result = run_factors(

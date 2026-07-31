@@ -712,32 +712,18 @@ function infraBackendCommand(options, mode, sourcePath = null) {
   const runtimeStateRoot = active
     ? join(workspaceInfo(options).evozeus_root, "state", active.channel)
     : null;
-  const args =
-    mode === "project"
-      ? [
-          "project-insights",
-          "--workspace",
-          workspace,
-          "--project",
-          options.project,
-          "--format",
-          "markdown",
-          "--format",
-          "json",
-          "--format",
-          "html",
-          ...(options.projectMode === "keyword" || options.projectMode === "contains" ? ["--contains"] : [])
-        ]
-      : [
-          "session-insights",
-          "--workspace",
-          workspace,
-          "--source-path",
-          sourcePath,
-          "--official-repo-root",
-          official.detected_path,
-          ...(options.force ? ["--force"] : [])
-        ];
+  const args = [
+    "session-insights",
+    "--workspace",
+    workspace,
+    "--source-path",
+    sourcePath,
+    "--official-repo-root",
+    official.detected_path,
+    ...(mode === "project" ? ["--project", options.project] : []),
+    ...(mode === "project" && ["keyword", "contains"].includes(options.projectMode) ? ["--contains"] : []),
+    ...(options.force ? ["--force"] : [])
+  ];
 
   return {
     owner: "EvoZeus",
