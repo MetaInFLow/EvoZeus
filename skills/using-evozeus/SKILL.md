@@ -40,7 +40,7 @@ Use an EvoZeus tag only when EvoZeus itself performs a recognizable lifecycle ac
 | --- | --- |
 | Explicit activation | `🧙 EvoZeus · 已启动｜<task>` |
 | Managed Skillware run | `👁️ EvoZeus · 受管运行｜<target Skillware> · <stable|uat|development>` |
-| Lesson candidate detected | `🧙 EvoZeus · 捕捉到一条 Lesson｜<one-sentence summary>。要记录下来吗？` |
+| Lesson candidate detected | `🧙 EvoZeus · 捕捉到一条 Lesson｜<one-sentence summary>｜拟记录到：<target Repo or local-only destination> · <artifact>｜影响范围：<affected surface>｜写入边界：<record created by this confirmation; excluded follow-up actions>。要按此记录吗？` |
 | Confirmed Lesson persisted | `📝 EvoZeus · Lesson 已记录｜<local record or Issue link>` |
 | Permission required | `🔐 EvoZeus · 等待确认｜<specific write or external action>` |
 | Stable/UAT decision | `🧭 EvoZeus · 版本状态｜<channel and exact next action>` |
@@ -63,10 +63,10 @@ The canonical trigger and wording contract is `../../docs/reference/user-visible
 At the end of a meaningful task, check whether the session exposed a reusable rule, failure pattern, workflow improvement, environment fix, or product behavior gap. If yes, add one normal chat line:
 
 ```text
-🧙 EvoZeus · 捕捉到一条 Lesson｜<可复用且已脱敏的一句话>。要记录下来吗？
+🧙 EvoZeus · 捕捉到一条 Lesson｜<可复用且已脱敏的一句话>｜拟记录到：<目标 Repo 或 local-only 位置> · <记录载体>｜影响范围：<受影响产品、Skill 或工作流>｜写入边界：<本次确认将创建的记录；明确排除的后续动作>。要按此记录吗？
 ```
 
-This is a proposal only. User confirmation is required before recording. Claude Code loads this check through the plugin's read-only `SessionStart` adapter. Codex activates the Skill through explicit or semantic selection because its current plugin manifest does not expose an equivalent session hook.
+Resolve the destination, artifact, impact scope, and write boundary before asking. Do not emit a generic recording question when any of these fields is unknown. This is a proposal only. User confirmation authorizes exactly the displayed record operation. Claude Code loads this check through the plugin's read-only `SessionStart` adapter. Codex activates the Skill through explicit or semantic selection because its current plugin manifest does not expose an equivalent session hook.
 
 ## Safety
 

@@ -83,10 +83,10 @@ CI 读取 Git 跟踪和待提交文件路径；发现 Harness 目录位于 Repo 
 普通聊天中的捕捉依赖宿主的会话级能力。插件内 Skill 负责定义识别和交互契约：
 
 ```text
-🧙 EvoZeus · 捕捉到一条可能值得记录的 Lesson：<一句话摘要>。要记录下来吗？
+🧙 EvoZeus · 捕捉到一条 Lesson｜<一句话摘要>｜拟记录到：<目标 Repo 或 local-only 位置> · <记录载体>｜影响范围：<受影响对象>｜写入边界：<本次确认创建的记录；排除动作>。要按此记录吗？
 ```
 
-用户确认前不创建 Issue、不修改目标 Repo。Claude Code 通过插件根 `hooks/hooks.json` 自动发现只读 `SessionStart` 适配器；该适配器只注入 Lesson 检查合同，不写状态、不显示横幅。Codex 当前插件 manifest 不声明 session hook，通过显式或语义匹配选择 EvoZeus，不能宣称所有聊天自动捕捉。
+提示必须先解析记录落点、载体、影响范围和写入边界；任一字段不明确时不发起记录确认。用户确认只授权提示中列出的记录动作。Claude Code 通过插件根 `hooks/hooks.json` 自动发现只读 `SessionStart` 适配器；该适配器只注入 Lesson 检查合同，不写状态、不显示横幅。Codex 当前插件 manifest 不声明 session hook，通过显式或语义匹配选择 EvoZeus，不能宣称所有聊天自动捕捉。
 
 ### 5.3 宿主安装与渠道对齐
 

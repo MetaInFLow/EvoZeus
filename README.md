@@ -65,7 +65,7 @@ EvoZeus 当前优先解决两类高频问题：产品需要尽快进入真实使
 
 ### 2. 把不满意转化为可追踪改进
 
-保持正常聊天简洁；发现可复用 Lesson 后先征得授权，再创建可评审的 Feedback Issue。
+保持正常聊天简洁；发现可复用 Lesson 后先说明目标 Repo、记录载体、影响范围和写入边界，再征得授权创建可评审的 Feedback Issue。
 
 <p align="center">
   <img src="assets/demos/managed-feedback-loop.gif" alt="39 秒演示：把用户不满意记录为经过授权的 Skill Feedback Issue" width="100%">
@@ -128,10 +128,10 @@ Demo 解释产品如何使用；安装和注册始终走上方官网 `/skill` �
 EvoZeus 在正常聊天中给出结果。生命周期事件使用紧凑标记：
 
 ```text
-🧙 EvoZeus · 捕捉到一条 Lesson｜版本检查不应阻断用户的真实任务。要记录下来吗？
+🧙 EvoZeus · 捕捉到一条 Lesson｜版本检查不应阻断用户的真实任务｜拟记录到：MetaInFLow/EvoZeus · GitHub Feedback Issue｜影响范围：版本检查协议｜写入边界：仅创建脱敏 Issue；不修改代码、不创建 PR。要按此记录吗？
 ```
 
-正常 Lesson 提示不会输出内部 JSON，用户确认前不会写入记录。
+正常 Lesson 提示不会输出内部 JSON，并会在用户确认前说明准确落点与授权边界。
 
 ## EvoZeus 何时会显示标记
 
@@ -141,7 +141,7 @@ EvoZeus 在正常聊天中给出结果。生命周期事件使用紧凑标记：
 | --- | --- | --- |
 | `🧙 EvoZeus · 已启动｜复盘这次 Agent 执行` | EvoZeus 已被显式调用 | 开始一次 EvoZeus 任务 |
 | `👁️ EvoZeus · 受管运行｜企业场景地图 Skill · UAT` | 当前 Skillware 已进入受管生命周期 | Repo、Harness、渠道身份均已核验 |
-| `🧙 EvoZeus · 捕捉到一条 Lesson｜证据不足时不能直接报完成。要记录下来吗？` | 发现了值得复用的改进 | 业务结果完成后，记录前先询问 |
+| `🧙 EvoZeus · 捕捉到一条 Lesson｜证据不足时不能直接报完成｜拟记录到：owner/example-skill · GitHub Feedback Issue｜影响范围：任务完成门禁｜写入边界：仅创建脱敏 Issue；不修改代码、不创建 PR。要按此记录吗？` | 发现了值得复用的改进 | 业务结果完成且记录落点明确后，记录前先询问 |
 | `📝 EvoZeus · Lesson 已记录｜Feedback Issue #12` | 已按授权保存 Lesson | 本地记录或 Issue 创建成功后 |
 | `🔐 EvoZeus · 等待确认｜创建 Feedback Issue` | 下一动作会写入或影响外部系统 | 需要新的具体授权时 |
 | `🧭 EvoZeus · 版本状态｜Stable v0.4.0 → UAT v0.4.1` | 正在判断安装或渠道变化 | 对齐、升级、切换前 |

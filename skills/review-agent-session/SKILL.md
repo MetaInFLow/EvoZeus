@@ -32,10 +32,10 @@ Lead with the core judgment. Include only evidence needed to defend it. Do not s
 When a reusable Lesson exists, finish with:
 
 ```text
-🧙 EvoZeus · 捕捉到一条 Lesson｜<一句话>。要记录下来吗？
+🧙 EvoZeus · 捕捉到一条 Lesson｜<一句话>｜拟记录到：<目标 Repo 或 local-only 位置> · <记录载体>｜影响范围：<受影响产品、Skill 或工作流>｜写入边界：<本次确认将创建的记录；明确排除的后续动作>。要按此记录吗？
 ```
 
-Do not record it until the user confirms.
+Resolve the route and artifact before showing the prompt. Do not record it until the user confirms the displayed write boundary.
 
 ## Verification target
 
@@ -43,4 +43,4 @@ Do not record it until the user confirms.
 - Each proposed action has a clear owner or route.
 - Private data is omitted or generalized.
 - The response contains one primary next action.
-
+- Any Lesson proposal identifies its exact record destination and authorized write.

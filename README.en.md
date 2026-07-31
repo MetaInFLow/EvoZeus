@@ -77,7 +77,7 @@ Connect an independent Skill repository to source, version, validation, feedback
 
 ### 2. Turn dissatisfaction into traceable improvement
 
-Keep the normal conversation intact, ask before recording the reusable Lesson, and create a reviewable Feedback Issue without silently starting a fix.
+Keep the normal conversation intact, name the target repository, record artifact, affected scope, and write boundary, then ask before creating a reviewable Feedback Issue.
 
 <p align="center">
   <img src="assets/demos/managed-feedback-loop.gif" alt="39-second demo: capture user dissatisfaction as an authorized Skill Feedback Issue" width="100%">
@@ -140,10 +140,10 @@ After installation, try one of these:
 EvoZeus responds inside the normal conversation. Lifecycle events use a compact marker:
 
 ```text
-🧙 EvoZeus · 捕捉到一条 Lesson｜版本检查不应阻断用户的真实任务。要记录下来吗？
+🧙 EvoZeus · 捕捉到一条 Lesson｜版本检查不应阻断用户的真实任务｜拟记录到：MetaInFLow/EvoZeus · GitHub Feedback Issue｜影响范围：版本检查协议｜写入边界：仅创建脱敏 Issue；不修改代码、不创建 PR。要按此记录吗？
 ```
 
-No raw JSON block is shown for a normal Lesson prompt, and nothing is recorded before confirmation.
+A normal Lesson prompt does not show raw JSON. It identifies the exact destination and authorized write before confirmation.
 
 ## User-visible lifecycle markers
 
@@ -153,7 +153,7 @@ EvoZeus shows one compact line only when its lifecycle state changes. Ordinary a
 | --- | --- |
 | `🧙 EvoZeus · 已启动｜<task>` | EvoZeus was explicitly activated |
 | `👁️ EvoZeus · 受管运行｜<Skillware> · <channel>` | A verified managed Skillware target is running |
-| `🧙 EvoZeus · 捕捉到一条 Lesson｜<summary>。要记录下来吗？` | A reusable Lesson is proposed, not persisted |
+| `🧙 EvoZeus · 捕捉到一条 Lesson｜<summary>｜拟记录到：<target Repo or local-only destination> · <artifact>｜影响范围：<affected surface>｜写入边界：<record created; excluded actions>。要按此记录吗？` | A reusable Lesson is proposed with an explicit destination and write boundary |
 | `📝 EvoZeus · Lesson 已记录｜<record>` | The approved Lesson was persisted |
 | `🔐 EvoZeus · 等待确认｜<action>` | A specific write or external action needs approval |
 | `🧭 EvoZeus · 版本状态｜<current → target>` | An install, alignment, or channel decision is pending |

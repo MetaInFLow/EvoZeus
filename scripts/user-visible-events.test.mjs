@@ -35,3 +35,25 @@ test("README and entry Skill expose the complete user-visible EvoZeus event cata
     assert.match(reference, new RegExp(marker.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   }
 });
+
+test("Lesson proposals expose the record destination and write boundary before confirmation", () => {
+  const sources = [
+    "../README.md",
+    "../README.en.md",
+    "../skills/using-evozeus/SKILL.md",
+    "../skills/capture-evozeus-lesson/SKILL.md",
+    "../skills/review-agent-session/SKILL.md",
+    "../docs/reference/user-visible-events.md",
+    "../hooks/session-start.mjs"
+  ];
+
+  for (const source of sources) {
+    const content = read(source);
+    assert.match(content, /拟记录到：/, `${source} must name the record destination`);
+    assert.match(content, /记录载体|artifact/, `${source} must name the record artifact`);
+    assert.match(content, /影响范围/, `${source} must name the affected scope`);
+    assert.match(content, /写入边界/, `${source} must name the authorized write boundary`);
+    assert.match(content, /要按此记录吗？/, `${source} must ask for confirmation of the displayed route`);
+    assert.doesNotMatch(content, /要记录下来吗？/, `${source} must not use the ambiguous legacy prompt`);
+  }
+});

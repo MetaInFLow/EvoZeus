@@ -43,7 +43,11 @@ test("SessionStart adapter injects the Lesson contract without user-visible outp
   assert.equal(output.suppressOutput, true);
   assert.equal(output.hookSpecificOutput.hookEventName, "SessionStart");
   assert.match(output.hookSpecificOutput.additionalContext, /捕捉到一条 Lesson/);
-  assert.match(output.hookSpecificOutput.additionalContext, /Do not persist a Lesson/);
+  assert.match(output.hookSpecificOutput.additionalContext, /拟记录到：/);
+  assert.match(output.hookSpecificOutput.additionalContext, /记录载体/);
+  assert.match(output.hookSpecificOutput.additionalContext, /影响范围/);
+  assert.match(output.hookSpecificOutput.additionalContext, /写入边界/);
+  assert.match(output.hookSpecificOutput.additionalContext, /exactly the displayed record operation/);
   assert.doesNotMatch(output.hookSpecificOutput.additionalContext, /signal_id|should_capture/);
 });
 
