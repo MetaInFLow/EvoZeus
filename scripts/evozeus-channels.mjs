@@ -945,9 +945,29 @@ function reconcileCliShims(evozeusHome) {
   if (mainNode.status === "missing" && recoveryNode.status === "missing") {
     return { status: "not_managed", repaired: false };
   }
-  const source = mainNode.status === "ready" ? main : recovery;
-  const target = mainNode.status === "missing" ? main : recoveryNode.status === "missing" ? recovery : null;
-  if (!target) return { status: "ready", repaired: false };
+  const mainExecutable = mainNode.status === "ready" && (mainNode.stats.mode & 0o111) !== 0;
+  const recoveryExecutable = recoveryNode.status === "ready" && (recoveryNode.stats.mode & 0o111) !== 0;
+  let contentsMatch = false;
+  if (mainNode.status === "ready" && recoveryNode.status === "ready") {
+    try {
+      contentsMatch = readFileSync(main).equals(readFileSync(recovery));
+    } catch {
+      throw new ChannelError("CLI_SHIM_UNREADABLE", "the managed CLI shims could not be compared");
+    }
+  }
+  let source = null;
+  let target = null;
+  if (recoveryExecutable && (!mainExecutable || !contentsMatch)) {
+    source = recovery;
+    target = main;
+  } else if (mainExecutable && !recoveryExecutable) {
+    source = main;
+    target = recovery;
+  } else if (mainExecutable && recoveryExecutable && contentsMatch) {
+    return { status: "ready", repaired: false };
+  } else {
+    throw new ChannelError("CLI_SHIM_RECOVERY_UNAVAILABLE", "at least one managed CLI shim must be executable");
+  }
   privateDirectory(binRoot);
   const temporary = `${target}.${randomUUID()}.tmp`;
   try {
@@ -1123,13 +1143,31 @@ function installedEntryIntegrity(evozeusHome, entry, manifest, { historical = fa
   }
   const active = historical ? null : readActiveChannel(home);
   if (!historical && active?.channel === manifest.channel) {
+    const mainCli = join(home, "bin", "evozeus");
     const recoveryCli = join(home, "bin", "evozeus-repair");
+    const mainCliSafety = homeSafety === "ready" ? containedPathSafety(home, mainCli, "file") : homeSafety;
     const recoveryCliSafety = homeSafety === "ready" ? containedPathSafety(home, recoveryCli, "file") : homeSafety;
+    const cliManaged = mainCliSafety !== "missing" || recoveryCliSafety !== "missing";
+    if (mainCliSafety === "unsafe") unsafe.push("cli:unsafe");
     if (recoveryCliSafety === "unsafe") unsafe.push("cli_recovery:unsafe");
-    if (recoveryCliSafety === "ready") {
-      const mainCliSafety = containedPathSafety(home, join(home, "bin", "evozeus"), "file");
-      if (mainCliSafety === "unsafe") unsafe.push("cli:unsafe");
+    if (cliManaged) {
       if (mainCliSafety === "missing") issues.push("cli:missing");
+      if (recoveryCliSafety === "missing") issues.push("cli_recovery:missing");
+    }
+    if (mainCliSafety === "ready" && (lstatSync(mainCli).mode & 0o111) === 0) {
+      issues.push("cli:not_executable");
+    }
+    if (recoveryCliSafety === "ready" && (lstatSync(recoveryCli).mode & 0o111) === 0) {
+      issues.push("cli_recovery:not_executable");
+    }
+    if (mainCliSafety === "ready" && recoveryCliSafety === "ready") {
+      try {
+        if (!readFileSync(mainCli).equals(readFileSync(recoveryCli))) {
+          issues.push("cli:content_mismatch");
+        }
+      } catch {
+        unsafe.push("cli:unreadable");
+      }
     }
     for (const file of CHANNEL_BOOTSTRAP_FILES) {
       const source = coreRoot ? join(coreRoot, "scripts", file) : null;

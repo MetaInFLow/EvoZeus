@@ -16,6 +16,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, it } from "node:test";
+import { productManifestDigest } from "./evozeus-channels.mjs";
 
 const SCRIPT = fileURLToPath(new URL("./evozeus-install.mjs", import.meta.url));
 const SOURCE_ROOT = fileURLToPath(new URL("..", import.meta.url));
@@ -385,6 +386,7 @@ describe("evozeus-install", () => {
         'console.log(JSON.stringify({ ok: true, operation: "recovery.probe", argv: process.argv.slice(2) }));\n'
       );
       writeFileSync(join(scriptsRoot, "evozeus-channels.mjs"), "export {};\n");
+      const activeManifest = { schema_version: "evozeus.product-channel.v2", channel: "stable" };
       writeFileSync(join(evozeusHome, "active-channel.json"), `${JSON.stringify({
         schema_version: "evozeus.active-channel.v1",
         channel: "stable",
@@ -394,7 +396,8 @@ describe("evozeus-install", () => {
         schema_version: "evozeus.channel-state.v1",
         channels: {
           stable: {
-            manifest: { schema_version: "evozeus.product-channel.v2", channel: "stable" },
+            manifest: activeManifest,
+            manifest_digest: productManifestDigest(activeManifest),
             install_root: installRoot,
             component_roots: { evozeus: coreRoot }
           },
@@ -413,6 +416,22 @@ describe("evozeus-install", () => {
 
       assert.equal(report.operation, "recovery.probe");
       assert.deepEqual(report.argv, ["align", "--channel", "stable"]);
+
+      const statePath = join(evozeusHome, "channel-state.json");
+      const corruptedState = JSON.parse(readFileSync(statePath, "utf8"));
+      corruptedState.channels.stable.manifest_digest = `sha256:${"0".repeat(64)}`;
+      writeFileSync(statePath, `${JSON.stringify(corruptedState)}\n`);
+      mkdirSync(join(evozeusHome, "skeleton", "scripts"), { recursive: true });
+      writeFileSync(
+        join(evozeusHome, "skeleton", "scripts", "evozeus-launcher.mjs"),
+        'console.log(JSON.stringify({ ok: true, operation: "skeleton.probe" }));\n'
+      );
+
+      const fallback = spawnSync(join(evozeusHome, "bin", "evozeus-repair"), ["features"], {
+        cwd: workspace,
+        encoding: "utf8"
+      });
+      assert.equal(parseStdout(fallback).operation, "skeleton.probe");
     }));
 
   it("rejects an existing installation instead of reconciling it through the fresh installer", () =>
