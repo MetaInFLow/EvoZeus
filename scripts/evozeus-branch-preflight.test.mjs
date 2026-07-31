@@ -217,6 +217,9 @@ test("contract exposes the four required profiles", () => {
   assert.equal(contract.worktree.requested_registered_worktree_status_evidence, "required");
   assert.deepEqual(contract.worktree.registered_worktree_live_identity,
     ["top_level", "common_dir", "branch"]);
+  assert.equal(contract.worktree.duplicate_target_branch_registrations, "block");
+  assert.equal(contract.worktree.locked_registration_with_missing_path,
+    "block_until_explicit_unlock_and_remove_or_prune");
   assert.equal(contract.permission_resolution.direct_repository_state, "not_archived_and_not_disabled");
   assert.equal(contract.remote_resolution.push_urls,
     "every_effective_origin_push_url_must_match_canonical_github_repo");
@@ -403,6 +406,22 @@ test("blocks a registered resume worktree whose git metadata redirects to anothe
   assert.equal(plan.next_write_action, "blocked");
 });
 
+test("blocks resume when the target branch has duplicate worktree registrations", (context) => {
+  const fixture = fixtureFor(context);
+  const initial = runPlan(fixture).plan;
+  const otherWorktree = join(fixture.root, "other-worktree");
+  git(fixture.repo, "worktree", "add", "-b", initial.branch.target, fixture.worktree, "origin/main");
+  git(fixture.repo, "worktree", "add", "--force", otherWorktree, initial.branch.target);
+  const resumePath = join(fixture.root, "resume-plan.json");
+  writeFileSync(resumePath, JSON.stringify(initial));
+
+  const { result, plan } = runPlan(fixture, { resume_plan: resumePath });
+  assert.equal(result.status, 2);
+  assert(blockerCodes(plan).includes("duplicate_branch_worktree_registrations"));
+  assert.equal(plan.worktree.branch_registration_count, 2);
+  assert.equal(plan.next_write_action, "blocked");
+});
+
 test("recovers the original branch date from a matching resume plan", (context) => {
   const fixture = fixtureFor(context);
   const initial = runPlan(fixture).plan;
@@ -466,6 +485,24 @@ test("offers cleanup and recreation when a matching registered worktree is pruna
   assert.equal(plan.worktree.registration_prunable, true);
   assert.equal(plan.next_write_action, "prune_and_recreate_resume_worktree_for_existing_branch");
   assert.equal(existsSync(fixture.worktree), false);
+});
+
+test("blocks a locked worktree registration whose directory is missing", (context) => {
+  const fixture = fixtureFor(context);
+  const initial = runPlan(fixture).plan;
+  git(fixture.repo, "worktree", "add", "-b", initial.branch.target, fixture.worktree, "origin/main");
+  git(fixture.repo, "worktree", "lock", "--reason", "owner hold", fixture.worktree);
+  const resumePath = join(fixture.root, "resume-plan.json");
+  writeFileSync(resumePath, JSON.stringify(initial));
+  rmSync(fixture.worktree, { recursive: true, force: true });
+
+  const { result, plan } = runPlan(fixture, { resume_plan: resumePath });
+  assert.equal(result.status, 2);
+  assert(blockerCodes(plan).includes("locked_worktree_registration"));
+  assert.equal(plan.worktree.registration_locked, true);
+  assert.equal(plan.worktree.registration_lock_reason, "owner hold");
+  assert.equal(plan.worktree.registration_prunable, false);
+  assert.equal(plan.next_write_action, "blocked");
 });
 
 test("blocks a prunable worktree registration while its path remains occupied", (context) => {
