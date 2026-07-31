@@ -557,6 +557,21 @@ describe("local state inspection", () => {
       });
       assert.equal(healthy.status, "healthy_local");
 
+      const missingPrimary = join(root, "missing-primary-cli");
+      writeInstalledState(missingPrimary);
+      const primaryCli = join(missingPrimary, "bin", "evozeus");
+      const recoveryCli = join(missingPrimary, "bin", "evozeus-repair");
+      writeFileSync(recoveryCli, readFileSync(primaryCli));
+      chmodSync(recoveryCli, 0o755);
+      rmSync(primaryCli);
+      const missingPrimaryState = inspectLocalInstallState({ evozeusHome: missingPrimary });
+      assert.equal(missingPrimaryState.status, "repair_required");
+      assert.ok(missingPrimaryState.evidence.includes("local_cli_missing"));
+      assert.equal(
+        missingPrimaryState.recovery_command,
+        `${recoveryCli} align --channel stable --host auto --json`
+      );
+
       const broken = inspectLocalInstallState({
         evozeusHome: current,
         cliRunner: (_path, command) => command === "version"

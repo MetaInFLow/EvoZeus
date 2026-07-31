@@ -343,6 +343,7 @@ function plannedFiles(evozeusRoot) {
     join(evozeusRoot, "install-manifest.json"),
     join(evozeusRoot, "update-policy.json"),
     join(evozeusRoot, "bin/evozeus"),
+    join(evozeusRoot, "bin/evozeus-repair"),
     join(evozeusRoot, "skeleton")
   ];
 }
@@ -514,11 +515,8 @@ function buildManifest(sourceRoot, skillInventory, evozeusRoot, now, existingMan
 
 function writeCliShim(evozeusRoot, filesWritten) {
   const binRoot = join(evozeusRoot, "bin");
-  const shimPath = join(binRoot, "evozeus");
   mkdirSync(binRoot, { recursive: true });
-  writeFileSync(
-    shimPath,
-    `#!/bin/sh
+  const shimContent = `#!/bin/sh
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
 EVOZEUS_HOME="\${EVOZEUS_HOME:-$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)}"
 export EVOZEUS_HOME
@@ -587,10 +585,13 @@ if [ -n "$ACTIVE_LAUNCHER" ]; then
   exec node "$ACTIVE_LAUNCHER" "$@"
 fi
 exec node "$SCRIPT_DIR/../skeleton/scripts/evozeus-launcher.mjs" "$@"
-`
-  );
-  chmodSync(shimPath, 0o755);
-  filesWritten.push(shimPath);
+`;
+  for (const name of ["evozeus", "evozeus-repair"]) {
+    const shimPath = join(binRoot, name);
+    writeFileSync(shimPath, shimContent);
+    chmodSync(shimPath, 0o755);
+    filesWritten.push(shimPath);
+  }
 }
 
 function install(options) {

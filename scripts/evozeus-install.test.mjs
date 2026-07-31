@@ -203,6 +203,7 @@ describe("evozeus-install", () => {
       assert.ok(existsSync(join(evozeusHome, "skeleton/scripts/evozeus-install-prefetch.sh")));
       assert.ok(existsSync(join(evozeusHome, "skeleton/scripts/evozeus-install-preflight.mjs")));
       assert.ok(existsSync(join(evozeusHome, "bin/evozeus")));
+      assert.ok(existsSync(join(evozeusHome, "bin/evozeus-repair")));
       assert.equal(existsSync(join(workspace, ".evozeus")), false);
       assert.ok(report.files_written.includes(join(evozeusHome, "registration.json")));
       assert.ok(report.files_written.includes(join(evozeusHome, "update-policy.json")));
@@ -372,7 +373,7 @@ describe("evozeus-install", () => {
       assert.equal(existsSync(updatePolicyPath), false);
     }));
 
-  it("uses the active installed Core when managed bootstrap startup files are missing", () =>
+  it("uses the recovery shim and active Core when the primary CLI and bootstrap startup files are missing", () =>
     withTempInstall(({ workspace, evozeusHome }) => {
       parseStdout(runInstall(workspace, evozeusHome, ["--approve-write"]));
       const installRoot = join(evozeusHome, "releases", "stable", "v0.4.1-test");
@@ -402,8 +403,9 @@ describe("evozeus-install", () => {
       })}\n`);
       rmSync(join(evozeusHome, "skeleton", "scripts", "evozeus-launcher.mjs"));
       rmSync(join(evozeusHome, "skeleton", "scripts", "evozeus-channels.mjs"));
+      rmSync(join(evozeusHome, "bin", "evozeus"));
 
-      const result = spawnSync(join(evozeusHome, "bin", "evozeus"), ["align", "--channel", "stable"], {
+      const result = spawnSync(join(evozeusHome, "bin", "evozeus-repair"), ["align", "--channel", "stable"], {
         cwd: workspace,
         encoding: "utf8"
       });
