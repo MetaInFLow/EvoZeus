@@ -6,6 +6,7 @@ from types import SimpleNamespace
 import pytest
 
 from evozeus_runtime.use_cases.run_codex_official_visualization import run_codex_official_visualization
+from evozeus_runtime.use_cases.run_factors import run_factors
 
 visualization_use_case = importlib.import_module("evozeus_runtime.use_cases.run_codex_official_visualization")
 
@@ -19,13 +20,19 @@ def test_run_codex_official_visualization_scans_runs_and_renders_html(monkeypatc
     fixture = Path("tests/fixtures/codex_sessions/session-minimal.jsonl")
     (source / "session-minimal.jsonl").write_text(fixture.read_text(encoding="utf-8"), encoding="utf-8")
     (outside_source / "outside-session.jsonl").write_text(
-        fixture.read_text(encoding="utf-8").replace("session-minimal", "outside-session"),
+        fixture.read_text(encoding="utf-8").replace("请扫描这个 session", "OUTSIDE SOURCE MUST NOT SURVIVE"),
         encoding="utf-8",
     )
     monkeypatch.setenv("HOME", str(home))
     workspace = tmp_path / "workspace"
     scan_sessions = visualization_use_case.scan_sessions
     scan_sessions(workspace_root=workspace, provider="codex", source_dir=outside_source)
+    run_factors(
+        workspace_root=workspace,
+        session_id="session-minimal",
+        factor_ids=["default.tool_failure"],
+        pack_root=Path("tests/fixtures/factor_packs"),
+    )
 
     result = run_codex_official_visualization(
         workspace_root=workspace,
@@ -47,17 +54,30 @@ def test_run_codex_official_visualization_scans_runs_and_renders_html(monkeypatc
     html = result.html_path.read_text(encoding="utf-8")
     assert "Global Canvas" in html
     assert "session-minimal" in html
-    assert "outside-session" not in html
+    assert "OUTSIDE SOURCE MUST NOT SURVIVE" not in html
     assert "official.tool-failure-frequency" in html
     project_html = result.project_insights_html_path.read_text(encoding="utf-8")
     assert "把真实会话变成可复用的工作方法" in project_html
     assert "evozeus-fixture" in project_html
-    assert "outside-session" not in project_html
+    assert "OUTSIDE SOURCE MUST NOT SURVIVE" not in project_html
     usage_profile_html = result.usage_profile_html_path.read_text(encoding="utf-8")
     assert "AI 使用画像与 Session 价值报告" in usage_profile_html
     assert "代表性 Session" in usage_profile_html
     assert "证据口径" in usage_profile_html
-    assert "outside-session" not in usage_profile_html
+    assert "OUTSIDE SOURCE MUST NOT SURVIVE" not in usage_profile_html
+
+
+def test_run_codex_official_visualization_rejects_a_missing_approved_source(tmp_path):
+    workspace = tmp_path / "workspace"
+
+    with pytest.raises(ValueError, match="approved Codex history source must be an existing directory"):
+        run_codex_official_visualization(
+            workspace_root=workspace,
+            source_dir=tmp_path / "missing-source",
+            official_repo_root=tmp_path / "official",
+        )
+
+    assert not (workspace / ".evozeus").exists()
 
 
 def test_run_codex_official_visualization_runs_only_pending_factor_ids(monkeypatch, tmp_path):
@@ -101,6 +121,7 @@ def test_run_codex_official_visualization_runs_only_pending_factor_ids(monkeypat
     usage_profile_html.write_text("<html></html>", encoding="utf-8")
 
     source = tmp_path / "approved-codex-history"
+    source.mkdir()
 
     def fake_scan_sessions(**kwargs: object) -> SimpleNamespace:
         assert kwargs["source_dir"] == source
