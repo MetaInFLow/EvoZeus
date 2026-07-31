@@ -58,7 +58,7 @@ Planner 通过只读 GitHub API 查询声明的 Issue，并核验 Repo、编号�
 - `ADMIN`、`MAINTAIN`、`WRITE` 且 Repo 未 archived/disabled 时解析为 direct。
 - `READ`、`TRIAGE` 且目标 Repo 允许 fork、并存在 effective fetch/push URL 均精确指向 `<actor>/<repo>` 的已配置 remote 时解析为可执行 fork 计划。
 - 无可验证身份、权限证据不完整、Repo 禁止 fork 或无 PR 能力时解析为 local patch。
-- 预期 actor/permission 与证据不一致时阻断。`--repo` 还必须匹配本地 `remote.origin` 的有效 fetch URL 及全部有效 push URL；`pushurl`、`insteadOf` 或 `pushInsteadOf` 重写后的目标同样参与校验。Canonical base 通过 origin live 取证；direct target 使用 origin，fork target 使用 verified actor fork remote。查询不可用、cached base 过期或本地/live remote 同名目标分支分叉时阻断。
+- 预期 actor/permission 与证据不一致时阻断。`--repo` 还必须匹配本地 `remote.origin` 的有效 fetch URL 及全部有效 push URL；`pushurl`、`insteadOf` 或 `pushInsteadOf` 重写后的目标同样参与校验。只有 effective origin fetch identity 精确匹配 canonical Repo 后才允许 live 查询。Canonical base 通过 origin live 取证；direct target 使用 origin，fork target 使用 verified actor fork remote。查询不可用、cached base 过期、本地/live remote 同名目标分支分叉或远端 ref prefix/descendant namespace 冲突时阻断。
 
 GitHub 权限证据不可用时，权限路径解析为 local patch，且固定 `push_allowed=false`、`pull_request_allowed=false`。Issue 证据不可用时整个计划阻断，因此恢复 API 取证前不得开始业务写入。Repo 内容、合同覆盖文件或命令参数均不能授予 direct/fork 权限。
 
@@ -86,6 +86,7 @@ Branch plan 对 Codex 与 Claude 使用完全相同的输入、判定和输出�
 | fork remote missing/mismatched | 阻断，配置 effective fetch/push URL 均指向 verified actor exact fork 的 remote。 |
 | generated branch leaf exceeds 240 bytes | 阻断，缩短 component 或 summary。 |
 | local branch prefix/descendant namespace conflict | 阻断，处理冲突 ref 或选择新的 purpose token。 |
+| live remote branch prefix/descendant namespace conflict | 阻断，处理冲突 remote ref 或选择新的 purpose token。 |
 | wrong/missing base | 阻断，重新取得 canonical ref 与 commit。 |
 | protected checkout direct write | 阻断，改用外部 worktree。 |
 | branch/worktree collision | 阻断，禁止复用来源不明的分支。 |

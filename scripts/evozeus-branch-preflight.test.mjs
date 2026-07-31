@@ -99,16 +99,25 @@ function fakeGitHubRunner({
   };
 }
 
-function fakeGitFactsRunner({ heads = {}, unavailable = false, invalid = false } = {}) {
+function fakeGitFactsRunner({ heads = {}, unavailable = false, invalid = false, onLsRemote } = {}) {
   return (command, args, options) => {
     if (command === "git" && args.includes("ls-remote")) {
+      onLsRemote?.(args);
       if (unavailable) return { status: 1, stdout: "", stderr: "remote unavailable" };
-      const ref = args.at(-1);
-      const branch = ref.replace(/^refs\/heads\//, "");
-      const commit = heads[branch];
-      if (!commit) return { status: 2, stdout: "", stderr: "" };
       if (invalid) return { status: 0, stdout: "invalid output\n", stderr: "" };
-      return { status: 0, stdout: `${commit}\t${ref}\n`, stderr: "" };
+      const commandIndex = args.indexOf("ls-remote");
+      let remoteIndex = commandIndex + 1;
+      while (args[remoteIndex]?.startsWith("--")) remoteIndex += 1;
+      const patterns = args.slice(remoteIndex + 1);
+      const matches = Object.entries(heads).flatMap(([branch, commit]) => {
+        const ref = `refs/heads/${branch}`;
+        const matched = patterns.some((pattern) => pattern.endsWith("/*")
+          ? ref.startsWith(pattern.slice(0, -1))
+          : ref === pattern);
+        return matched ? [`${commit}\t${ref}`] : [];
+      });
+      if (matches.length === 0) return { status: 2, stdout: "", stderr: "" };
+      return { status: 0, stdout: `${matches.sort().join("\n")}\n`, stderr: "" };
     }
     return spawnSync(command, args, options);
   };
@@ -159,6 +168,7 @@ function runPlan(fixture, overrides = {}) {
     values.base,
     branch,
     values.worktree,
+    values.repo,
     targetRepository,
     fakeGitFactsRunner(remoteEvidence)
   );
@@ -212,6 +222,8 @@ test("contract exposes the four required profiles", () => {
     "every_effective_origin_push_url_must_match_canonical_github_repo");
   assert.equal(contract.remote_resolution.target_branch_state,
     "live_git_ls_remote_effective_origin_required");
+  assert.equal(contract.remote_resolution.fetch_identity_before_live_query, "required");
+  assert.equal(contract.remote_resolution.remote_ref_namespace_conflicts, "block");
   assert.equal(contract.remote_resolution.canonical_base_state,
     "live_git_ls_remote_effective_origin_required");
   assert.equal(contract.remote_resolution.fork_target_remote,
@@ -624,6 +636,21 @@ test("accepts exact GitHub HTTPS, SSH, and scp-like origins and rejects lookalik
   }
 });
 
+test("does not query live refs before the canonical origin identity is valid", (context) => {
+  const fixture = fixtureFor(context);
+  git(fixture.repo, "remote", "set-url", "origin", "ssh://git@evilgithub.com/MetaInFLow/EvoZeus.git");
+  let liveQueries = 0;
+
+  const { result, plan } = runPlan(fixture, {
+    git_remote: { onLsRemote: () => { liveQueries += 1; } }
+  });
+  assert.equal(result.status, 2);
+  assert.equal(liveQueries, 0);
+  assert(blockerCodes(plan).includes("missing_origin_identity"));
+  assert.equal(plan.base.remote_status_reason, "origin_identity_invalid");
+  assert.equal(plan.branch.remote_status_reason, "origin_identity_invalid");
+});
+
 test("validates every effective origin push URL after Git rewrites", (context) => {
   const explicitPush = createFixture();
   const rewrittenPush = createFixture();
@@ -673,6 +700,30 @@ test("uses live origin target state and blocks local divergence or unavailable e
   }).plan;
   assert(blockerCodes(staleBase).includes("base_remote_mismatch"));
   assert.equal(staleBase.base.remote_commit, "e".repeat(40));
+});
+
+test("blocks live remote branch prefix and descendant namespace conflicts", (context) => {
+  const prefixFixture = createFixture();
+  const descendantFixture = createFixture();
+  context.after(() => rmSync(prefixFixture.root, { recursive: true, force: true }));
+  context.after(() => rmSync(descendantFixture.root, { recursive: true, force: true }));
+  const target = "codex/dev/20260731-alice-governance-branch-contract";
+  const prefixCommit = git(prefixFixture.repo, "rev-parse", "HEAD");
+  const descendantCommit = git(descendantFixture.repo, "rev-parse", "HEAD");
+  const cases = [
+    [prefixFixture, "codex/dev", prefixCommit],
+    [descendantFixture, `${target}/child`, descendantCommit]
+  ];
+
+  for (const [fixture, conflictingBranch, commit] of cases) {
+    const { result, plan } = runPlan(fixture, {
+      git_remote: { heads: { [conflictingBranch]: commit } }
+    });
+    assert.equal(result.status, 2);
+    assert(blockerCodes(plan).includes("target_remote_namespace_collision"));
+    assert.deepEqual(plan.branch.remote_namespace_conflicts, [`refs/heads/${conflictingBranch}`]);
+    assert.equal(plan.next_write_action, "blocked");
+  }
 });
 
 test("blocks a new plan when HEAD is not the requested base commit", (context) => {
