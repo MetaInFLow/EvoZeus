@@ -89,7 +89,7 @@ describe("EvoZeus plugin host alignment", () => {
       assert.match(claudeManifest.version, /-uat\./);
       assert.equal(
         claudeMarketplace.plugins[0].description,
-        "With explicit approval, turn local Agent history into an AI usage profile and attach a CoEvolve Harness to an independent Skillware repository."
+        "With explicit approval, turn local Codex history into an AI usage profile and attach a CoEvolve Harness to an independent Skillware repository."
       );
       assert.equal(state.active_channel, "uat");
       assert.equal(state.commit, "b".repeat(40));

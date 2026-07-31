@@ -284,15 +284,15 @@ const CAPABILITIES = [
 const PRODUCT_FEATURES = [
   {
     id: "insights.sessions",
-    title: "Build an AI usage profile from approved local Agent history",
-    title_zh: "扫描本机 Agent 历史并生成 AI 使用画像",
+    title: "Build an AI usage profile from approved local Codex history",
+    title_zh: "扫描本机 Codex 历史并生成 AI 使用画像",
     lifecycle_stage: "interact",
     product_tier: "primary",
-    user_goal: "在用户明确批准读取本机 Agent 历史和写入报告后，生成 AI 使用习惯、优势与盲区、人格画像（例如 INTJ 倾向）；证据不足时明确说明。",
+    user_goal: "当前只支持 Codex；在用户明确批准读取本机 Codex 历史和写入报告后，生成 AI 使用习惯、优势与盲区、人格画像（例如 INTJ 倾向）；证据不足时明确说明。",
     command: "evozeus insights plan --source codex --json",
     backend_owner: "EvoZeus",
     status: "available",
-    approval_boundary: "The plan is read-only. Reading local Agent history, running Factors, writing the report, and opening its HTML require explicit approval; no upload is implied.",
+    approval_boundary: "The plan supports Codex history only and is read-only. Reading local Codex history, running Factors, writing the report, and opening its HTML require explicit approval; no upload is implied.",
     related_capabilities: ["insights.plan", "insights.sessions", "session.scanPlan"],
     aliases: ["evozeus session scan --dry-run --json"]
   },
@@ -1097,7 +1097,18 @@ function scanPlan(options) {
   );
 }
 
+function requireCodexInsightsSource(options, operation) {
+  if (options.source !== "codex") {
+    throw new CliError(
+      "UNSUPPORTED_INSIGHTS_SOURCE",
+      `AI usage profiles currently support Codex history only; received ${options.source}.`,
+      operation
+    );
+  }
+}
+
 function insightsPlan(options) {
+  requireCodexInsightsSource(options, "insights.plan");
   const backend = infraBackendCommand(options, "session");
   return envelope("insights.plan", options, {
     insights_plan: {
@@ -1107,7 +1118,7 @@ function insightsPlan(options) {
       runs_factor_now: false,
       opens_browser_now: false,
       required_before_execution: [
-        "specific source path or approved provider",
+        "specific approved Codex history source path",
         "redaction policy",
         "factor reuse policy",
         "artifact write destination",
@@ -1127,8 +1138,9 @@ function insightsPlan(options) {
 
 function insightsSessions(options) {
   const isProject = Boolean(options.project);
-  const backend = infraBackendCommand(options, isProject ? "project" : "session");
   const operation = isProject ? "insights.projectSessions" : "insights.sessions";
+  requireCodexInsightsSource(options, operation);
+  const backend = infraBackendCommand(options, isProject ? "project" : "session");
 
   return envelope(
     operation,

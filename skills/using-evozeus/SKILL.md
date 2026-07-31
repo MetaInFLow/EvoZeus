@@ -1,6 +1,6 @@
 ---
 name: using-evozeus
-description: Use when the user explicitly invokes EvoZeus, asks to plan or generate an AI usage profile from approved local Agent history, attach a CoEvolve Harness to an independent Skillware repository, review Agent work, capture a reusable Lesson, or inspect EvoZeus Stable/UAT health. Route to one user task without exposing internal component topology.
+description: Use when the user explicitly invokes EvoZeus, asks to plan or generate an AI usage profile from approved local Codex history, attach a CoEvolve Harness to an independent Skillware repository, review Agent work, capture a reusable Lesson, or inspect EvoZeus Stable/UAT health. Route to one user task without exposing internal component topology.
 ---
 
 # Using EvoZeus
@@ -25,7 +25,7 @@ Keep the rest of the response in normal conversational form. Do not print intern
 
 | User intent | Next route |
 | --- | --- |
-| Plan or generate an AI usage profile from local Agent history | Run `~/.evozeus/bin/evozeus insights plan --source <provider> --json` first. Show the sources, redaction policy, report destination, and approval boundary. Read history, run Factors, or write the report only after explicit approval, then follow the returned built-in Runtime route. |
+| Plan or generate an AI usage profile from local Codex history | Run `~/.evozeus/bin/evozeus insights plan --source codex --json` first. Codex is the only supported history provider in the current release. Show the sources, redaction policy, report destination, and approval boundary. Read Codex history, run Factors, or write the report only after explicit approval, then follow the returned built-in Runtime route. |
 | Attach or inspect a CoEvolve Harness for a Skillware Repo | `../evolve-skillware-repo/SKILL.md` |
 | Review one session, task, output, diff, or execution | `../review-agent-session/SKILL.md` |
 | Record a confirmed Lesson or preserve an improvement | `../capture-evozeus-lesson/SKILL.md` |

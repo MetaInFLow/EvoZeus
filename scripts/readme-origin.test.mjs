@@ -46,6 +46,10 @@ test("keeps the primary product narrative and real Demo contract aligned in both
   assert.ok(english.indexOf("## Two primary capabilities") < english.indexOf("## Use Cases"));
   assert.match(chinese, /批准前不要读取历史/);
   assert.match(english, /Do not read history before approval/);
+  assert.match(chinese, /当前只支持本机 Codex 历史/);
+  assert.match(english, /supports local Codex history only/);
+  assert.doesNotMatch(chinese, /本机 Agent 历史/);
+  assert.doesNotMatch(english, /local Agent history/);
   assert.match(chinese, /独立 Skillware Repo 接入 CoEvolve Harness/);
   assert.match(english, /Attach a CoEvolve Harness to the independent Skillware repository/);
 

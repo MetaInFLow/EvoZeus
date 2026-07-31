@@ -7,9 +7,9 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 const PRIMARY_DESCRIPTION =
-  "With explicit approval, turn local Agent history into an AI usage profile and attach a CoEvolve Harness to an independent Skillware repository.";
+  "With explicit approval, turn local Codex history into an AI usage profile and attach a CoEvolve Harness to an independent Skillware repository.";
 const PRIMARY_PROMPTS = [
-  "先为我生成本机 Agent 历史扫描计划并等待明确批准；批准前不要读取历史。批准后生成 AI 使用习惯、优势与盲区、人格画像（例如 INTJ 倾向）报告。",
+  "先为我生成本机 Codex 历史扫描计划并等待明确批准；当前只支持 Codex，批准前不要读取历史。批准后生成 AI 使用习惯、优势与盲区、人格画像（例如 INTJ 倾向）报告。",
   "为我指定的独立 Skillware Repo 接入 CoEvolve Harness；先检查并给出计划，修改 Repo 或 GitHub 前等待我的明确批准。",
   "列出 EvoZeus 的全部功能，并检查当前安装和 Stable/UAT 状态。"
 ];
@@ -28,11 +28,14 @@ test("plugin metadata leads with the two primary outcomes and approval boundary"
   assert.equal(codex.interface.shortDescription, "AI usage profiles and Skillware evolution");
   assert.match(codex.interface.longDescription, /habits, strengths, blind spots/);
   assert.match(codex.interface.longDescription, /session-derived personality tendency/);
+  assert.match(codex.interface.longDescription, /Codex is the only supported history provider/);
   assert.match(codex.interface.longDescription, /Session review, Lesson capture, and Stable\/UAT maintenance remain available as supporting tools/);
   assert.deepEqual(codex.interface.defaultPrompt, PRIMARY_PROMPTS);
-  assert.equal(claude.description, PRIMARY_DESCRIPTION);
+  assert.match(claude.description, /local Codex history/);
+  assert.match(claude.description, /only supported history provider/);
   assert.deepEqual(claude.keywords, codex.keywords);
-  assert.equal(marketplace.plugins[0].description, PRIMARY_DESCRIPTION);
+  assert.match(marketplace.plugins[0].description, /local Codex history/);
+  assert.match(marketplace.plugins[0].description, /only supported history provider/);
   assert.match(marketplace.metadata.description, /AI usage profiles/);
   assert.match(marketplace.metadata.description, /CoEvolve Harnesses/);
 });
@@ -46,11 +49,12 @@ test("installed onboarding and the root plugin route keep primary and supporting
 
   assert.ok(onboarding.indexOf("1. 生成 AI 使用画像") < onboarding.indexOf("3. 复盘 Session 并沉淀 Lesson"));
   assert.ok(onboarding.indexOf("2. 为 Skillware 接入 Harness") < onboarding.indexOf("4. 检查本地状态"));
-  assert.match(onboarding, /只有用户明确批准本机 Agent 历史读取/);
-  assert.match(onboarding, /A\. 先生成本机 Agent 历史扫描与 AI 使用画像计划/);
+  assert.match(onboarding, /当前只支持 Codex 历史/);
+  assert.match(onboarding, /A\. 先生成本机 Codex 历史扫描与 AI 使用画像计划/);
   assert.match(onboarding, /B\. 为某个独立 Skillware Repo 生成 CoEvolve Harness 接入计划/);
   assert.ok(usingEvoZeus.indexOf("Plan or generate an AI usage profile") < usingEvoZeus.indexOf("Review one session"));
-  assert.match(usingEvoZeus, /Read history, run Factors, or write the report only after explicit approval/);
+  assert.match(usingEvoZeus, /Codex is the only supported history provider/);
+  assert.match(usingEvoZeus, /Read Codex history, run Factors, or write the report only after explicit approval/);
 });
 
 test("Claude plugin auto-discovers one read-only SessionStart Lesson check", () => {
