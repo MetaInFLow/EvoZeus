@@ -35,6 +35,7 @@ class CodexOfficialVisualizationResult:
 def run_codex_official_visualization(
     *,
     workspace_root: Path,
+    source_dir: Path,
     official_repo_root: Path,
     force: bool = False,
     skip_fresh: bool = True,
@@ -46,8 +47,8 @@ def run_codex_official_visualization(
     started_at = perf_counter()
     paths = RuntimePaths.for_workspace(workspace_root).ensure()
     _emit(progress, f"runtime_root={paths.runtime_root}")
-    _emit(progress, "scan_start provider=codex")
-    scan_result = scan_sessions(workspace_root=workspace_root, provider="codex", source_dir=None)
+    _emit(progress, f"scan_start provider=codex source={source_dir}")
+    scan_result = scan_sessions(workspace_root=workspace_root, provider="codex", source_dir=source_dir)
     _emit(progress, f"scan_done sessions={scan_result.session_count}")
 
     pack_root = paths.installed_factors_dir / "official-generated"

@@ -171,25 +171,33 @@ const CAPABILITIES = [
     name: "insights.plan",
     domain: "insights",
     summary: "Plan a session insights run through the built-in EvoZeus Runtime without reading raw stores.",
-    input_schema: { type: "object", properties: { source: { type: "string" } } },
+    input_schema: {
+      type: "object",
+      required: ["source_path"],
+      properties: { source: { type: "string" }, source_path: { type: "string" } }
+    },
     output_schema: { type: "object", required: ["insights_plan", "backend"] },
     write_mode: "plan_only",
     risk_level: "medium",
     required_permissions: ["system.read"],
     requires_approval: false,
-    examples: ["evozeus insights plan --source codex --json"]
+    examples: ["evozeus insights plan --source codex --source-path ~/.codex/sessions --json"]
   },
   {
     name: "insights.sessions",
     domain: "insights",
     summary: "Route approved session insights execution to the built-in EvoZeus Runtime.",
-    input_schema: { type: "object", properties: { source: { type: "string" }, project: { type: "string" } } },
+    input_schema: {
+      type: "object",
+      required: ["source_path"],
+      properties: { source: { type: "string" }, source_path: { type: "string" }, project: { type: "string" } }
+    },
     output_schema: { type: "object", required: ["execution", "backend"] },
     write_mode: "plan_only",
     risk_level: "high",
     required_permissions: ["session.scanLocalStore"],
     requires_approval: true,
-    examples: ["evozeus insights sessions --source codex --reuse-factors --html --json"]
+    examples: ["evozeus insights sessions --source codex --source-path ~/.codex/sessions --reuse-factors --html --json"]
   },
   {
     name: "harness.attachPlan",
@@ -289,7 +297,7 @@ const PRODUCT_FEATURES = [
     lifecycle_stage: "interact",
     product_tier: "primary",
     user_goal: "当前只支持 Codex；在用户明确批准读取本机 Codex 历史和写入报告后，生成 AI 使用习惯、优势与盲区、人格画像（例如 INTJ 倾向）；证据不足时明确说明。",
-    command: "evozeus insights plan --source codex --json",
+    command: "evozeus insights plan --source codex --source-path <approved-codex-history-path> --json",
     backend_owner: "EvoZeus",
     status: "available",
     approval_boundary: "The plan supports Codex history only and is read-only. Reading local Codex history, running Factors, writing the report, and opening its HTML require explicit approval; no upload is implied.",
@@ -405,6 +413,7 @@ function parseArgs(argv) {
     input: null,
     target: null,
     source: "codex",
+    sourcePath: null,
     project: null,
     projectMode: "auto",
     fromReport: null,
@@ -448,6 +457,8 @@ function parseArgs(argv) {
       options.target = argv[++index];
     } else if (arg === "--source") {
       options.source = argv[++index];
+    } else if (arg === "--source-path") {
+      options.sourcePath = argv[++index];
     } else if (arg === "--project") {
       options.project = argv[++index];
     } else if (arg === "--project-mode") {
@@ -676,7 +687,7 @@ function componentReadiness(options) {
   };
 }
 
-function infraBackendCommand(options, mode) {
+function infraBackendCommand(options, mode, sourcePath = null) {
   const readiness = componentReadiness(options)["EvoZeus Runtime"];
   const official = componentReadiness(options)["EvoZeus Session Signal"];
   const workspace = workspaceInfo(options).root;
@@ -704,6 +715,8 @@ function infraBackendCommand(options, mode) {
           "session-insights",
           "--workspace",
           workspace,
+          "--source-path",
+          sourcePath,
           "--official-repo-root",
           official.detected_path,
           ...(options.force ? ["--force"] : [])
@@ -1107,12 +1120,25 @@ function requireCodexInsightsSource(options, operation) {
   }
 }
 
+function approvedInsightsSourcePath(options, operation) {
+  if (!options.sourcePath) {
+    throw new CliError(
+      "MISSING_INSIGHTS_SOURCE_PATH",
+      "AI usage profiles require --source-path <approved-codex-history-path>.",
+      operation
+    );
+  }
+  return resolve(workspaceInfo(options).root, options.sourcePath);
+}
+
 function insightsPlan(options) {
   requireCodexInsightsSource(options, "insights.plan");
-  const backend = infraBackendCommand(options, "session");
+  const sourcePath = approvedInsightsSourcePath(options, "insights.plan");
+  const backend = infraBackendCommand(options, "session", sourcePath);
   return envelope("insights.plan", options, {
     insights_plan: {
       source: options.source || "codex",
+      source_path: sourcePath,
       reads_raw_store_now: false,
       writes_report_now: false,
       runs_factor_now: false,
@@ -1140,7 +1166,8 @@ function insightsSessions(options) {
   const isProject = Boolean(options.project);
   const operation = isProject ? "insights.projectSessions" : "insights.sessions";
   requireCodexInsightsSource(options, operation);
-  const backend = infraBackendCommand(options, isProject ? "project" : "session");
+  const sourcePath = approvedInsightsSourcePath(options, operation);
+  const backend = infraBackendCommand(options, isProject ? "project" : "session", sourcePath);
 
   return envelope(
     operation,
@@ -1154,6 +1181,7 @@ function insightsSessions(options) {
         : null,
       execution: {
         source: options.source || "codex",
+        source_path: sourcePath,
         runs_backend_now: false,
         reads_raw_store_now: false,
         writes_now: false,
@@ -1919,8 +1947,8 @@ Commands:
   capabilities --json
   activate --json
   review session --input <path|-> --json
-  insights plan --source codex --json
-  insights sessions --source codex --reuse-factors --html --json
+  insights plan --source codex --source-path <approved-path> --json
+  insights sessions --source codex --source-path <approved-path> --reuse-factors --html --json
   insights open --latest --json
   preserve draft --from-report <path> --json
   session analyze --input <path|-> --json
@@ -1945,6 +1973,7 @@ Global options:
   --auto-refresh
   --host auto|all|codex|claude
   --target-visibility public|private
+  --source-path <approved-codex-history-path>
 `);
 }
 

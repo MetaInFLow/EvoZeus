@@ -93,7 +93,7 @@ Translate features by user goal, not by implementation name. Use related capabil
 
 | User goal | Feature to present | Related capability | Plain-language description |
 | --- | --- | --- | --- |
-| "我想看自己的 AI 使用习惯、优势与盲区" | `insights.sessions` | `insights.plan` plus runtime routing | 当前只支持 Codex 历史。EvoZeus 先生成只读扫描计划；用户明确批准本机 Codex 历史读取、Factor 执行和报告写入后，才生成 AI 使用习惯、优势与盲区、人格画像（例如 INTJ 倾向）报告，证据不足时明确说明。 |
+| "我想看自己的 AI 使用习惯、优势与盲区" | `insights.sessions` | `insights.plan` plus runtime routing | 当前只支持 Codex 历史。EvoZeus 先让用户批准一个明确的 Codex 历史目录，并将同一路径写入只读计划和 Runtime 命令；用户明确批准该路径的读取、Factor 执行和报告写入后，才生成 AI 使用习惯、优势与盲区、人格画像（例如 INTJ 倾向）报告，证据不足时明确说明。 |
 | "我想让某个 Skill / Plugin / Repo 持续进化" | `coevolve.target` | `harness.attachPlan` | EvoZeus 先检查目标所在的独立 Git Repo 并生成 CoEvolve Harness 接入计划。目标 Repo 写入和 GitHub 操作需要明确批准。 |
 | "我想让 EvoZeus 看这次 Agent 表现" | `review.session` | `session.analyze` | 你提供一段明确的 Session 文本或文件，EvoZeus 在本地生成 Session Verdict Card，指出哪些行为值得保留、修复、提炼成 Skill / Factor，并让已确认 Lesson 继续进入可追踪路径。 |
 | "我不确定装好了没有" | `activate` / `maintain` | `system.doctor` / `workspace.activate` | EvoZeus 检查本地注册、skeleton、CLI 和必需组件是否可用，并告诉你下一条安全命令。 |

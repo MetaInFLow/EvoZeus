@@ -226,6 +226,8 @@ def test_codex_official_visualization_script_writes_final_html(tmp_path):
             "scripts/run_codex_official_visualization.py",
             "--workspace",
             str(tmp_path / "workspace"),
+            "--source-path",
+            str(source),
             "--official-repo-root",
             str(_official_repo_root()),
             "--force",

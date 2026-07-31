@@ -77,6 +77,11 @@ def report(
 @app.command("scan-session-report")
 def session_insights(
     workspace: Path = typer.Option(Path.home(), "--workspace", help="Workspace root for .evozeus state. Defaults to home."),
+    source_path: Path = typer.Option(
+        ...,
+        "--source-path",
+        help="The single local Codex history path approved for this run.",
+    ),
     official_repo_root: Path | None = typer.Option(
         None,
         "--official-repo-root",
@@ -103,6 +108,7 @@ def session_insights(
         )
     result = run_codex_official_visualization(
         workspace_root=workspace,
+        source_dir=source_path.expanduser().resolve(),
         official_repo_root=resolved_official_root.expanduser().resolve(),
         force=force,
         skip_fresh=not no_skip_fresh,
