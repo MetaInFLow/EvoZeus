@@ -36,13 +36,24 @@ function parseWorktrees(text) {
   let current = null;
   for (const line of text.split("\n")) {
     if (line.startsWith("worktree ")) {
-      current = { path: canonicalPath(line.slice(9)), branch: null };
+      current = { path: canonicalPath(line.slice(9)), branch: null, bare: false };
       worktrees.push(current);
     } else if (current && line.startsWith("branch ")) {
       current.branch = line.slice(7);
+    } else if (current && line === "bare") {
+      current.bare = true;
     }
   }
   return worktrees;
+}
+
+function checkoutStatus(path, { bare = false } = {}) {
+  const reason = bare ? "bare" : (!existsSync(path) ? "missing" : null);
+  if (reason) return { path, available: false, reason, dirty_entries: [] };
+  const result = git(path, ["status", "--porcelain=v1", "--untracked-files=all"]);
+  if (result.status !== 0) return { path, available: false, reason: "git_status_failed", dirty_entries: [] };
+  const dirtyEntries = result.stdout.trim().split("\n").filter(Boolean);
+  return { path, available: true, reason: null, dirty_entries: dirtyEntries };
 }
 
 function githubRepoFromRemote(remoteUrl) {
@@ -88,11 +99,9 @@ function readJson(path) {
 
 export function loadContributorBranchContract(path = DEFAULT_CONTRACT) {
   const contract = readJson(resolve(path));
-  if (
-    contract.contract !== "evozeus.contributor_branch"
-    || contract.schema_version !== "v1"
-    || !/^1\.[0-9]+\.[0-9]+$/.test(contract.version)
-  ) {
+  const supported = contract.contract === "evozeus.contributor_branch"
+    && contract.schema_version === "v1" && /^1\.[0-9]+\.[0-9]+$/.test(contract.version);
+  if (!supported) {
     throw new Error("unsupported contributor branch contract identity, schema, or major version");
   }
   return contract;
@@ -100,6 +109,11 @@ export function loadContributorBranchContract(path = DEFAULT_CONTRACT) {
 
 export function collectGitFacts(repoPath, baseRef, targetBranch) {
   const root = canonicalPath(gitText(repoPath, ["rev-parse", "--show-toplevel"]));
+  const worktrees = parseWorktrees(gitText(root, ["worktree", "list", "--porcelain"]));
+  const currentStatus = checkoutStatus(root);
+  const canonicalDescriptor = worktrees[0] || { path: root, bare: false };
+  const canonicalStatus = canonicalDescriptor.path === root ? currentStatus
+    : checkoutStatus(canonicalDescriptor.path, canonicalDescriptor);
   const originUrl = gitText(root, ["config", "--get", "remote.origin.url"], false);
   const baseCommit = gitText(root, ["rev-parse", "--verify", `${baseRef}^{commit}`], false);
   const localCommit = targetBranch
@@ -114,14 +128,14 @@ export function collectGitFacts(repoPath, baseRef, targetBranch) {
     origin_repo: githubRepoFromRemote(originUrl),
     head: gitText(root, ["rev-parse", "HEAD"]),
     current_branch: gitText(root, ["branch", "--show-current"], false),
-    dirty_entries: (gitText(root, ["status", "--porcelain=v1", "--untracked-files=all"]) || "")
-      .split("\n")
-      .filter(Boolean),
+    dirty_entries: currentStatus.dirty_entries,
+    current_status: currentStatus,
+    canonical_status: canonicalStatus,
     base_commit: baseCommit,
     target_commit: localCommit || remoteCommit,
     target_local: Boolean(localCommit),
     target_remote: Boolean(remoteCommit),
-    worktrees: parseWorktrees(gitText(root, ["worktree", "list", "--porcelain"]))
+    worktrees
   };
 }
 
@@ -159,23 +173,16 @@ export function collectGitHubPermissionEvidence(repo, checkedAt, runner = spawnS
   const permissionAvailable = Boolean(viewerPermission);
 
   return {
-    source: identityAvailable && permissionAvailable && forkPolicyAvailable
-      ? "github_api"
+    source: identityAvailable && permissionAvailable && forkPolicyAvailable ? "github_api"
       : (identityAvailable || permissionAvailable || forkPolicyAvailable ? "github_api_partial" : "unavailable"),
     checked_at: checkedAt,
-    identity: {
-      source: "gh api user",
-      available: identityAvailable,
-      login
-    },
+    identity: { source: "gh api user", available: identityAvailable, login },
     repository: {
       canonical: repo,
       permission_source: "gh api graphql repository.viewerPermission",
-      permission_available: permissionAvailable,
-      viewer_permission: viewerPermission,
+      permission_available: permissionAvailable, viewer_permission: viewerPermission,
       fork_policy_source: `gh api repos/${repo}`,
-      fork_policy_available: forkPolicyAvailable,
-      fork_allowed: forkAllowed
+      fork_policy_available: forkPolicyAvailable, fork_allowed: forkAllowed
     }
   };
 }
@@ -248,6 +255,8 @@ export function buildBranchPlan(options, contract, facts, permissionEvidence, re
   if (isProtectedRef(branchName, contract)) addBlocker(blockers, "protected_target", "target branch is protected");
   if (!facts.base_commit) addBlocker(blockers, "missing_base", `base ref does not resolve: ${options.base}`);
   if (facts.dirty_entries.length > 0) addBlocker(blockers, "dirty_tree", "repository worktree is dirty");
+  if (!facts.canonical_status.available) addBlocker(blockers, "canonical_checkout_status_unavailable", "canonical checkout status cannot be verified");
+  else if (facts.canonical_status.dirty_entries.length > 0) addBlocker(blockers, "canonical_checkout_dirty", "canonical checkout must remain clean");
   if (!facts.origin_repo) {
     addBlocker(blockers, "missing_origin_identity", "remote.origin must identify a GitHub OWNER/REPO");
   } else if (facts.origin_repo.toLowerCase() !== options.repo.toLowerCase()) {
@@ -359,7 +368,13 @@ export function buildBranchPlan(options, contract, facts, permissionEvidence, re
       current_repo_path: facts.root,
       canonical_checkout_path: canonicalCheckout,
       isolated: requestedWorktree !== canonicalCheckout,
-      registered: Boolean(registeredAtPath)
+      registered: Boolean(registeredAtPath),
+      current_checkout: { status_available: facts.current_status.available, dirty_entry_count: facts.current_status.dirty_entries.length },
+      canonical_checkout: {
+        status_source: "git status --porcelain=v1",
+        status_available: facts.canonical_status.available, status_reason: facts.canonical_status.reason,
+        dirty_entry_count: facts.canonical_status.dirty_entries.length
+      }
     },
     ownership: { actor: resolvedActor, checked_at: options.now },
     resume: { key: resumeKey, decision },

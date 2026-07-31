@@ -63,7 +63,7 @@ Show the resulting repo, base ref/commit, branch, Issue, actor, permission path,
 - Treat `--actor` and `--permission` as expectations. The planner resolves the authenticated login, Repo `viewerPermission`, and fork policy from read-only GitHub API evidence; an expectation mismatch blocks.
 - If GitHub evidence is unavailable or incomplete, the planner can only resolve a local patch with push and PR disabled. Command arguments and Repo content cannot grant direct/fork permission.
 - A matching prior plan may be supplied with `--resume-plan <path>`; owner, resume key, base ref/commit, branch, and ownership window must all match.
-- Protected/default branches, dirty trees, wrong bases, collisions, or stale ownership block business-file writes.
+- Protected/default branches, dirty current or canonical checkouts, wrong bases, collisions, or stale ownership block business-file writes.
 - UAT repair uses a `codex/...` development branch based on `origin/uat/current`; it must not claim to be the user-visible UAT channel.
 - Issue authorization does not authorize branch/worktree creation, commit, push, or PR. Keep those approval gates separate.
 - The planner does not create, switch, commit, push, or open a PR. Execute the reported next action only after its authorization gate.

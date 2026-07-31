@@ -53,7 +53,7 @@ node scripts/evozeus-branch-preflight.mjs plan \
 - 无可验证身份、权限证据不完整、Repo 禁止 fork 或无 PR 能力时解析为 local patch。
 - 预期 actor/permission 与证据不一致时阻断。`--repo` 还必须匹配本地 `remote.origin`。
 
-GitHub 不可用时，输出保留 `source=unavailable` 与检查时间，只允许显式预期为 `local` 的 local patch 计划继续；该路径固定 `push_allowed=false`、`pull_request_allowed=false`。Repo 内容、合同覆盖文件或命令参数均不能授予 direct/fork 权限。
+GitHub 不可用时，输出保留 `source=unavailable` 与检查时间，只允许显式预期为 `local` 的 local patch 计划继续；该路径固定 `push_allowed=false`、`pull_request_allowed=false`。Repo 内容、合同覆盖文件或命令参数均不能授予 direct/fork 权限。Branch plan 对 Codex 与 Claude 使用完全相同的输入、判定和输出；Host 不参与身份或权限解析，也不产生分支规则分叉。
 
 ## New 与 Resume
 
@@ -67,6 +67,7 @@ GitHub 不可用时，输出保留 `source=unavailable` 与检查时间，只允
 | 状态 | 结果 |
 | --- | --- |
 | dirty tree | 阻断，先由 Owner 处理已有改动。 |
+| canonical checkout dirty/unavailable | 即使当前隔离 worktree clean 也阻断，并输出独立 status evidence。 |
 | wrong/missing base | 阻断，重新取得 canonical ref 与 commit。 |
 | protected checkout direct write | 阻断，改用外部 worktree。 |
 | branch/worktree collision | 阻断，禁止复用来源不明的分支。 |

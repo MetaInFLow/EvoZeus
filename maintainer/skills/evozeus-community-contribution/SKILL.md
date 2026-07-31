@@ -27,7 +27,7 @@ After implementation is separately authorized and before the first business-file
 - `ADMIN`, `MAINTAIN`, or `WRITE` evidence resolves direct. `READ` or `TRIAGE` plus an allowed fork policy resolves fork.
 - Missing GitHub evidence or unavailable PR capability resolves local; the plan must keep push and PR disabled and end in an exportable local patch. Any expectation mismatch blocks.
 - Every participant uses an independent branch/worktree and resume key. A branch owned by another participant cannot be resumed.
-- Stop on dirty tree, protected checkout, wrong base, collision, stale ownership, or any other blocker.
+- Stop on dirty current/canonical checkout, protected checkout, wrong base, collision, stale ownership, or any other blocker.
 - Issue authorization does not authorize branch/worktree creation, commit, push, or PR.
 
 Display the read-only plan before executing its separately authorized next write action. Full human guidance is in [`docs/governance/contributor-branch-contract.md`](../../../docs/governance/contributor-branch-contract.md).

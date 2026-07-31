@@ -5,6 +5,7 @@
   "schema_version": "v1",
   "compatibility": { "evozeus": ">=0.4.1", "coevolve_consumer": ">=0.14.0", "unknown_fields": "ignore", "unknown_profile_or_major_version": "fail_closed" },
   "protected_refs": { "exact": ["main", "master", "uat/current", "stable"], "prefixes": ["release/"], "direct_business_write": "deny" },
+  "host_compatibility": { "supported_hosts": ["codex", "claude"], "plan_semantics": "identical", "host_input_to_planner": false },
   "branch_naming": {
     "template": "codex/{type}/{yyyymmdd}-{component}-{summary}",
     "types": ["dev", "bug", "refactor", "docs", "test", "chore"],
@@ -86,13 +87,14 @@
     "evidence_fields": ["source", "checked_at", "login", "viewer_permission", "fork_allowed"]
   },
   "resume": { "key_fields": ["profile", "repo", "base_ref", "issue", "actor", "permission_path", "component", "purpose"], "owner_field": "actor", "base_match": ["ref", "commit"], "stale_after_days": 14, "mismatch_or_stale": "block_and_require_owner_reconfirmation" },
-  "worktree": { "required": true, "one_participant_per_branch": true, "canonical_checkout_must_remain_clean": true, "existing_path_or_branch_mismatch": "block" },
+  "worktree": { "required": true, "one_participant_per_branch": true, "canonical_checkout_must_remain_clean": true, "canonical_checkout_status_evidence": "required", "existing_path_or_branch_mismatch": "block" },
   "blocking_handling": {
     "dirty_tree": "block",
     "wrong_base": "block",
     "protected_ref_write": "block",
     "branch_collision": "block_without_matching_resume_plan",
     "stale_ownership": "block_and_require_owner_reconfirmation",
+    "canonical_checkout_dirty_or_unavailable": "block",
     "actor_or_permission_expectation_mismatch": "block",
     "github_unavailable": "local_patch_only"
   },
