@@ -344,7 +344,16 @@ export function inspectLocalInstallState({
     };
   }
   if (!existsSync(paths.bin)) {
-    return { status: "repair_required", preliminary: true, evidence: ["local_cli_missing"] };
+    const recoveryCli = join(home, "bin", "evozeus-repair");
+    const recoveryProbe = inspectContainedPath(home, recoveryCli, "file");
+    return {
+      status: "repair_required",
+      preliminary: true,
+      evidence: ["local_cli_missing"],
+      recovery_command: recoveryProbe.state === "ready"
+        ? `${recoveryCli} align --channel ${channel} --host auto --json`
+        : null
+    };
   }
 
   const cli = installedCliPath(home, active.value, channelState.value);

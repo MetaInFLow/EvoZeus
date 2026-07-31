@@ -973,6 +973,40 @@ export function refreshChannelBootstrap(evozeusHome, coreRoot, { copyImpl = cpSy
   }
 }
 
+function reconcileCliShims(evozeusHome) {
+  const home = resolve(evozeusHome);
+  const binRoot = join(home, "bin");
+  if (creatableDirectorySafety(binRoot) !== "ready") {
+    throw new ChannelError("CLI_SHIM_TARGET_UNSAFE", "the CLI bin directory must not contain symlinks or non-directories");
+  }
+  const main = join(binRoot, "evozeus");
+  const recovery = join(binRoot, "evozeus-repair");
+  const mainNode = lstatEvidence(main);
+  const recoveryNode = lstatEvidence(recovery);
+  for (const [name, node] of [["primary", mainNode], ["recovery", recoveryNode]]) {
+    if (node.status === "unknown" || (node.status === "ready" && (node.stats.isSymbolicLink() || !node.stats.isFile()))) {
+      throw new ChannelError("CLI_SHIM_TARGET_UNSAFE", `${name} CLI shim must be a regular file`);
+    }
+  }
+  if (mainNode.status === "missing" && recoveryNode.status === "missing") {
+    return { status: "not_managed", repaired: false };
+  }
+  const source = mainNode.status === "ready" ? main : recovery;
+  const target = mainNode.status === "missing" ? main : recoveryNode.status === "missing" ? recovery : null;
+  if (!target) return { status: "ready", repaired: false };
+  privateDirectory(binRoot);
+  const temporary = `${target}.${randomUUID()}.tmp`;
+  try {
+    cpSync(source, temporary);
+    chmodSync(temporary, 0o755);
+    renameSync(temporary, target);
+  } catch (error) {
+    rmSync(temporary, { force: true });
+    throw error;
+  }
+  return { status: "repaired", repaired: true, restored: target === main ? "primary" : "recovery" };
+}
+
 function currentLinkFor(evozeusHome, channel) {
   return channel === "stable"
     ? join(resolve(evozeusHome), "releases", "stable", "current")
@@ -1135,6 +1169,14 @@ function installedEntryIntegrity(evozeusHome, entry, manifest, { historical = fa
   }
   const active = historical ? null : readActiveChannel(home);
   if (!historical && active?.channel === manifest.channel) {
+    const recoveryCli = join(home, "bin", "evozeus-repair");
+    const recoveryCliSafety = homeSafety === "ready" ? containedPathSafety(home, recoveryCli, "file") : homeSafety;
+    if (recoveryCliSafety === "unsafe") unsafe.push("cli_recovery:unsafe");
+    if (recoveryCliSafety === "ready") {
+      const mainCliSafety = containedPathSafety(home, join(home, "bin", "evozeus"), "file");
+      if (mainCliSafety === "unsafe") unsafe.push("cli:unsafe");
+      if (mainCliSafety === "missing") issues.push("cli:missing");
+    }
     for (const file of CHANNEL_BOOTSTRAP_FILES) {
       const source = coreRoot ? join(coreRoot, "scripts", file) : null;
       const target = join(home, "skeleton", "scripts", file);
@@ -1280,6 +1322,7 @@ function channelTransactionWriteRoots(evozeusHome, channel) {
       ];
   return [
     ...channelRoots,
+    ["cli_bin", join(home, "bin")],
     ["skeleton_scripts", join(home, "skeleton", "scripts")],
     ["hooks", join(home, "hooks")],
     ["plugin_hosts", join(home, "hosts")],
@@ -1301,6 +1344,8 @@ function transactionDestinationIssues(evozeusHome, channel) {
     if (creatableDirectorySafety(path) !== "ready") issues.push(`write_root:${name}:unsafe`);
   }
   for (const [name, path] of [
+    ["cli", join(home, "bin", "evozeus")],
+    ["cli_recovery", join(home, "bin", "evozeus-repair")],
     ["channel_state", join(home, "channel-state.json")],
     ["active_channel", join(home, "active-channel.json")],
     ["install_manifest", join(home, "install-manifest.json")],
@@ -1589,6 +1634,7 @@ export async function applyChannelUpdate({
     try {
       active = activateInstalledChannel(home, channel, autoRefresh);
       refreshChannelBootstrap(home, existing.component_roots.evozeus, { copyImpl: bootstrapCopy });
+      reconcileCliShims(home);
     } catch (error) {
       let rollbackError = null;
       try {
@@ -1725,6 +1771,7 @@ export async function applyChannelUpdate({
       atomicWriteJson(join(home, "channel-state.json"), nextState);
     }
     refreshChannelBootstrap(home, coreRoot, { copyImpl: bootstrapCopy });
+    reconcileCliShims(home);
     return {
       status: migrating ? "migrated" : repairing ? "repaired" : reuseExistingRoot ? "reused_verified" : "installed",
       ...plan,
@@ -1847,6 +1894,7 @@ export function rollbackChannel(
       activeBefore?.channel === channel && activeBefore.auto_refresh === true
     );
     refreshChannelBootstrap(home, previous.component_roots.evozeus, { copyImpl: bootstrapCopy });
+    reconcileCliShims(home);
     return {
       status: "rolled_back",
       channel,

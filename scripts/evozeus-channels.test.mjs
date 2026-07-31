@@ -722,6 +722,47 @@ describe("channel transactions", () => {
       assert.equal(channelSnapshot(home).health, "healthy");
     }));
 
+  it("restores a missing primary CLI from the independent recovery shim", async () =>
+    fixture(async (root) => {
+      const home = join(root, "home");
+      const components = Object.fromEntries(
+        Object.keys(COMPONENT_PATHS).map((componentId) => [componentId, initComponent(root, componentId)])
+      );
+      const manifestPath = writeManifest(root, "uat-cli-repair.json", uatManifest(components));
+      await applyChannelUpdate({
+        evozeusHome: home,
+        channel: "uat",
+        manifestSource: manifestPath,
+        smokeRunner: noSmoke
+      });
+      const binRoot = join(home, "bin");
+      const primaryCli = join(binRoot, "evozeus");
+      const recoveryCli = join(binRoot, "evozeus-repair");
+      mkdirSync(binRoot, { recursive: true });
+      writeFileSync(recoveryCli, "#!/bin/sh\nprintf '%s\\n' recovery\n");
+      chmodSync(recoveryCli, 0o755);
+
+      const plan = await prepareChannelUpdate({
+        evozeusHome: home,
+        channel: "uat",
+        manifestSource: manifestPath
+      });
+      assert.equal(plan.decision, "repair");
+      assert.ok(plan.current_integrity.issues.includes("cli:missing"));
+
+      const repaired = await applyChannelUpdate({
+        evozeusHome: home,
+        channel: "uat",
+        manifestSource: manifestPath,
+        smokeRunner: noSmoke
+      });
+      assert.equal(repaired.status, "repaired");
+      assert.equal(readFileSync(primaryCli, "utf8"), readFileSync(recoveryCli, "utf8"));
+      assert.equal(lstatSync(primaryCli).isFile(), true);
+      assert.equal(lstatSync(primaryCli).mode & 0o111, 0o111);
+      assert.equal(channelSnapshot(home).health, "healthy");
+    }));
+
   it("refreshes bootstrap on activation and restores the prior active channel when refresh fails", async () =>
     fixture(async (root) => {
       const home = join(root, "home");
