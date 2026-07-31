@@ -142,7 +142,12 @@ function runPlan(fixture, overrides = {}) {
   values.date = resolvePlanDate(values, resumePlan, "20260801");
   const before = snapshot(fixture.repo);
   const evidence = collectGitHubPermissionEvidence(values.repo, values.now, fakeGitHubRunner(github));
-  const branch = targetBranchFor(values, evidence.identity.login || values.actor);
+  const resolvedActor = evidence.identity.login || values.actor;
+  const usesFork = evidence.source === "github_api"
+    && ["READ", "TRIAGE"].includes(evidence.repository.viewer_permission)
+    && evidence.repository.fork_allowed;
+  const targetRepository = usesFork ? `${resolvedActor}/EvoZeus` : values.repo;
+  const branch = targetBranchFor(values, resolvedActor);
   const baseBranch = values.base.replace(/^origin\//, "");
   const baseCommit = git(fixture.repo, "rev-parse", values.base);
   const remoteEvidence = {
@@ -154,6 +159,7 @@ function runPlan(fixture, overrides = {}) {
     values.base,
     branch,
     values.worktree,
+    targetRepository,
     fakeGitFactsRunner(remoteEvidence)
   );
   const issueNumber = Number(String(values.issue).split("#").at(-1));
@@ -194,6 +200,7 @@ test("contract exposes the four required profiles", () => {
   assert.equal(contract.worktree.dangling_symlink_path, "occupied_and_blocked");
   assert.equal(contract.blocking_handling.current_checkout_status_unavailable, "block");
   assert.equal(contract.branch_naming.template, "codex/{type}/{yyyymmdd}-{actor}-{component}-{summary}");
+  assert.equal(contract.branch_naming.max_leaf_bytes, 240);
   assert.equal(contract.worktree.requested_registered_worktree_status_evidence, "required");
   assert.equal(contract.permission_resolution.direct_repository_state, "not_archived_and_not_disabled");
   assert.equal(contract.remote_resolution.push_urls,
@@ -202,6 +209,8 @@ test("contract exposes the four required profiles", () => {
     "live_git_ls_remote_effective_origin_required");
   assert.equal(contract.remote_resolution.canonical_base_state,
     "live_git_ls_remote_effective_origin_required");
+  assert.equal(contract.remote_resolution.fork_target_remote,
+    "configured_remote_with_exact_actor_fork_fetch_and_push_urls_required");
 });
 
 test("plans a clean new direct contribution with zero writes", (context) => {
@@ -267,6 +276,7 @@ test("resolves archived or disabled repositories away from direct", (context) =>
 
 test("resolves a READ viewer with public fork policy to fork", (context) => {
   const fixture = fixtureFor(context);
+  git(fixture.repo, "remote", "add", "alice", "https://github.com/alice/EvoZeus.git");
   const { result, plan } = runPlan(fixture, {
     profile: "community_contribution",
     type: "docs",
@@ -277,9 +287,47 @@ test("resolves a READ viewer with public fork policy to fork", (context) => {
   assert.equal(result.status, 0);
   assert.equal(plan.permission_path.resolved, "fork");
   assert.equal(plan.repo.source, "alice/EvoZeus");
+  assert.equal(plan.branch.remote_name, "alice");
+  assert.equal(plan.branch.remote_repository, "alice/EvoZeus");
+  const liveFork = runPlan(fixture, {
+    profile: "community_contribution",
+    type: "docs",
+    component: "docs",
+    permission: "fork",
+    github: { viewerPermission: "READ" },
+    git_remote: { heads: { [plan.branch.target]: git(fixture.repo, "rev-parse", "HEAD") } }
+  }).plan;
+  assert(blockerCodes(liveFork).includes("branch_collision"));
   const bypass = runPlan(fixture, { github: { viewerPermission: "READ" } }).plan;
   assert.equal(bypass.permission_path.resolved, "fork");
   assert(blockerCodes(bypass).includes("permission_expectation_mismatch"));
+});
+
+test("blocks fork planning without an exact configured fork remote", (context) => {
+  const fixture = fixtureFor(context);
+  const { result, plan } = runPlan(fixture, {
+    profile: "community_contribution",
+    type: "docs",
+    component: "docs",
+    permission: "fork",
+    github: { viewerPermission: "READ" }
+  });
+  assert.equal(result.status, 2);
+  assert(blockerCodes(plan).includes("target_remote_status_unavailable"));
+  assert.equal(plan.branch.remote_name, null);
+  assert.equal(plan.branch.remote_repository, "alice/EvoZeus");
+
+  git(fixture.repo, "remote", "add", "alice", "https://github.com/alice/EvoZeus.git");
+  git(fixture.repo, "remote", "set-url", "--push", "alice", "https://evilgithub.com/alice/EvoZeus.git");
+  const unsafe = runPlan(fixture, {
+    profile: "community_contribution",
+    type: "docs",
+    component: "docs",
+    permission: "fork",
+    github: { viewerPermission: "READ" }
+  }).plan;
+  assert(blockerCodes(unsafe).includes("target_remote_status_unavailable"));
+  assert.equal(unsafe.branch.remote_name, null);
 });
 
 test("blocks when the expected actor differs from gh api user", (context) => {
@@ -652,6 +700,7 @@ test("selects deterministic fork-only and local-patch fallbacks", (context) => {
   const localFixture = createFixture();
   context.after(() => rmSync(forkFixture.root, { recursive: true, force: true }));
   context.after(() => rmSync(localFixture.root, { recursive: true, force: true }));
+  git(forkFixture.repo, "remote", "add", "alice", "https://github.com/alice/EvoZeus.git");
 
   const fork = runPlan(forkFixture, {
     profile: "community_contribution",
@@ -802,4 +851,16 @@ test("rejects malicious branch characters without shell execution or writes", (c
   assert(blockerCodes(plan).includes("invalid_summary"));
   assert.equal(resolve(marker), marker);
   assert.equal(existsSync(marker), false);
+});
+
+test("bounds the generated branch leaf below filesystem component limits", (context) => {
+  const fixture = fixtureFor(context);
+  const component = "a".repeat(240);
+  const { result, plan } = runPlan(fixture, {
+    profile: "community_contribution",
+    component,
+  });
+  assert.equal(result.status, 2);
+  assert(blockerCodes(plan).includes("branch_component_too_long"));
+  assert(Buffer.byteLength(plan.branch.target.split("/").at(-1), "utf8") > 240);
 });

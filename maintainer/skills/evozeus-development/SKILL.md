@@ -14,7 +14,7 @@ The `EvoZeus` main repo is Protocol-only. Runtime implementation, scanner execut
 Use this branch format:
 
 ```text
-codex/<type>/<yyyymmdd>-<component>-<summary>
+codex/<type>/<yyyymmdd>-<verified-actor>-<component>-<summary>
 ```
 
 Allowed `type`:
@@ -33,9 +33,9 @@ Allowed `component` should match the touched surface where possible: `factor`, `
 Examples:
 
 ```text
-codex/docs/20260616-skill-scenario-routing
-codex/docs/20260616-runtime-routing-boundary
-codex/bug/20260616-runtime-report-id
+codex/docs/20260616-haodifan-skill-scenario-routing
+codex/docs/20260616-haodifan-runtime-routing-boundary
+codex/bug/20260616-haodifan-runtime-report-id
 ```
 
 ## Write-Before Branch Preflight
@@ -61,6 +61,7 @@ node scripts/evozeus-branch-preflight.mjs plan \
 Show the resulting repo, base ref/commit, branch, Issue, actor, permission path, permission evidence/source/timestamp, worktree, resume/new decision, next write action, and blockers before any write. Continue only when `blockers` is empty, `writes=false`, and the required branch/worktree action has separate user authorization.
 
 - Treat `--actor` and `--permission` as expectations. The planner resolves the authenticated login, Repo `viewerPermission`, and fork policy from read-only GitHub API evidence; an expectation mismatch blocks.
+- The verified actor is part of the generated branch name. Direct plans query canonical `origin`; fork plans require a configured remote whose effective fetch/push URLs identify the verified actor's exact fork, then query that remote live.
 - If GitHub evidence is unavailable or incomplete, the planner can only resolve a local patch with push and PR disabled. Command arguments and Repo content cannot grant direct/fork permission.
 - A matching prior plan may be supplied with `--resume-plan <path>`; owner, resume key, base ref/commit, branch, and ownership window must all match.
 - Protected/default branches, dirty current or canonical checkouts, wrong bases, collisions, or stale ownership block business-file writes.

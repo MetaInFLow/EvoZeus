@@ -45,6 +45,7 @@ node scripts/evozeus-branch-preflight.mjs plan \
 输出固定包含 repo、base ref/commit、目标 branch、Issue 及其 evidence/source/timestamp、actor、permission path 及其 evidence/source/timestamp、worktree、resume/new decision、next write action、blockers 和 `writes=false`。Preflight 不创建或切换 branch/worktree，不修改 Git config，不 commit、push 或创建 PR；存在 blocker 时以非零状态退出。
 
 目标 branch 使用 live verified GitHub actor 的小写 login 作为所有权段，确保同一日期和 purpose 下的不同参与者得到不同分支。
+生成后的最后一个 ref component 不得超过 contract 的 240-byte 上限，确保追加 Git lock suffix 后仍可在常见文件系统创建。
 
 ## Issue Verification
 
@@ -55,9 +56,9 @@ Planner 通过只读 GitHub API 查询声明的 Issue，并核验 Repo、编号�
 `--actor` 与 `--permission` 只声明调用方的预期。Planner 使用只读 GitHub API 取得当前 viewer login、目标 Repo `viewerPermission` 和 fork policy，再确定实际路径：
 
 - `ADMIN`、`MAINTAIN`、`WRITE` 且 Repo 未 archived/disabled 时解析为 direct。
-- `READ`、`TRIAGE` 且目标 Repo 允许 fork 时解析为 fork。
+- `READ`、`TRIAGE` 且目标 Repo 允许 fork、并存在 effective fetch/push URL 均精确指向 `<actor>/<repo>` 的已配置 remote 时解析为可执行 fork 计划。
 - 无可验证身份、权限证据不完整、Repo 禁止 fork 或无 PR 能力时解析为 local patch。
-- 预期 actor/permission 与证据不一致时阻断。`--repo` 还必须匹配本地 `remote.origin` 的有效 fetch URL 及全部有效 push URL；`pushurl`、`insteadOf` 或 `pushInsteadOf` 重写后的目标同样参与校验。Canonical base 与目标 branch 都通过有效 origin 的 live `git ls-remote` 取证；查询不可用、cached base 过期或本地/live remote 同名目标分支分叉时阻断。
+- 预期 actor/permission 与证据不一致时阻断。`--repo` 还必须匹配本地 `remote.origin` 的有效 fetch URL 及全部有效 push URL；`pushurl`、`insteadOf` 或 `pushInsteadOf` 重写后的目标同样参与校验。Canonical base 通过 origin live 取证；direct target 使用 origin，fork target 使用 verified actor fork remote。查询不可用、cached base 过期或本地/live remote 同名目标分支分叉时阻断。
 
 GitHub 权限证据不可用时，权限路径解析为 local patch，且固定 `push_allowed=false`、`pull_request_allowed=false`。Issue 证据不可用时整个计划阻断，因此恢复 API 取证前不得开始业务写入。Repo 内容、合同覆盖文件或命令参数均不能授予 direct/fork 权限。
 
@@ -81,6 +82,8 @@ Branch plan 对 Codex 与 Claude 使用完全相同的输入、判定和输出�
 | canonical checkout dirty/unavailable | 即使当前隔离 worktree clean 也阻断，并输出独立 status evidence。 |
 | requested registered worktree dirty/unavailable | 阻断，处理该 resume worktree 的已有改动或 status 错误后重新取证。 |
 | live base/target remote state unavailable/diverged | 阻断，恢复有效 origin 查询并对齐 cached base 或本地/live remote 同名分支。 |
+| fork remote missing/mismatched | 阻断，配置 effective fetch/push URL 均指向 verified actor exact fork 的 remote。 |
+| generated branch leaf exceeds 240 bytes | 阻断，缩短 component 或 summary。 |
 | wrong/missing base | 阻断，重新取得 canonical ref 与 commit。 |
 | protected checkout direct write | 阻断，改用外部 worktree。 |
 | branch/worktree collision | 阻断，禁止复用来源不明的分支。 |
