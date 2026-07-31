@@ -763,6 +763,49 @@ describe("channel transactions", () => {
       assert.equal(channelSnapshot(home).health, "healthy");
     }));
 
+  it("repairs a corrupted non-executable primary CLI from the recovery shim", async () =>
+    fixture(async (root) => {
+      const home = join(root, "home");
+      const components = Object.fromEntries(
+        Object.keys(COMPONENT_PATHS).map((componentId) => [componentId, initComponent(root, componentId)])
+      );
+      const manifestPath = writeManifest(root, "uat-cli-integrity-repair.json", uatManifest(components));
+      await applyChannelUpdate({
+        evozeusHome: home,
+        channel: "uat",
+        manifestSource: manifestPath,
+        smokeRunner: noSmoke
+      });
+      const binRoot = join(home, "bin");
+      const primaryCli = join(binRoot, "evozeus");
+      const recoveryCli = join(binRoot, "evozeus-repair");
+      mkdirSync(binRoot, { recursive: true });
+      writeFileSync(recoveryCli, "#!/bin/sh\nprintf '%s\\n' recovery\n");
+      chmodSync(recoveryCli, 0o755);
+      writeFileSync(primaryCli, "truncated\n");
+      chmodSync(primaryCli, 0o644);
+
+      const plan = await prepareChannelUpdate({
+        evozeusHome: home,
+        channel: "uat",
+        manifestSource: manifestPath
+      });
+      assert.equal(plan.decision, "repair");
+      assert.ok(plan.current_integrity.issues.includes("cli:not_executable"));
+      assert.ok(plan.current_integrity.issues.includes("cli:content_mismatch"));
+
+      const repaired = await applyChannelUpdate({
+        evozeusHome: home,
+        channel: "uat",
+        manifestSource: manifestPath,
+        smokeRunner: noSmoke
+      });
+      assert.equal(repaired.status, "repaired");
+      assert.equal(readFileSync(primaryCli, "utf8"), readFileSync(recoveryCli, "utf8"));
+      assert.equal(lstatSync(primaryCli).mode & 0o111, 0o111);
+      assert.equal(channelSnapshot(home).health, "healthy");
+    }));
+
   it("refreshes bootstrap on activation and restores the prior active channel when refresh fails", async () =>
     fixture(async (root) => {
       const home = join(root, "home");
@@ -1508,7 +1551,11 @@ describe("channel transactions", () => {
         smokeRunner: noSmoke
       });
       mkdirSync(join(home, "bin"), { recursive: true });
-      writeFileSync(join(home, "bin", "evozeus"), "installed shim\n");
+      for (const name of ["evozeus", "evozeus-repair"]) {
+        const shim = join(home, "bin", name);
+        writeFileSync(shim, "#!/bin/sh\nprintf '%s\\n' installed-shim\n");
+        chmodSync(shim, 0o755);
+      }
       const fakeBin = join(root, "bin");
       mkdirSync(fakeBin);
       const codex = join(fakeBin, "codex");

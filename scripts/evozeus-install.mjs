@@ -523,7 +523,18 @@ export EVOZEUS_HOME
 ACTIVE_LAUNCHER=$(
   node - "$EVOZEUS_HOME" 2>/dev/null <<'EVOZEUS_RESOLVE'
 const fs = require("node:fs");
+const crypto = require("node:crypto");
 const path = require("node:path");
+
+function canonicalize(value) {
+  if (Array.isArray(value)) return value.map(canonicalize);
+  if (value === null || typeof value !== "object") return value;
+  return Object.fromEntries(Object.keys(value).sort().map((key) => [key, canonicalize(value[key])]));
+}
+
+function productManifestDigest(manifest) {
+  return "sha256:" + crypto.createHash("sha256").update(JSON.stringify(canonicalize(manifest))).digest("hex");
+}
 
 function readControl(home, name) {
   const target = path.join(home, name);
@@ -565,6 +576,9 @@ try {
   const coreRoot = entry && entry.component_roots && entry.component_roots.evozeus;
   if (!entry || entry.manifest?.schema_version !== "evozeus.product-channel.v2" || entry.manifest.channel !== active.channel) {
     throw new Error("invalid active entry");
+  }
+  if (entry.manifest_digest !== productManifestDigest(entry.manifest)) {
+    throw new Error("invalid active manifest digest");
   }
   if (typeof installRoot !== "string" || typeof coreRoot !== "string") throw new Error("missing active roots");
   if (path.resolve(coreRoot) !== path.resolve(path.join(installRoot, "evozeus"))) throw new Error("invalid core root");
