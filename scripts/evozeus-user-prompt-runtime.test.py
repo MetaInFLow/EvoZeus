@@ -61,7 +61,12 @@ class UserPromptLessonRuntimeTest(unittest.TestCase):
         contract_path = core_root / runtime.SESSION_SIGNAL_ATTACHMENT_PATH
         contract_path.parent.mkdir(parents=True)
         if companion_root is None:
-            script = session_root / "scripts" / "evaluate_lesson_candidate.py"
+            script = (
+                session_root
+                / "src"
+                / "evozeus_session_signal_skill"
+                / "lesson_candidate.py"
+            )
             script.parent.mkdir(parents=True)
             script.write_text(
                 textwrap.dedent(
@@ -69,22 +74,30 @@ class UserPromptLessonRuntimeTest(unittest.TestCase):
                     import json
                     import sys
 
-                    request = json.loads(sys.stdin.read())
-                    prompt = request.get("prompt")
-                    if prompt == "candidate":
-                        target = request["targets"][0]["repo"] if request.get("targets") else None
-                        guidance = f"Model-only Lesson guidance for {target or 'unassigned'}."
-                        print(json.dumps({
-                            "schema_version": "evozeus.session-signal.lesson-candidate.v1",
-                            "candidate": True,
-                            "target_repo": target,
-                            "model_guidance": guidance,
-                        }))
-                    else:
-                        print(json.dumps({
-                            "schema_version": "evozeus.session-signal.lesson-candidate.v1",
-                            "candidate": False,
-                        }))
+                    def main():
+                        request = json.loads(sys.stdin.read())
+                        prompt = request.get("prompt")
+                        if prompt == "overflow-stdout":
+                            sys.stdout.buffer.write(b"x" * (1024 * 1024))
+                            return 0
+                        if prompt == "overflow-stderr":
+                            sys.stderr.buffer.write(b"x" * (1024 * 1024))
+                            return 0
+                        if prompt == "candidate":
+                            target = request["targets"][0]["repo"] if request.get("targets") else None
+                            guidance = f"Model-only Lesson guidance for {target or 'unassigned'}."
+                            print(json.dumps({
+                                "schema_version": "evozeus.session-signal.lesson-candidate.v1",
+                                "candidate": True,
+                                "target_repo": target,
+                                "model_guidance": guidance,
+                            }))
+                        else:
+                            print(json.dumps({
+                                "schema_version": "evozeus.session-signal.lesson-candidate.v1",
+                                "candidate": False,
+                            }))
+                        return 0
                     """
                 ),
                 encoding="utf-8",
@@ -96,10 +109,10 @@ class UserPromptLessonRuntimeTest(unittest.TestCase):
                     "repository": "MetaInFLow/EvoZeus-session-signal-skill",
                     "version": "v0.1.1",
                     "api": "evozeus.session-signal.lesson-candidate.v1",
-                    "entrypoint": "scripts/evaluate_lesson_candidate.py",
+                    "entrypoint": "src/evozeus_session_signal_skill/lesson_candidate.py",
                     "files": [
                         {
-                            "path": "scripts/evaluate_lesson_candidate.py",
+                            "path": "src/evozeus_session_signal_skill/lesson_candidate.py",
                             "sha256": hashlib.sha256(script.read_bytes()).hexdigest(),
                         }
                     ],
@@ -108,8 +121,8 @@ class UserPromptLessonRuntimeTest(unittest.TestCase):
         else:
             for relative in ("scripts", "src"):
                 shutil.copytree(companion_root / relative, session_root / relative)
-            script = session_root / "scripts" / "evaluate_lesson_candidate.py"
             attachment = json.loads(ATTACHMENT.read_text(encoding="utf-8"))
+            script = session_root / attachment["component"]["entrypoint"]
         contract_path.write_text(
             json.dumps(attachment, ensure_ascii=False, indent=2) + "\n",
             encoding="utf-8",
@@ -199,7 +212,7 @@ class UserPromptLessonRuntimeTest(unittest.TestCase):
         self.assertEqual(attachment["component"]["version"], "v0.1.1")
         self.assertEqual(
             attachment["component"]["entrypoint"],
-            "scripts/evaluate_lesson_candidate.py",
+            "src/evozeus_session_signal_skill/lesson_candidate.py",
         )
         self.assertTrue(
             all(
@@ -259,12 +272,44 @@ class UserPromptLessonRuntimeTest(unittest.TestCase):
             payload = self._invoke(fixture, "candidate", runner=runner)
 
             self.assertEqual(payload, {"continue": True})
+            self.assertIn("-I", captured["command"])
+            self.assertIn("-B", captured["command"])
             self.assertEqual(captured["shell"], False)
             self.assertEqual(captured["timeout"], 1.5)
             self.assertEqual(
                 captured["env"],
                 {"PYTHONDONTWRITEBYTECODE": "1", "PYTHONNOUSERSITE": "1"},
             )
+
+    def test_component_stdout_and_stderr_are_bounded_while_streaming(self):
+        for prompt in ("overflow-stdout", "overflow-stderr"):
+            with self.subTest(prompt=prompt), tempfile.TemporaryDirectory() as tmp:
+                fixture = self._fixture(Path(tmp))
+
+                payload = self._invoke(fixture, prompt)
+
+                self.assertEqual(payload, {"continue": True})
+
+    def test_isolated_mode_ignores_unverified_import_shadow(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            fixture = self._fixture(root)
+            marker = root / "shadow-import-executed"
+            shadow = fixture["script"].parent / "json.py"
+            shadow.write_text(
+                "from pathlib import Path\n"
+                f"Path({str(marker)!r}).write_text('executed', encoding='utf-8')\n"
+                "raise RuntimeError('shadow import executed')\n",
+                encoding="utf-8",
+            )
+
+            payload = self._invoke(fixture, "candidate")
+
+            self.assertIn(
+                "MetaInFLow/example-skill",
+                payload["hookSpecificOutput"]["additionalContext"],
+            )
+            self.assertFalse(marker.exists())
 
     def test_oversized_prompt_stops_before_component_launch(self):
         with tempfile.TemporaryDirectory() as tmp:

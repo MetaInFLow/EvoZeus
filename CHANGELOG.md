@@ -8,11 +8,11 @@
 
 ### Security
 
-- Added active-channel digest verification, root containment, non-symlink file checks, bounded subprocess transport, private-output rejection and silent fail-open handling.
+- Added active-channel digest verification, root containment, non-symlink file checks, streaming stdout/stderr limits, isolated component execution, private-output rejection and silent fail-open handling.
 
 ### Verification
 
-- Added isolated custom-product-home, fixed project-registry, damaged/stale/symlinked component, timeout, zero-persistence and real companion subprocess regressions.
+- Added isolated custom-product-home, fixed project-registry, damaged/stale/symlinked component, import-shadow, output-limit, timeout, zero-persistence and real companion subprocess regressions.
 
 ## [v0.4.1] - 2026-07-31
 

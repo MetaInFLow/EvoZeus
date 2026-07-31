@@ -5,7 +5,7 @@
     "repository": "MetaInFLow/EvoZeus-session-signal-skill",
     "version": "v0.1.1",
     "api": "evozeus.session-signal.lesson-candidate.v1",
-    "entrypoint": "scripts/evaluate_lesson_candidate.py",
+    "entrypoint": "src/evozeus_session_signal_skill/lesson_candidate.py",
     "files": [
       {
         "path": "scripts/evaluate_lesson_candidate.py",
@@ -13,7 +13,7 @@
       },
       {
         "path": "src/evozeus_session_signal_skill/lesson_candidate.py",
-        "sha256": "1aba11ab8f4cf2c91510498f1ee848bdf06d172dc4ff164dd8b3ebbf839a5da3"
+        "sha256": "64e9c626124982bddaadc68b3e8e6ceed2bc8ed9bc8b1f0b1276269a1bf354ed"
       }
     ]
   }

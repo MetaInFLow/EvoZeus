@@ -8,9 +8,11 @@ import json
 import os
 from pathlib import Path
 import re
+import selectors
 import stat
 import subprocess
 import sys
+import time
 from typing import Any
 
 
@@ -28,8 +30,17 @@ MANIFEST_CANDIDATES = (
 SESSION_SIGNAL_TIMEOUT_SECONDS = 1.5
 SESSION_SIGNAL_MAX_REQUEST_BYTES = 256 * 1024
 SESSION_SIGNAL_MAX_OUTPUT_BYTES = 16 * 1024
+SESSION_SIGNAL_MAX_STDERR_BYTES = 16 * 1024
 SESSION_SIGNAL_MAX_PROMPT_CHARS = 32_000
 SESSION_SIGNAL_MAX_TARGETS = 256
+_ISOLATED_COMPONENT_BOOTSTRAP = (
+    "import runpy,sys; namespace=runpy.run_path(sys.argv[1]); "
+    "raise SystemExit(namespace['main']())"
+)
+
+
+class _ComponentOutputLimitExceeded(Exception):
+    pass
 
 
 def _read_json(path: Path) -> dict:
@@ -305,30 +316,166 @@ def _lesson_component_request(
     }
 
 
+def _run_bounded_component(
+    command: list[str],
+    *,
+    input_bytes: bytes,
+    cwd: Path,
+    env: dict[str, str],
+    timeout: float,
+) -> subprocess.CompletedProcess[bytes]:
+    process = subprocess.Popen(
+        command,
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        cwd=cwd,
+        env=env,
+        shell=False,
+        bufsize=0,
+    )
+    assert process.stdin is not None
+    assert process.stdout is not None
+    assert process.stderr is not None
+    selector = selectors.DefaultSelector()
+    stdout_buffer = bytearray()
+    stderr_buffer = bytearray()
+    input_offset = 0
+    deadline = time.monotonic() + timeout
+
+    def close_stream(stream) -> None:
+        try:
+            selector.unregister(stream)
+        except (KeyError, ValueError):
+            pass
+        try:
+            stream.close()
+        except OSError:
+            pass
+
+    try:
+        for stream in (process.stdin, process.stdout, process.stderr):
+            os.set_blocking(stream.fileno(), False)
+        selector.register(process.stdout, selectors.EVENT_READ, "stdout")
+        selector.register(process.stderr, selectors.EVENT_READ, "stderr")
+        if input_bytes:
+            selector.register(process.stdin, selectors.EVENT_WRITE, "stdin")
+        else:
+            process.stdin.close()
+
+        while selector.get_map():
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise subprocess.TimeoutExpired(command, timeout)
+            events = selector.select(remaining)
+            if not events:
+                raise subprocess.TimeoutExpired(command, timeout)
+            for key, _ in events:
+                stream = key.fileobj
+                channel = key.data
+                if channel == "stdin":
+                    try:
+                        written = os.write(
+                            stream.fileno(),
+                            input_bytes[input_offset : input_offset + 65_536],
+                        )
+                    except BlockingIOError:
+                        continue
+                    except BrokenPipeError:
+                        close_stream(stream)
+                        continue
+                    input_offset += written
+                    if input_offset >= len(input_bytes):
+                        close_stream(stream)
+                    continue
+
+                buffer = stdout_buffer if channel == "stdout" else stderr_buffer
+                limit = (
+                    SESSION_SIGNAL_MAX_OUTPUT_BYTES
+                    if channel == "stdout"
+                    else SESSION_SIGNAL_MAX_STDERR_BYTES
+                )
+                try:
+                    chunk = os.read(stream.fileno(), min(65_536, limit - len(buffer) + 1))
+                except BlockingIOError:
+                    continue
+                if not chunk:
+                    close_stream(stream)
+                    continue
+                buffer.extend(chunk)
+                if len(buffer) > limit:
+                    raise _ComponentOutputLimitExceeded(channel)
+
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise subprocess.TimeoutExpired(command, timeout)
+        return_code = process.wait(timeout=remaining)
+        return subprocess.CompletedProcess(
+            command,
+            return_code,
+            bytes(stdout_buffer),
+            bytes(stderr_buffer),
+        )
+    except Exception:
+        if process.poll() is None:
+            process.kill()
+        process.wait()
+        raise
+    finally:
+        selector.close()
+        for stream in (process.stdin, process.stdout, process.stderr):
+            if not stream.closed:
+                stream.close()
+
+
 def _invoke_lesson_component(
     component: dict[str, Any],
     request: dict[str, Any],
     *,
-    runner=subprocess.run,
+    runner=None,
 ) -> dict[str, Any] | None:
     encoded = json.dumps(request, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
     if len(encoded) > SESSION_SIGNAL_MAX_REQUEST_BYTES:
         return None
+    command = [
+        sys.executable,
+        "-I",
+        "-B",
+        "-X",
+        "utf8",
+        "-c",
+        _ISOLATED_COMPONENT_BOOTSTRAP,
+        str(component["script"]),
+    ]
+    environment = {"PYTHONDONTWRITEBYTECODE": "1", "PYTHONNOUSERSITE": "1"}
     try:
-        result = runner(
-            [sys.executable, str(component["script"])],
-            input=encoded,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            cwd=component["component_root"],
-            env={"PYTHONDONTWRITEBYTECODE": "1", "PYTHONNOUSERSITE": "1"},
-            timeout=SESSION_SIGNAL_TIMEOUT_SECONDS,
-            check=False,
-            shell=False,
-        )
-    except (OSError, subprocess.TimeoutExpired):
+        if runner is None:
+            result = _run_bounded_component(
+                command,
+                input_bytes=encoded,
+                cwd=component["component_root"],
+                env=environment,
+                timeout=SESSION_SIGNAL_TIMEOUT_SECONDS,
+            )
+        else:
+            result = runner(
+                command,
+                input=encoded,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                cwd=component["component_root"],
+                env=environment,
+                timeout=SESSION_SIGNAL_TIMEOUT_SECONDS,
+                check=False,
+                shell=False,
+            )
+    except (OSError, subprocess.TimeoutExpired, _ComponentOutputLimitExceeded):
         return None
-    if result.returncode != 0 or len(result.stdout) > SESSION_SIGNAL_MAX_OUTPUT_BYTES:
+    if (
+        result.returncode != 0
+        or len(result.stdout) > SESSION_SIGNAL_MAX_OUTPUT_BYTES
+        or len(result.stderr) > SESSION_SIGNAL_MAX_STDERR_BYTES
+    ):
         return None
     try:
         response = json.loads(result.stdout.decode("utf-8"))
@@ -372,7 +519,7 @@ def evaluate_user_prompt_submit(
     user_home: Path,
     hook_input: dict[str, Any],
     *,
-    runner=subprocess.run,
+    runner=None,
 ) -> dict[str, Any]:
     if hook_input.get("hook_event_name") != USER_PROMPT_EVENT:
         return {"continue": True}
