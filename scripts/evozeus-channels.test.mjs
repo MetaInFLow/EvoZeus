@@ -26,6 +26,7 @@ import {
   ChannelError,
   activateInstalledChannel,
   applyChannelUpdate,
+  buildManagedCliShimContent,
   channelRecoveryIncomplete,
   channelSnapshot,
   prepareChannelUpdate,
@@ -748,7 +749,7 @@ describe("channel transactions", () => {
       const primaryCli = join(binRoot, "evozeus");
       const recoveryCli = join(binRoot, "evozeus-repair");
       mkdirSync(binRoot, { recursive: true });
-      writeFileSync(recoveryCli, "#!/bin/sh\nprintf '%s\\n' recovery\n");
+      writeFileSync(recoveryCli, buildManagedCliShimContent());
       chmodSync(recoveryCli, 0o755);
 
       const plan = await prepareChannelUpdate({
@@ -789,7 +790,7 @@ describe("channel transactions", () => {
       const primaryCli = join(binRoot, "evozeus");
       const recoveryCli = join(binRoot, "evozeus-repair");
       mkdirSync(binRoot, { recursive: true });
-      writeFileSync(recoveryCli, "#!/bin/sh\nprintf '%s\\n' recovery\n");
+      writeFileSync(recoveryCli, buildManagedCliShimContent());
       chmodSync(recoveryCli, 0o755);
       writeFileSync(primaryCli, "truncated\n");
       chmodSync(primaryCli, 0o644);
@@ -812,6 +813,50 @@ describe("channel transactions", () => {
       assert.equal(repaired.status, "repaired");
       assert.equal(readFileSync(primaryCli, "utf8"), readFileSync(recoveryCli, "utf8"));
       assert.equal(lstatSync(primaryCli).mode & 0o111, 0o111);
+      assert.equal(channelSnapshot(home).health, "healthy");
+    }));
+
+  it("repairs a corrupted recovery CLI without overwriting the canonical primary", async () =>
+    fixture(async (root) => {
+      const home = join(root, "home");
+      const components = Object.fromEntries(
+        Object.keys(COMPONENT_PATHS).map((componentId) => [componentId, initComponent(root, componentId)])
+      );
+      const manifestPath = writeManifest(root, "uat-recovery-integrity-repair.json", uatManifest(components));
+      await applyChannelUpdate({
+        evozeusHome: home,
+        channel: "uat",
+        manifestSource: manifestPath,
+        smokeRunner: noSmoke
+      });
+      const binRoot = join(home, "bin");
+      const primaryCli = join(binRoot, "evozeus");
+      const recoveryCli = join(binRoot, "evozeus-repair");
+      const canonical = buildManagedCliShimContent();
+      mkdirSync(binRoot, { recursive: true });
+      writeFileSync(primaryCli, canonical);
+      chmodSync(primaryCli, 0o755);
+      writeFileSync(recoveryCli, "#!/bin/sh\nexit 99\n");
+      chmodSync(recoveryCli, 0o755);
+
+      const plan = await prepareChannelUpdate({
+        evozeusHome: home,
+        channel: "uat",
+        manifestSource: manifestPath
+      });
+      assert.equal(plan.decision, "repair");
+      assert.ok(plan.current_integrity.issues.includes("cli_recovery:content_mismatch"));
+      assert.ok(!plan.current_integrity.issues.includes("cli:content_mismatch"));
+
+      const repaired = await applyChannelUpdate({
+        evozeusHome: home,
+        channel: "uat",
+        manifestSource: manifestPath,
+        smokeRunner: noSmoke
+      });
+      assert.equal(repaired.status, "repaired");
+      assert.equal(readFileSync(primaryCli, "utf8"), canonical);
+      assert.equal(readFileSync(recoveryCli, "utf8"), canonical);
       assert.equal(channelSnapshot(home).health, "healthy");
     }));
 
@@ -1562,7 +1607,7 @@ describe("channel transactions", () => {
       mkdirSync(join(home, "bin"), { recursive: true });
       for (const name of ["evozeus", "evozeus-repair"]) {
         const shim = join(home, "bin", name);
-        writeFileSync(shim, "#!/bin/sh\nprintf '%s\\n' installed-shim\n");
+        writeFileSync(shim, buildManagedCliShimContent());
         chmodSync(shim, 0o755);
       }
       const fakeBin = join(root, "bin");
