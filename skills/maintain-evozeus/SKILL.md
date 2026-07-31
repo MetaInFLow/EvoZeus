@@ -15,6 +15,19 @@ Stable and UAT are quality subscriptions. Both check for updates automatically; 
 
 Runtime and Session Signal are built into EvoZeus and share its version. CoEvolve is the only optional independent component with its own version and Harness.
 
+## Install Step 0
+
+For every install, join, restore, or “is EvoZeus installed?” request, read `../../docs/reference/install-preflight.md` and identify local state before Release resolution, product download, approval, or alignment.
+
+1. Inspect `EVOZEUS_HOME` (default `~/.evozeus`), `bin/evozeus`, `active-channel.json`, `channel-state.json`, and legacy markers.
+2. When the installed CLI exists, set `EVOZEUS_AUTO_UPDATE=0` and `EVOZEUS_AUTO_UPDATE_CHILD=1`, then run direct `version --json` and `doctor --json` checks before any launcher refresh.
+3. Use a payload-free Stable HEAD to distinguish `healthy_current` from `update_available`.
+4. Return exactly one state: `not_installed`, `healthy_current`, `update_available`, `repair_required`, `legacy_migration_required`, or `unknown_or_unverifiable`.
+5. Stop on unknown evidence. Return a strict zero-download, zero-write, zero-registration no-op for `healthy_current`.
+6. Only `not_installed` may enter fresh install. Run the inline pre-fetch gate, verify the standalone checker checksum, then require a schema-valid full Stable preflight before any product asset download or `~/.evozeus` write.
+
+The full preflight command is `evozeus install preflight --channel stable --json` for an installed or trusted local checker. A checker acquired from Release must report its checker and checksum GETs through `--checker-asset-get-count 2`. Preflight v1 rejects UAT; after Stable is healthy, UAT resolves from the installed UAT manifest source and uses the channel alignment flow.
+
 ## One-command alignment
 
 Prefer one product operation that resolves the selected channel, verifies all managed paths, updates transactionally, runs Doctor, and switches the active pointer only after checks pass. Do not require users to update repositories manually.

@@ -1,13 +1,13 @@
 ---
 name: using-evozeus
-description: Use when the user explicitly invokes EvoZeus, asks to review Agent work, capture a reusable lesson, evolve a Skillware repository, or inspect EvoZeus stable/UAT health. Route to one user task without exposing internal component topology.
+description: Use when the user explicitly invokes EvoZeus, asks to plan or generate an AI usage profile from approved local Codex history, attach a CoEvolve Harness to an independent Skillware repository, review Agent work, capture a reusable Lesson, or inspect EvoZeus Stable/UAT health. Route to one user task without exposing internal component topology.
 ---
 
 # Using EvoZeus
 
 ## Goal
 
-Turn evidence from real Agent work into one clear judgment and one verifiable next action.
+Lead with one of EvoZeus's two primary outcomes: an approved local AI usage profile or a governed CoEvolve Harness for an independent Skillware Repo. Keep Session review, Lesson capture, and product maintenance available as supporting routes.
 
 ## Entry behavior
 
@@ -23,11 +23,12 @@ Keep the rest of the response in normal conversational form. Do not print intern
 
 ## Route one task
 
-| User intent | Read next |
+| User intent | Next route |
 | --- | --- |
+| Plan or generate an AI usage profile from local Codex history | Ask the user to approve one exact Codex history directory, then run `~/.evozeus/bin/evozeus insights plan --source codex --source-path <approved-path> --json`. Codex is the only supported history provider in the current release. Show that exact source, redaction policy, report destination, and approval boundary. Read Codex history, run Factors, or write the report only after explicit approval. Limit history reads to the approved path, then follow the returned built-in Runtime route without dropping `--source-path`. |
+| Attach or inspect a CoEvolve Harness for a Skillware Repo | `../evolve-skillware-repo/SKILL.md` |
 | Review one session, task, output, diff, or execution | `../review-agent-session/SKILL.md` |
 | Record a confirmed Lesson or preserve an improvement | `../capture-evozeus-lesson/SKILL.md` |
-| Attach or inspect evolution for a Skillware Repo | `../evolve-skillware-repo/SKILL.md` |
 | Install, align versions, switch stable/UAT, Doctor, update, rollback | `../maintain-evozeus/SKILL.md` |
 
 If intent is unclear, inspect available context first and ask at most one short question that materially changes the route.
@@ -47,7 +48,7 @@ Use an EvoZeus tag only when EvoZeus itself performs a recognizable lifecycle ac
 | New subscribed version found | `🧭 EvoZeus · 发现更新｜<current channel/version> → <target version>` |
 | Product auto-update running | `🛠️ EvoZeus · 自动更新中｜<managed surfaces>` |
 | Product auto-update completed | `✅ EvoZeus · 自动更新完成｜<channel/version> · <reload guidance>` |
-| Product auto-update failed safely | `🛡️ EvoZeus · 自动更新失败｜<retained version and reason>` |
+| Product auto-update failed | `🛡️ EvoZeus · 自动更新失败｜<retained version and reason>`; use `恢复未完成` when product, bootstrap, or Plugin recovery is unverified |
 | Approved evolution executing | `🛠️ EvoZeus · 进化中｜<Repo> · <approved change>` |
 | Single UAT candidate verified | `🧪 EvoZeus · UAT 就绪｜<Repo> · <candidate Commit>` |
 | Stable Release published | `🚀 EvoZeus · 已发布｜<Repo> · <Release>` |

@@ -13,10 +13,11 @@ import {
   statSync,
   writeFileSync
 } from "node:fs";
-import { dirname, join, relative, resolve } from "node:path";
+import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { homedir } from "node:os";
 import { fileURLToPath } from "node:url";
+import { inspectLocalInstallState } from "./evozeus-install-preflight.mjs";
 
 const REGISTRATION_VERSION = 1;
 const IDENTITY_VERSION = "device-runtime-v1";
@@ -27,6 +28,8 @@ const DEFAULT_UPDATE_POLICY = {
   check_interval_seconds: 3600,
   channels: { stable: true, uat: true }
 };
+const PREFLIGHT_MAX_AGE_MS = 60 * 60 * 1000;
+const PREFLIGHT_FUTURE_TOLERANCE_MS = 5 * 60 * 1000;
 const DEFAULT_SKELETON_ENTRIES = [
   "SKILL.md",
   "README.md",
@@ -40,12 +43,15 @@ const DEFAULT_SKELETON_ENTRIES = [
   "docs/reference",
   "docs/governance/privacy-and-redaction.md",
   "docs/governance/terminology-glossary.md",
+  "schemas/install-preflight.schema.json",
   "scripts/evozeus-cli.mjs",
   "scripts/evozeus-channels.mjs",
   "scripts/evozeus-hosts.mjs",
   "scripts/evozeus-coevolve-dispatcher.py",
   "scripts/evozeus-launcher.mjs",
   "scripts/evozeus-doctor.mjs",
+  "scripts/evozeus-install-prefetch.sh",
+  "scripts/evozeus-install-preflight.mjs",
   "scripts/evozeus-install.mjs"
 ];
 
@@ -57,6 +63,8 @@ function parseArgs(argv) {
     releaseTag: null,
     releaseCommit: null,
     releaseArchiveSha256: null,
+    preflightStdin: false,
+    preflightReport: null,
     approveWrite: false
   };
 
@@ -74,6 +82,8 @@ function parseArgs(argv) {
       options.releaseCommit = argv[++index];
     } else if (arg === "--release-archive-sha256") {
       options.releaseArchiveSha256 = argv[++index];
+    } else if (arg === "--preflight-stdin") {
+      options.preflightStdin = true;
     } else if (arg === "--approve-write") {
       options.approveWrite = true;
     } else if (arg === "--help" || arg === "-h") {
@@ -101,13 +111,108 @@ function parseArgs(argv) {
 }
 
 function printHelp() {
-  console.log(`Usage: node scripts/evozeus-install.mjs [--workspace <path>] [--evozeus-home <path>] [--source-root <path>] [--release-tag <vX.Y.Z> --release-commit <40-hex> --release-archive-sha256 <64-hex>] [--approve-write]
+  console.log(`Usage: node scripts/evozeus-install.mjs [--workspace <path>] [--evozeus-home <path>] [--source-root <path>] [--release-tag <vX.Y.Z> --release-commit <40-hex> --release-archive-sha256 <64-hex>] [--preflight-stdin] [--approve-write]
 
-Creates or reconciles the user-level EvoZeus installation under ~/.evozeus.
+Creates a fresh user-level EvoZeus installation under ~/.evozeus.
+Existing installations use their update, repair, migration, or no-op route.
 The selected workspace is runtime context only; registration state is not written inside the workspace.
 
 By default this is a dry run. Pass --approve-write only after the user approves
-local writes to ~/.evozeus/.`);
+local writes to ~/.evozeus/. Both modes require a fresh full preflight report.`);
+}
+
+function readPreflightReport() {
+  try {
+    return JSON.parse(readFileSync(0, "utf8"));
+  } catch {
+    throw new Error("--preflight-stdin requires one valid install preflight JSON object on stdin");
+  }
+}
+
+function validatePreflight(options) {
+  const report = options.preflightReport;
+  if (!report) {
+    throw new Error("fresh installer requires a full preflight report via --preflight-stdin");
+  }
+  if (
+    report.ok !== true ||
+    report.operation !== "system.installPreflight" ||
+    report.schema_version !== "evozeus.install-preflight.v1" ||
+    report.stage !== "full" ||
+    report.writes !== false ||
+    !["ready", "ready_with_fallbacks"].includes(report.status)
+  ) {
+    throw new Error("install preflight must be full, read-only, and ready before installation");
+  }
+  const networkCounts = ["head_requests", "asset_get_count", "payloads_saved", "product_assets_downloaded"];
+  if (
+    !Array.isArray(report.checks) ||
+    !Array.isArray(report.fallbacks) ||
+    !Array.isArray(report.blockers) ||
+    !Array.isArray(report.remediation) ||
+    !Array.isArray(report.local_state?.evidence) ||
+    !networkCounts.every((key) => Number.isInteger(report.network?.[key]) && report.network[key] >= 0)
+  ) {
+    throw new Error("install preflight report is missing its required schema fields");
+  }
+  const githubChecks = report.checks.filter((item) => item?.id === "github_network");
+  const latestRelease = githubChecks[0]?.detected?.latest_release;
+  if (
+    githubChecks.length !== 1 ||
+    githubChecks[0]?.status !== "pass" ||
+    !/^v\d+\.\d+\.\d+$/.test(latestRelease || "")
+  ) {
+    throw new Error("fresh install requires one passing github_network check with a Stable semantic release tag");
+  }
+  if (options.releaseTag && latestRelease !== options.releaseTag) {
+    throw new Error(`install preflight Stable tag ${latestRelease} does not match --release-tag ${options.releaseTag}`);
+  }
+  if (
+    report.target?.channel !== "stable" ||
+    typeof report.target?.evozeus_home !== "string" ||
+    !isAbsolute(report.target.evozeus_home) ||
+    resolve(report.target.evozeus_home) !== resolve(options.evozeusHome)
+  ) {
+    throw new Error("install preflight target must match the Stable channel and requested EVOZEUS_HOME");
+  }
+  const checkedAt = typeof report.checked_at === "string" ? Date.parse(report.checked_at) : Number.NaN;
+  const age = Date.now() - checkedAt;
+  if (!Number.isFinite(checkedAt) || age > PREFLIGHT_MAX_AGE_MS || age < -PREFLIGHT_FUTURE_TOLERANCE_MS) {
+    throw new Error("install preflight report is stale or has an invalid checked_at timestamp");
+  }
+  if (report.network?.product_assets_downloaded !== 0) {
+    throw new Error("install preflight must complete before product assets are downloaded");
+  }
+  const localState = report.local_state?.status;
+  if (localState !== "not_installed") {
+    throw new Error(`fresh install is allowed only for not_installed; ${localState || "unknown"} must use its state-specific route`);
+  }
+  if (report.local_state?.preliminary !== false) {
+    throw new Error("fresh install requires a final local-state decision, not a preliminary result");
+  }
+  if (!Array.isArray(report.blockers) || report.blockers.length !== 0) {
+    throw new Error("fresh install requires an empty preflight blocker list");
+  }
+  if (
+    report.next_action?.action !== "request_fresh_install_approval" ||
+    report.next_action?.allowed !== true ||
+    report.next_action?.approval_required !== true ||
+    report.next_action?.writes_now !== false ||
+    report.next_action?.product_asset_download_now !== false ||
+    report.next_action?.registration_now !== false
+  ) {
+    throw new Error("fresh install requires the exact approved preflight next action");
+  }
+  return {
+    schema_version: report.schema_version,
+    status: report.status,
+    local_state: localState,
+    route: "fresh_install",
+    writes: false,
+    checked_at: report.checked_at,
+    target: report.target,
+    latest_release: latestRelease
+  };
 }
 
 function sha256(value) {
@@ -417,6 +522,70 @@ function writeCliShim(evozeusRoot, filesWritten) {
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
 EVOZEUS_HOME="\${EVOZEUS_HOME:-$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)}"
 export EVOZEUS_HOME
+ACTIVE_LAUNCHER=$(
+  node - "$EVOZEUS_HOME" 2>/dev/null <<'EVOZEUS_RESOLVE'
+const fs = require("node:fs");
+const path = require("node:path");
+
+function readControl(home, name) {
+  const target = path.join(home, name);
+  const stats = fs.lstatSync(target);
+  if (stats.isSymbolicLink() || !stats.isFile()) throw new Error("unsafe control file");
+  return JSON.parse(fs.readFileSync(target, "utf8"));
+}
+
+function isSafePath(root, target, finalKind) {
+  if (!path.isAbsolute(target)) return false;
+  const relative = path.relative(root, target);
+  if (!relative || relative === ".." || relative.startsWith(".." + path.sep) || path.isAbsolute(relative)) return false;
+  const rootStats = fs.lstatSync(root);
+  if (rootStats.isSymbolicLink() || !rootStats.isDirectory()) return false;
+  let current = root;
+  const segments = relative.split(path.sep).filter(Boolean);
+  for (let index = 0; index < segments.length; index += 1) {
+    current = path.join(current, segments[index]);
+    const stats = fs.lstatSync(current);
+    if (stats.isSymbolicLink()) return false;
+    const final = index === segments.length - 1;
+    if (!final && !stats.isDirectory()) return false;
+    if (final && finalKind === "directory" && !stats.isDirectory()) return false;
+    if (final && finalKind === "file" && !stats.isFile()) return false;
+  }
+  return true;
+}
+
+try {
+  const home = fs.realpathSync(path.resolve(process.argv[2]));
+  const active = readControl(home, "active-channel.json");
+  const state = readControl(home, "channel-state.json");
+  if (active.schema_version !== "evozeus.active-channel.v1" || !["stable", "uat"].includes(active.channel)) {
+    throw new Error("invalid active channel");
+  }
+  if (state.schema_version !== "evozeus.channel-state.v1") throw new Error("invalid channel state");
+  const entry = state.channels && state.channels[active.channel];
+  const installRoot = entry && entry.install_root;
+  const coreRoot = entry && entry.component_roots && entry.component_roots.evozeus;
+  if (!entry || entry.manifest?.schema_version !== "evozeus.product-channel.v2" || entry.manifest.channel !== active.channel) {
+    throw new Error("invalid active entry");
+  }
+  if (typeof installRoot !== "string" || typeof coreRoot !== "string") throw new Error("missing active roots");
+  if (path.resolve(coreRoot) !== path.resolve(path.join(installRoot, "evozeus"))) throw new Error("invalid core root");
+  const launcher = path.join(coreRoot, "scripts", "evozeus-launcher.mjs");
+  const channels = path.join(coreRoot, "scripts", "evozeus-channels.mjs");
+  if (!isSafePath(home, installRoot, "directory")) throw new Error("unsafe install root");
+  if (!isSafePath(installRoot, coreRoot, "directory")) throw new Error("unsafe core root");
+  if (!isSafePath(coreRoot, launcher, "file") || !isSafePath(coreRoot, channels, "file")) {
+    throw new Error("active launcher is unavailable");
+  }
+  process.stdout.write(launcher);
+} catch {
+  process.exit(1);
+}
+EVOZEUS_RESOLVE
+) || ACTIVE_LAUNCHER=
+if [ -n "$ACTIVE_LAUNCHER" ]; then
+  exec node "$ACTIVE_LAUNCHER" "$@"
+fi
 exec node "$SCRIPT_DIR/../skeleton/scripts/evozeus-launcher.mjs" "$@"
 `
   );
@@ -425,6 +594,11 @@ exec node "$SCRIPT_DIR/../skeleton/scripts/evozeus-launcher.mjs" "$@"
 }
 
 function install(options) {
+  const preflight = validatePreflight(options);
+  const currentLocalState = inspectLocalInstallState({ evozeusHome: options.evozeusHome });
+  if (currentLocalState.status !== "not_installed") {
+    throw new Error(`local installation state changed after preflight; expected not_installed, found ${currentLocalState.status}`);
+  }
   const workspaceRoot = resolve(options.workspace);
   const sourceRoot = resolve(options.sourceRoot);
   const evozeusRoot = resolve(options.evozeusHome);
@@ -482,13 +656,8 @@ function install(options) {
   }
 
   return {
-    registration_status: existingRegistration
-      ? options.approveWrite
-        ? "reconciled"
-        : "would_reconcile"
-      : options.approveWrite
-        ? "created"
-        : "would_create",
+    preflight,
+    registration_status: options.approveWrite ? "created" : "would_create",
     write_mode: options.approveWrite ? "approved_write" : "dry_run",
     evozeus_home: evozeusRoot,
     workspace_root: workspaceRoot,
@@ -530,6 +699,8 @@ try {
     printHelp();
     process.exit(0);
   }
+
+  if (options.preflightStdin) options.preflightReport = readPreflightReport();
 
   console.log(JSON.stringify(install(options), null, 2));
 } catch (error) {

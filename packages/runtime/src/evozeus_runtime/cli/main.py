@@ -77,6 +77,11 @@ def report(
 @app.command("scan-session-report")
 def session_insights(
     workspace: Path = typer.Option(Path.home(), "--workspace", help="Workspace root for .evozeus state. Defaults to home."),
+    source_path: Path = typer.Option(
+        ...,
+        "--source-path",
+        help="The single local Codex history path approved for this run.",
+    ),
     official_repo_root: Path | None = typer.Option(
         None,
         "--official-repo-root",
@@ -89,6 +94,8 @@ def session_insights(
     ),
     force: bool = typer.Option(False, "--force", help="Run all factors even when previous results are fresh."),
     no_skip_fresh: bool = typer.Option(False, "--no-skip-fresh", help="Disable reuse of fresh factor results."),
+    project: str | None = typer.Option(None, "--project", help="Optional project label/key to report after the approved scan."),
+    project_contains: bool = typer.Option(False, "--contains", help="Match the project by substring instead of exactly."),
     project_min_sessions: int = typer.Option(8, "--project-min-sessions", min=1),
     project_top_n: int = typer.Option(20, "--project-top-n", min=1, max=200),
 ) -> None:
@@ -103,10 +110,13 @@ def session_insights(
         )
     result = run_codex_official_visualization(
         workspace_root=workspace,
+        source_dir=source_path.expanduser().resolve(),
         official_repo_root=resolved_official_root.expanduser().resolve(),
         force=force,
         skip_fresh=not no_skip_fresh,
         output_path=output,
+        project=project,
+        project_contains=project_contains,
         project_min_sessions=project_min_sessions,
         project_top_n=project_top_n,
         progress=lambda message: typer.echo(f"[session-insights] {message}", err=True),

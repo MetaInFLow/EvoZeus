@@ -128,6 +128,27 @@ def test_codex_scanner_declares_default_local_session_dirs(monkeypatch, tmp_path
     ]
 
 
+def test_codex_scanner_keeps_bridge_ids_inside_an_explicit_source_dir(monkeypatch, tmp_path):
+    home = tmp_path / "home"
+    default_source = home / ".codex" / "sessions"
+    default_source.mkdir(parents=True)
+    (default_source / "outside-session.jsonl").write_text(
+        '{"type":"session_meta","payload":{"id":"outside-session","cwd":"/tmp/outside"}}\n',
+        encoding="utf-8",
+    )
+    approved_source = tmp_path / "approved"
+    approved_source.mkdir()
+    (approved_source / ".codex-source-ids.jsonl").write_text(
+        '{"source_id":"outside-session"}\n',
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("HOME", str(home))
+
+    refs = CodexScanner().discover(ScanRequest(provider="codex", source_dir=approved_source))
+
+    assert refs == []
+
+
 def test_codex_scanner_skips_malformed_jsonl_lines(tmp_path):
     source = tmp_path / "codex_sessions"
     source.mkdir()

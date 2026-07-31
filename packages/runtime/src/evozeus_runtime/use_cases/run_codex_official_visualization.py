@@ -10,7 +10,7 @@ from evozeus_runtime.ledger.paths import RuntimePaths
 from evozeus_runtime.ledger.repository import LedgerRepository
 from evozeus_runtime.use_cases.generate_ai_usage_profile_report import generate_ai_usage_profile_report
 from evozeus_runtime.use_cases.generate_ledger_browser import generate_ledger_browser
-from evozeus_runtime.use_cases.generate_project_insights import generate_project_insights_site
+from evozeus_runtime.use_cases.generate_project_insights import generate_project_insights, generate_project_insights_site
 from evozeus_runtime.use_cases.run_factors import run_factors
 from evozeus_runtime.use_cases.scan_sessions import scan_sessions
 
@@ -35,10 +35,13 @@ class CodexOfficialVisualizationResult:
 def run_codex_official_visualization(
     *,
     workspace_root: Path,
+    source_dir: Path,
     official_repo_root: Path,
     force: bool = False,
     skip_fresh: bool = True,
     output_path: Path | None = None,
+    project: str | None = None,
+    project_contains: bool = False,
     project_min_sessions: int = 8,
     project_top_n: int = 20,
     progress: Callable[[str], None] | None = None,
@@ -46,9 +49,11 @@ def run_codex_official_visualization(
     started_at = perf_counter()
     paths = RuntimePaths.for_workspace(workspace_root).ensure()
     _emit(progress, f"runtime_root={paths.runtime_root}")
-    _emit(progress, "scan_start provider=codex")
-    scan_result = scan_sessions(workspace_root=workspace_root, provider="codex", source_dir=None)
+    _emit(progress, f"scan_start provider=codex source={source_dir}")
+    scan_result = scan_sessions(workspace_root=workspace_root, provider="codex", source_dir=source_dir)
     _emit(progress, f"scan_done sessions={scan_result.session_count}")
+    approved_session_ids = tuple(dict.fromkeys(scan_result.session_ids))
+    approved_session_id_set = set(approved_session_ids)
 
     pack_root = paths.installed_factors_dir / "official-generated"
     _emit(progress, f"official_pack_start output={pack_root}")
@@ -60,7 +65,11 @@ def run_codex_official_visualization(
     _emit(progress, f"official_pack_done factors={len(factor_ids)}")
 
     ledger = LedgerRepository(paths)
-    statuses = ledger.list_session_statuses(factor_ids=factor_ids)
+    statuses = [
+        status
+        for status in ledger.list_session_statuses(factor_ids=factor_ids)
+        if status.session_id in approved_session_id_set
+    ]
     total_sessions = len(statuses)
     _emit(progress, f"run_start sessions={total_sessions} factors={len(factor_ids)} force={force} skip_fresh={skip_fresh}")
     ran_count = 0
@@ -105,23 +114,41 @@ def run_codex_official_visualization(
 
     html_path = output_path or (paths.runtime_root / "reports" / "codex-factor-visualization.html")
     _emit(progress, f"html_start output={html_path}")
-    html_result = generate_ledger_browser(workspace_root=workspace_root, output_path=html_path)
-    _emit(progress, f"project_insights_start min_sessions={project_min_sessions} top_n={project_top_n}")
-    project_insights_result = generate_project_insights_site(
+    html_result = generate_ledger_browser(
         workspace_root=workspace_root,
-        formats=["markdown", "json", "html"],
-        min_sessions=project_min_sessions,
-        top_n=project_top_n,
+        output_path=html_path,
+        session_ids=approved_session_ids,
     )
+    _emit(progress, f"project_insights_start min_sessions={project_min_sessions} top_n={project_top_n}")
+    if project:
+        project_insights_result = generate_project_insights(
+            workspace_root=workspace_root,
+            project=project,
+            formats=["markdown", "json", "html"],
+            match_mode="contains" if project_contains else "exact",
+            top_n=project_top_n,
+            session_ids=approved_session_ids,
+        )
+        project_count = 1
+    else:
+        project_insights_result = generate_project_insights_site(
+            workspace_root=workspace_root,
+            formats=["markdown", "json", "html"],
+            min_sessions=project_min_sessions,
+            top_n=project_top_n,
+            session_ids=approved_session_ids,
+        )
+        project_count = project_insights_result.project_count
     _emit(
         progress,
-        f"project_insights_done projects={project_insights_result.project_count} "
+        f"project_insights_done projects={project_count} "
         f"sessions={project_insights_result.session_count} html={project_insights_result.html_path}",
     )
     _emit(progress, "usage_profile_start")
     usage_profile_result = generate_ai_usage_profile_report(
         workspace_root=workspace_root,
         formats=["markdown", "json", "html"],
+        session_ids=approved_session_ids,
     )
     _emit(
         progress,
@@ -141,7 +168,7 @@ def run_codex_official_visualization(
         html_path=html_result.html_path,
         project_insights_html_path=project_insights_result.html_path,
         usage_profile_html_path=usage_profile_result.html_path,
-        project_insights_project_count=project_insights_result.project_count,
+        project_insights_project_count=project_count,
         project_insights_session_count=project_insights_result.session_count,
         session_count=scan_result.session_count,
         factor_count=len(factor_ids),

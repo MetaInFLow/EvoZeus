@@ -1,11 +1,11 @@
 {
   "name": "evozeus",
   "version": "0.4.1",
-  "description": "Turn real Agent work into verified improvements.",
+  "description": "Build approved AI usage profiles and evolve independent Skillware repositories.",
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "npm run test:plugin && npm run test:user-prompt-runtime && npm run test:plugin-hosts && npm run test:user-visible-events && npm run test:readme-origin && npm run test:harness-boundary && npm run test:release-notes && npm run test:cli && npm run test:install && npm run test:doctor && npm run test:channels && npm run test:github-gates",
+    "test": "npm run test:plugin && npm run test:user-prompt-runtime && npm run test:plugin-hosts && npm run test:user-visible-events && npm run test:readme-origin && npm run test:harness-boundary && npm run test:release-notes && npm run test:preflight && npm run test:cli && npm run test:install && npm run test:doctor && npm run test:channels && npm run test:github-gates",
     "test:plugin": "node --test scripts/evozeus-plugin.test.mjs",
     "test:user-prompt-runtime": "PYTHONDONTWRITEBYTECODE=1 python3 scripts/evozeus-user-prompt-runtime.test.py",
     "test:plugin-hosts": "node --test scripts/evozeus-hosts.test.mjs",
@@ -13,6 +13,7 @@
     "test:readme-origin": "node --test scripts/readme-origin.test.mjs",
     "test:harness-boundary": "node --test scripts/check-harness-boundaries.test.mjs && node scripts/check-harness-boundaries.mjs",
     "test:release-notes": "node --test scripts/release-notes-layout.test.mjs",
+    "test:preflight": "node --test scripts/evozeus-install-preflight.test.mjs",
     "test:cli": "node --test scripts/evozeus-cli.test.mjs",
     "test:install": "node --test scripts/evozeus-install.test.mjs",
     "test:doctor": "node --test scripts/evozeus-doctor.test.mjs",

@@ -16,7 +16,7 @@ EvoZeus 使用普通聊天中的一行短标记说明关键生命周期事件。
 | 发现更新 | `🧭 EvoZeus · 发现更新｜<Stable/UAT> <当前版本> → <目标版本>` | 自动检查发现当前订阅渠道有新候选 |
 | 自动更新中 | `🛠️ EvoZeus · 自动更新中｜正在对齐Plugin、Runtime、Session Signal与CoEvolve` | 产品级事务已开始 |
 | 自动更新完成 | `✅ EvoZeus · 自动更新完成｜<Stable/UAT> <版本> · 新会话加载Plugin` | 新产品通过验证并已切换 |
-| 自动更新失败 | `🛡️ EvoZeus · 自动更新失败｜继续使用<渠道/版本> · <原因>` | 下载、验证、Plugin对齐或切换失败并已保留上一验证版本 |
+| 自动更新失败 | `🛡️ EvoZeus · 自动更新失败｜继续使用<渠道/版本> · <原因>` 或 `🛡️ EvoZeus · 自动更新失败｜恢复未完成 · <原因>` | 完整恢复上一版本时报告继续使用；产品、bootstrap 或 Plugin 任一恢复未通过验证时要求人工恢复 |
 | 进化执行 | `🛠️ EvoZeus · 进化中｜<Repo> · <已批准改动>` | 已取得修改授权并开始实施 |
 | UAT 就绪 | `🧪 EvoZeus · UAT 就绪｜<Repo> · <唯一候选 Commit>` | 验证通过且唯一 UAT 候选已更新 |
 | 正式发布 | `🚀 EvoZeus · 已发布｜<Repo> · <Release>` | Stable Release 已实际发布 |

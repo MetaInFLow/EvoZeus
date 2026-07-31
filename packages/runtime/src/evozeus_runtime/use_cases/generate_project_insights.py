@@ -156,14 +156,21 @@ def generate_project_insights(
     match_mode: MatchMode = "exact",
     output_dir: Path | None = None,
     top_n: int = 30,
+    session_ids: tuple[str, ...] | None = None,
 ) -> GenerateProjectInsightsResult:
     paths = RuntimePaths.for_workspace(workspace_root).ensure()
     ledger = LedgerRepository(paths)
-    statuses = _matching_statuses(ledger.list_session_statuses(), project=project, match_mode=match_mode)
-    session_ids = {status.session_id for status in statuses}
+    statuses = ledger.list_session_statuses()
+    if session_ids is not None:
+        allowed_session_ids = set(session_ids)
+        statuses = [status for status in statuses if status.session_id in allowed_session_ids]
+    statuses = _matching_statuses(statuses, project=project, match_mode=match_mode)
+    matched_session_ids = {status.session_id for status in statuses}
 
-    events = [event for event in ledger.list_session_events() if event.session_id in session_ids]
-    results_by_session = {session_id: ledger.list_factor_results(session_id=session_id) for session_id in session_ids}
+    events = [event for event in ledger.list_session_events() if event.session_id in matched_session_ids]
+    results_by_session = {
+        session_id: ledger.list_factor_results(session_id=session_id) for session_id in matched_session_ids
+    }
 
     report = _build_project_insight_report(
         project=project,
@@ -242,10 +249,14 @@ def generate_project_insights_site(
     output_dir: Path | None = None,
     min_sessions: int = 8,
     top_n: int = 20,
+    session_ids: tuple[str, ...] | None = None,
 ) -> GenerateProjectInsightsSiteResult:
     paths = RuntimePaths.for_workspace(workspace_root).ensure()
     ledger = LedgerRepository(paths)
     statuses = ledger.list_session_statuses()
+    if session_ids is not None:
+        allowed_session_ids = set(session_ids)
+        statuses = [status for status in statuses if status.session_id in allowed_session_ids]
     grouped_statuses: dict[str, list[SessionAnalysisStatus]] = {}
     for status in statuses:
         grouped_statuses.setdefault(_project_label(status), []).append(status)
@@ -258,6 +269,8 @@ def generate_project_insights_site(
     selected_groups.sort(key=lambda item: (-len(item[1]), item[0]))
 
     all_events = ledger.list_session_events()
+    if session_ids is not None:
+        all_events = [event for event in all_events if event.session_id in allowed_session_ids]
     reports: list[ProjectInsightReport] = []
     for project, project_statuses in selected_groups:
         session_ids = {status.session_id for status in project_statuses}

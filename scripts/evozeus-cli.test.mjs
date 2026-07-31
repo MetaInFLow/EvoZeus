@@ -50,7 +50,7 @@ function stableManifest() {
 }
 
 function withTempWorkspace(callback) {
-  const root = mkdtempSync(join(tmpdir(), "evozeus-cli-"));
+  const root = realpathSync(mkdtempSync(join(tmpdir(), "evozeus-cli-")));
   try {
     return callback(root);
   } finally {
@@ -92,6 +92,7 @@ describe("evozeus-cli", () => {
     assert.equal(report.ok, true);
     assert.equal(report.operation, "capabilities.describe");
     assert.ok(names.includes("session.analyze"));
+    assert.ok(names.includes("system.installPreflight"));
     assert.ok(names.includes("harness.attachPlan"));
     assert.ok(names.includes("system.updatePlan"));
     assert.ok(names.includes("system.uninstallPlan"));
@@ -99,22 +100,40 @@ describe("evozeus-cli", () => {
       report.data.capabilities.find((capability) => capability.name === "session.scanPlan").requires_approval,
       true
     );
+    assert.equal(
+      report.data.capabilities.find((capability) => capability.name === "system.installPreflight").input_schema.properties.channel.const,
+      "stable"
+    );
+    assert.deepEqual(
+      report.data.capabilities.find((capability) => capability.name === "insights.plan").input_schema.required,
+      ["source_path"]
+    );
   });
 
   it("describes product features by lifecycle as JSON", () => {
     const result = runCli(["features", "--json"]);
     const report = parseJson(result);
+    const orderedIds = report.data.features.map((feature) => feature.id);
     const features = new Map(report.data.features.map((feature) => [feature.id, feature]));
 
     assert.equal(report.ok, true);
     assert.equal(report.operation, "features.describe");
+    assert.deepEqual(orderedIds.slice(0, 2), ["insights.sessions", "coevolve.target"]);
+    assert.equal(features.get("insights.sessions").product_tier, "primary");
+    assert.equal(features.get("coevolve.target").product_tier, "primary");
+    assert.ok(report.data.features.slice(2).every((feature) => feature.product_tier === "supporting"));
     assert.ok(features.has("review.session"));
     assert.ok(features.has("insights.sessions"));
     assert.ok(features.has("preserve.artifact"));
     assert.ok(features.has("coevolve.target"));
     assert.equal(features.get("review.session").command, "evozeus review session --input <path|-> --json");
     assert.equal(features.get("insights.sessions").backend_owner, "EvoZeus");
-    assert.equal(features.get("insights.sessions").command, "evozeus insights plan --source codex --json");
+    assert.equal(
+      features.get("insights.sessions").command,
+      "evozeus insights plan --source codex --source-path <approved-codex-history-path> --json"
+    );
+    assert.match(features.get("insights.sessions").user_goal, /当前只支持 Codex/);
+    assert.match(features.get("insights.sessions").approval_boundary, /supports Codex history only/);
     assert.ok(features.get("insights.sessions").related_capabilities.includes("insights.plan"));
     assert.equal(features.get("preserve.artifact").command, "evozeus preserve draft --from-report <path> --json");
     assert.equal(features.get("coevolve.target").backend_owner, "EvoZeus-CoEvolve");
@@ -126,10 +145,14 @@ describe("evozeus-cli", () => {
 
     assert.equal(result.status, 0, result.stderr);
     assert.match(result.stdout, /EvoZeus Features/);
+    assert.ok(
+      result.stdout.indexOf("Build an AI usage profile from approved local Codex history") <
+        result.stdout.indexOf("Review one explicit session")
+    );
+    assert.match(result.stdout, /Build an AI usage profile from approved local Codex history/);
+    assert.match(result.stdout, /Attach a CoEvolve Harness to an independent Skillware repository/);
     assert.match(result.stdout, /Review one explicit session/);
-    assert.match(result.stdout, /Generate session insights report/);
     assert.match(result.stdout, /Preserve a Verdict \/ report as an artifact draft/);
-    assert.match(result.stdout, /Co-evolve an independent Skillware repository/);
   });
 
   it("prints help without crashing", () => {
@@ -137,6 +160,7 @@ describe("evozeus-cli", () => {
 
     assert.equal(result.status, 0, result.stderr);
     assert.match(result.stdout, /Usage: evozeus/);
+    assert.match(result.stdout, /install preflight/);
     assert.match(result.stdout, /features --json/);
     assert.match(result.stdout, /review session/);
     assert.match(result.stdout, /insights plan/);
@@ -145,6 +169,48 @@ describe("evozeus-cli", () => {
     assert.match(result.stdout, /session analyze/);
     assert.match(result.stdout, /approve-feedback/);
   });
+
+  it("exposes the read-only local-state-first install preflight", () =>
+    withTempWorkspace((workspace) => {
+      const evozeusHome = join(workspace, "home", ".evozeus");
+      const result = runCli(["install", "preflight", "--channel", "stable", "--approve-feedback", "--json"], {
+        cwd: workspace,
+        evozeusHome,
+        env: {
+          NODE_ENV: "test",
+          EVOZEUS_HOSTS_AVAILABLE: "codex",
+          EVOZEUS_PREFLIGHT_TEST_RELEASE_TAG: "v0.4.1"
+        }
+      });
+      const report = parseJson(result);
+
+      assert.equal(report.operation, "system.installPreflight");
+      assert.equal(report.schema_version, "evozeus.install-preflight.v1");
+      assert.equal(report.status === "ready" || report.status === "ready_with_fallbacks", true);
+      assert.equal(report.writes, false);
+      assert.deepEqual(report.target, { channel: "stable", evozeus_home: evozeusHome });
+      assert.equal(report.local_state.status, "not_installed");
+      assert.equal(report.network.product_assets_downloaded, 0);
+      assert.equal("activity" in report, false);
+      assert.equal(existsSync(evozeusHome), false);
+    }));
+
+  it("fails closed on UAT install preflight without refresh, activity, or network", () =>
+    withTempWorkspace((workspace) => {
+      const evozeusHome = join(workspace, "home", ".evozeus");
+      const result = runCli(["install", "preflight", "--channel", "uat", "--approve-feedback", "--json"], {
+        cwd: workspace,
+        evozeusHome
+      });
+      const report = parseJson(result, 2);
+
+      assert.equal(report.status, "blocked");
+      assert.deepEqual(report.target, { channel: "uat", evozeus_home: evozeusHome });
+      assert.ok(report.blockers.some((item) => item.code === "PREFLIGHT_CHANNEL_UNSUPPORTED"));
+      assert.equal(report.network.head_requests, 0);
+      assert.equal("activity" in report, false);
+      assert.equal(existsSync(evozeusHome), false);
+    }));
 
   it("rejects session analysis without explicit input", () => {
     const result = runCli(["session", "analyze", "--json"]);
@@ -261,7 +327,8 @@ describe("evozeus-cli", () => {
   });
 
   it("plans session insights through the embedded Runtime without reading raw stores", () => withTempWorkspace((workspace) => {
-    const result = runCli(["insights", "plan", "--source", "codex", "--json"], {
+    const sourcePath = join(realpathSync(workspace), "approved-codex-history");
+    const result = runCli(["insights", "plan", "--source", "codex", "--source-path", "approved-codex-history", "--json"], {
       cwd: workspace
     });
     const report = parseJson(result);
@@ -269,33 +336,94 @@ describe("evozeus-cli", () => {
     assert.equal(report.operation, "insights.plan");
     assert.equal(report.data.insights_plan.reads_raw_store_now, false);
     assert.equal(report.data.insights_plan.source, "codex");
+    assert.equal(report.data.insights_plan.source_path, sourcePath);
     assert.equal(report.data.backend.owner, "EvoZeus");
     assert.equal(report.data.backend.available, true);
     assert.match(report.data.backend.detected_path, /packages\/runtime$/);
     assert.ok(report.data.backend.command.argv.includes("session-insights"));
+    assert.deepEqual(
+      report.data.backend.command.argv.slice(report.data.backend.command.argv.indexOf("--source-path"), report.data.backend.command.argv.indexOf("--source-path") + 2),
+      ["--source-path", sourcePath]
+    );
     assert.ok(report.data.insights_plan.forbidden_in_this_command.includes("reading raw session files"));
   }));
 
-  it("requires explicit approval before running session insights", () => {
-    const result = runCli(["insights", "sessions", "--source", "codex", "--reuse-factors", "--html", "--json"]);
-    const report = parseJson(result);
-
-    assert.equal(report.operation, "insights.sessions");
-    assert.equal(report.approval.required, true);
-    assert.equal(report.data.execution.writes_now, false);
-    assert.equal(report.data.execution.runs_backend_now, false);
-    assert.ok(report.data.backend.command.argv.includes("session-insights"));
-    assert.ok(report.data.approval_required_for.includes("reading raw session files"));
+  it("rejects insights planning and execution without one approved history path", () => {
+    for (const args of [
+      ["insights", "plan", "--source", "codex", "--json"],
+      ["insights", "sessions", "--source", "codex", "--json"]
+    ]) {
+      const report = parseJson(runCli(args), 1);
+      assert.equal(report.error.code, "MISSING_INSIGHTS_SOURCE_PATH");
+      assert.match(report.error.message, /--source-path/);
+      assert.equal("data" in report, false);
+    }
   });
 
+  it("rejects unsupported insight providers before planning or backend execution", () =>
+    withTempWorkspace((workspace) => {
+      for (const args of [
+        ["insights", "plan", "--source", "claude", "--json"],
+        ["insights", "sessions", "--source", "claude", "--json"]
+      ]) {
+        const result = runCli(args, { cwd: workspace });
+        const report = parseJson(result, 1);
+
+        assert.equal(report.ok, false);
+        assert.equal(report.error.code, "UNSUPPORTED_INSIGHTS_SOURCE");
+        assert.match(report.error.message, /Codex history only/);
+        assert.equal("data" in report, false);
+        assert.equal(existsSync(join(workspace, ".evozeus")), false);
+      }
+    }));
+
+  it("requires explicit approval and preserves the exact path for session insights", () =>
+    withTempWorkspace((workspace) => {
+      const sourcePath = join(workspace, "approved-codex-history");
+      const result = runCli([
+        "insights", "sessions", "--source", "codex", "--source-path", sourcePath,
+        "--reuse-factors", "--html", "--json"
+      ], { cwd: workspace });
+      const report = parseJson(result);
+
+      assert.equal(report.operation, "insights.sessions");
+      assert.equal(report.approval.required, true);
+      assert.equal(report.data.execution.writes_now, false);
+      assert.equal(report.data.execution.runs_backend_now, false);
+      assert.equal(report.data.execution.source_path, sourcePath);
+      assert.ok(report.data.backend.command.argv.includes("session-insights"));
+      assert.deepEqual(
+        report.data.backend.command.argv.slice(report.data.backend.command.argv.indexOf("--source-path"), report.data.backend.command.argv.indexOf("--source-path") + 2),
+        ["--source-path", sourcePath]
+      );
+      assert.ok(report.data.approval_required_for.includes("reading raw session files"));
+    }));
+
   it("plans project-scoped insights with project parameters", () => {
-    const result = runCli(["insights", "sessions", "--source", "codex", "--project", "daxing", "--project-mode", "keyword", "--json"]);
+    const result = runCli([
+      "insights", "sessions", "--source", "codex", "--source-path", "/approved/codex/sessions",
+      "--project", "daxing", "--project-mode", "keyword", "--json"
+    ]);
     const report = parseJson(result);
 
     assert.equal(report.operation, "insights.projectSessions");
     assert.equal(report.data.project.project_key, "daxing");
     assert.equal(report.data.project.project_mode, "keyword");
-    assert.ok(report.data.backend.command.argv.includes("project-insights"));
+    assert.ok(report.data.backend.command.argv.includes("session-insights"));
+    assert.deepEqual(
+      report.data.backend.command.argv.slice(
+        report.data.backend.command.argv.indexOf("--source-path"),
+        report.data.backend.command.argv.indexOf("--source-path") + 2
+      ),
+      ["--source-path", "/approved/codex/sessions"]
+    );
+    assert.deepEqual(
+      report.data.backend.command.argv.slice(
+        report.data.backend.command.argv.indexOf("--project"),
+        report.data.backend.command.argv.indexOf("--project") + 2
+      ),
+      ["--project", "daxing"]
+    );
     assert.ok(report.data.backend.command.argv.includes("--contains"));
   });
 

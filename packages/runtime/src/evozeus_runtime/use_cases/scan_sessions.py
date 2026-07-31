@@ -13,6 +13,7 @@ from evozeus_runtime.scanners.builtins import create_default_scanner_registry
 @dataclass(frozen=True)
 class ScanSessionsResult:
     session_count: int
+    session_ids: tuple[str, ...]
     ledger_path: Path
 
 
@@ -29,4 +30,8 @@ def scan_sessions(*, workspace_root: Path, provider: str, source_dir: Path | Non
     ledger.record_session_refs(refs)
     for ref in refs:
         ledger.record_session_message_refs(scanner_registry.discover_message_refs(ref))
-    return ScanSessionsResult(session_count=len(refs), ledger_path=paths.result_index_db)
+    return ScanSessionsResult(
+        session_count=len(refs),
+        session_ids=tuple(ref.session_id for ref in refs),
+        ledger_path=paths.result_index_db,
+    )

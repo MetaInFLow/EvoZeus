@@ -16,10 +16,12 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import {
   activateInstalledChannel,
   applyChannelUpdate,
+  channelRecoveryIncomplete,
   DEFAULT_MANIFEST_SOURCES,
   prepareChannelUpdate,
   readActiveChannel,
   readChannelState,
+  refreshChannelBootstrap,
   rollbackChannel
 } from "./evozeus-channels.mjs";
 
@@ -169,6 +171,80 @@ function alignEntryPlugin(entry, hosts) {
   });
 }
 
+function pluginVerificationReady(verification) {
+  return ["ready", "ready_after_new_session", "not_applicable"].includes(verification?.status);
+}
+
+function restorePreviousProductAndPlugin({
+  update,
+  currentActive,
+  currentEntry,
+  currentChannel,
+  hosts,
+  pluginAlignmentStarted
+}) {
+  let pluginRecovery = "unchanged";
+  if (pluginAlignmentStarted) {
+    pluginRecovery = hosts.length > 0 ? "pending" : "not_applicable";
+  }
+  const recovery = {
+    attempted: true,
+    product: "unchanged",
+    plugin: pluginRecovery
+  };
+  try {
+    if (update?.writes_now) {
+      if (update.rollback) {
+        rollbackChannel(home, currentChannel);
+        recovery.product = "rolled_back";
+      } else if (currentActive?.channel && currentActive.channel !== currentChannel) {
+        activateInstalledChannel(home, currentActive.channel, currentActive.auto_refresh === true);
+        const priorActiveEntry = readChannelState(home).channels[currentActive.channel];
+        refreshChannelBootstrap(home, priorActiveEntry.component_roots.evozeus);
+        recovery.product = "reactivated_previous_channel";
+      } else {
+        throw new Error("the completed product transaction has no verified rollback target");
+      }
+    }
+
+    if (
+      recovery.product !== "reactivated_previous_channel" &&
+      currentActive?.channel &&
+      currentActive.channel !== currentChannel
+    ) {
+      activateInstalledChannel(home, currentActive.channel, currentActive.auto_refresh === true);
+      const priorActiveEntry = readChannelState(home).channels[currentActive.channel];
+      refreshChannelBootstrap(home, priorActiveEntry.component_roots.evozeus);
+      recovery.product = "reactivated_previous_channel";
+    }
+
+    const restoredEntry = readChannelState(home).channels[currentChannel];
+    if (
+      currentEntry &&
+      (restoredEntry?.install_root !== currentEntry.install_root ||
+        restoredEntry?.manifest_digest !== currentEntry.manifest_digest)
+    ) {
+      throw new Error("the previous channel root or manifest digest was not restored");
+    }
+
+    if (pluginAlignmentStarted && currentEntry && hosts.length > 0) {
+      alignEntryPlugin(restoredEntry || currentEntry, hosts);
+      const verification = pluginStatus(restoredEntry || currentEntry, hosts);
+      if (!pluginVerificationReady(verification)) {
+        throw new Error(`previous Plugin verification failed: ${verification.status}`);
+      }
+      recovery.plugin = "realigned_previous";
+    }
+    return { ...recovery, status: "restored_previous" };
+  } catch (error) {
+    return {
+      ...recovery,
+      status: "incomplete",
+      error: { code: error.code || "AUTO_UPDATE_RECOVERY_FAILED", message: error.message }
+    };
+  }
+}
+
 async function autoUpdateActiveChannel() {
   const currentActive = readActiveChannel(home);
   const currentChannel = currentActive?.channel;
@@ -187,18 +263,34 @@ async function autoUpdateActiveChannel() {
   if (!lock) return;
 
   const beforeVersion = currentEntry?.manifest?.product_version ?? "unknown";
+  let plan = null;
   let update = null;
+  let pluginAlignmentStarted = false;
   try {
     const manifestSource = currentChannel === "stable"
       ? process.env.EVOZEUS_STABLE_MANIFEST || DEFAULT_MANIFEST_SOURCES.stable
       : process.env.EVOZEUS_UAT_MANIFEST || DEFAULT_MANIFEST_SOURCES.uat;
-    const plan = await prepareChannelUpdate({
+    plan = await prepareChannelUpdate({
       evozeusHome: home,
       channel: currentChannel,
       manifestSource
     });
 
+    if (plan.decision === "migrate") {
+      writeUpdateReport(currentChannel, {
+        status: "migration_required",
+        product_version: beforeVersion,
+        latest_product_version: plan.target_product_version,
+        manifest_digest: plan.manifest_digest,
+        next_action: `evozeus align --channel ${currentChannel} --host auto --json`
+      });
+      return;
+    }
+
     if (!plan.update_available) {
+      if (plan.decision === "repair") {
+        visibleLog(`🛠️ EvoZeus · 发现损坏｜${channelLabel(currentChannel)} ${plan.target_product_version} · 准备隔离修复`);
+      }
       update = await applyChannelUpdate({
         evozeusHome: home,
         channel: currentChannel,
@@ -209,11 +301,20 @@ async function autoUpdateActiveChannel() {
       const refreshedPlugin = pluginStatus(entry, hosts);
       if (["plugin_mismatch", "plugin_install_required"].includes(refreshedPlugin.status)) {
         visibleLog(`🛠️ EvoZeus · 自动更新中｜${channelLabel(currentChannel)} ${plan.target_product_version} · Plugin对齐`);
+        pluginAlignmentStarted = true;
         alignEntryPlugin(entry, hosts);
+        const verification = pluginStatus(entry, hosts);
+        if (!pluginVerificationReady(verification)) {
+          throw new Error(`plugin verification failed: ${verification.status}`);
+        }
         visibleLog(`✅ EvoZeus · 自动更新完成｜${channelLabel(currentChannel)} ${plan.target_product_version} · Plugin已对齐`);
       }
       writeUpdateReport(currentChannel, {
-        status: "current",
+        status: update.status === "repaired"
+          ? "repaired"
+          : update.status === "activated"
+            ? "activated"
+            : "current",
         product_version: plan.target_product_version,
         latest_product_version: plan.target_product_version,
         manifest_digest: plan.manifest_digest,
@@ -224,35 +325,18 @@ async function autoUpdateActiveChannel() {
 
     visibleLog(`🧭 EvoZeus · 发现更新｜${channelLabel(currentChannel)} ${beforeVersion} → ${plan.target_product_version}`);
     visibleLog("🛠️ EvoZeus · 自动更新中｜正在对齐Plugin、Runtime、Session Signal与CoEvolve");
-    const activeBefore = currentActive;
-    const entryBefore = currentEntry;
-    try {
-      update = await applyChannelUpdate({
-        evozeusHome: home,
-        channel: currentChannel,
-        manifestSource,
-        autoRefresh: currentChannel === "uat"
-      });
-      const entry = readChannelState(home).channels[currentChannel];
-      alignEntryPlugin(entry, hosts);
-      const verification = pluginStatus(entry, hosts);
-      if (!["ready", "ready_after_new_session", "not_applicable"].includes(verification.status)) {
-        throw new Error(`plugin verification failed: ${verification.status}`);
-      }
-    } catch (error) {
-      if (update?.rollback) {
-        rollbackChannel(home, currentChannel);
-      } else if (activeBefore?.channel && activeBefore.channel !== currentChannel) {
-        activateInstalledChannel(home, activeBefore.channel, activeBefore.auto_refresh);
-      }
-      if (entryBefore) {
-        try {
-          alignEntryPlugin(readChannelState(home).channels[activeBefore.channel] || entryBefore, hosts);
-        } catch {
-          // The original update error remains authoritative; Doctor exposes residual host mismatch.
-        }
-      }
-      throw error;
+    update = await applyChannelUpdate({
+      evozeusHome: home,
+      channel: currentChannel,
+      manifestSource,
+      autoRefresh: currentChannel === "uat"
+    });
+    const entry = readChannelState(home).channels[currentChannel];
+    pluginAlignmentStarted = true;
+    alignEntryPlugin(entry, hosts);
+    const verification = pluginStatus(entry, hosts);
+    if (!pluginVerificationReady(verification)) {
+      throw new Error(`plugin verification failed: ${verification.status}`);
     }
 
     visibleLog(`✅ EvoZeus · 自动更新完成｜${channelLabel(currentChannel)} ${plan.target_product_version} · 新会话加载Plugin`);
@@ -265,11 +349,61 @@ async function autoUpdateActiveChannel() {
       components: ["evozeus", "plugin", "runtime", "session_signal", "coevolve"]
     });
   } catch (error) {
-    visibleLog(`🛡️ EvoZeus · 自动更新失败｜继续使用${channelLabel(currentChannel)} ${beforeVersion} · ${error.message}`);
+    let recovery;
+    if (channelRecoveryIncomplete(error)) {
+      recovery = {
+        attempted: true,
+        status: "incomplete",
+        error: { code: error.code, message: error.message }
+      };
+    } else if (update || pluginAlignmentStarted) {
+      recovery = restorePreviousProductAndPlugin({
+        update,
+        currentActive,
+        currentEntry,
+        currentChannel,
+        hosts,
+        pluginAlignmentStarted
+      });
+    } else if (plan?.decision === "repair") {
+      recovery = {
+        attempted: true,
+        status: "incomplete",
+        product: "damaged_previous_retained",
+        plugin: "unchanged",
+        error: {
+          code: "REPAIR_FAILED_BEFORE_SWITCH",
+          message: "the isolated repair failed before a verified replacement became active"
+        }
+      };
+    } else if (plan?.decision === "update" && plan.current_integrity?.issues?.length > 0) {
+      recovery = {
+        attempted: true,
+        status: "incomplete",
+        product: "damaged_previous_retained",
+        plugin: "unchanged",
+        error: {
+          code: "UPDATE_FAILED_WITH_DAMAGED_PREVIOUS",
+          message: "the update failed before a verified replacement became active, and the retained installation is damaged"
+        }
+      };
+    } else {
+      recovery = { attempted: false, status: "transaction_not_applied" };
+    }
+    const recovered = recovery.status !== "incomplete";
+    const afterEntry = readChannelState(home).channels[currentChannel];
+    visibleLog(
+      recovered
+        ? `🛡️ EvoZeus · 自动更新失败｜继续使用${channelLabel(currentChannel)} ${beforeVersion} · ${error.message}`
+        : `🛡️ EvoZeus · 自动更新失败｜恢复未完成 · ${error.message}`
+    );
     writeUpdateReport(currentChannel, {
-      status: "failed_continuing_previous",
-      product_version: beforeVersion,
-      error: { code: error.code || "AUTO_UPDATE_FAILED", message: error.message }
+      status: recovered ? "failed_continuing_previous" : "failed_recovery_required",
+      product_version: recovered
+        ? beforeVersion
+        : afterEntry?.manifest?.product_version ?? "unknown",
+      error: { code: error.code || "AUTO_UPDATE_FAILED", message: error.message },
+      recovery
     });
   } finally {
     rmSync(lock, { recursive: true, force: true });
@@ -277,7 +411,7 @@ async function autoUpdateActiveChannel() {
 }
 
 const command = process.argv[2] || "";
-const skipRefresh = ["update", "channel", "align"].includes(command) || process.env.EVOZEUS_AUTO_UPDATE_CHILD === "1";
+const skipRefresh = ["install", "update", "channel", "align"].includes(command) || process.env.EVOZEUS_AUTO_UPDATE_CHILD === "1";
 if (channel && !skipRefresh) {
   await autoUpdateActiveChannel();
   active = readJson(join(home, "active-channel.json"));

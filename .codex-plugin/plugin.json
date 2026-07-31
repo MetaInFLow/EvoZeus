@@ -1,7 +1,7 @@
 {
   "name": "evozeus",
   "version": "0.4.1",
-  "description": "Review real Agent work, capture lessons, preserve proven improvements, and evolve independent Skillware repositories.",
+  "description": "With explicit approval, turn local Codex history into an AI usage profile and attach a CoEvolve Harness to an independent Skillware repository.",
   "author": {
     "name": "MetaInFlow",
     "url": "https://github.com/MetaInFLow"
@@ -10,17 +10,18 @@
   "repository": "https://github.com/MetaInFLow/EvoZeus",
   "license": "MIT",
   "keywords": [
-    "agent",
+    "ai-usage-profile",
+    "skillware-evolution",
+    "codex-history",
+    "coevolve-harness",
     "session-review",
-    "lessons",
-    "skillware",
-    "continuous-evolution"
+    "lessons"
   ],
   "skills": "./skills/",
   "interface": {
     "displayName": "EvoZeus",
-    "shortDescription": "Turn real Agent work into verified improvements",
-    "longDescription": "Review Agent sessions with evidence, identify lessons worth preserving, and route approved improvements into reusable artifacts or the evolution lifecycle of an independent Skillware repository.",
+    "shortDescription": "AI usage profiles and Skillware evolution",
+    "longDescription": "With explicit approval, analyze local Codex history into an evidence-backed AI usage profile covering habits, strengths, blind spots, and a session-derived personality tendency. Codex is the only supported history provider in the current release. Attach a CoEvolve Harness to an independent Skillware repository so confirmed feedback can enter a governed improvement lifecycle. Session review, Lesson capture, and Stable/UAT maintenance remain available as supporting tools.",
     "developerName": "MetaInFlow",
     "category": "Developer Tools",
     "capabilities": [
@@ -30,9 +31,9 @@
     ],
     "websiteURL": "https://github.com/MetaInFLow/EvoZeus",
     "defaultPrompt": [
-      "复盘这次 Agent 执行，找出值得保留、修复或进化的内容",
-      "把这条已确认 Lesson 保存为可追踪的改进",
-      "检查 EvoZeus 的 stable/UAT 状态并给出唯一下一步"
+      "先为我生成本机 Codex 历史扫描计划并等待明确批准；当前只支持 Codex，批准前不要读取历史。批准后生成 AI 使用习惯、优势与盲区、人格画像（例如 INTJ 倾向）报告。",
+      "为我指定的独立 Skillware Repo 接入 CoEvolve Harness；先检查并给出计划，修改 Repo 或 GitHub 前等待我的明确批准。",
+      "列出 EvoZeus 的全部功能，并检查当前安装和 Stable/UAT 状态。"
     ],
     "brandColor": "#C99A24",
     "composerIcon": "./assets/icons/evozeus-gold-128.png",

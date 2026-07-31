@@ -14,6 +14,7 @@ import {
   prepareChannelUpdate,
   readActiveChannel,
   readChannelState,
+  refreshChannelBootstrap,
   rollbackChannel,
   resolveInstalledComponentRoot
 } from "./evozeus-channels.mjs";
@@ -24,12 +25,28 @@ import {
   planPluginAlignment,
   selectPluginHosts
 } from "./evozeus-hosts.mjs";
+import { runInstallPreflight } from "./evozeus-install-preflight.mjs";
 
 const SCHEMA_VERSION = 1;
 const CLI_VERSION = "0.4.1";
 const SOURCE_ROOT = resolve(fileURLToPath(new URL("..", import.meta.url)));
 
 const CAPABILITIES = [
+  {
+    name: "system.installPreflight",
+    domain: "system",
+    summary: "Inspect local install state and installation prerequisites before any product asset download or write.",
+    input_schema: { type: "object", properties: { channel: { const: "stable" } } },
+    output_schema: {
+      type: "object",
+      required: ["status", "local_state", "checks", "fallbacks", "blockers", "remediation", "next_action"]
+    },
+    write_mode: "read_only",
+    risk_level: "low",
+    required_permissions: ["system.read", "network.releaseHead"],
+    requires_approval: false,
+    examples: ["evozeus install preflight --channel stable --json"]
+  },
   {
     name: "system.version",
     domain: "system",
@@ -171,25 +188,33 @@ const CAPABILITIES = [
     name: "insights.plan",
     domain: "insights",
     summary: "Plan a session insights run through the built-in EvoZeus Runtime without reading raw stores.",
-    input_schema: { type: "object", properties: { source: { type: "string" } } },
+    input_schema: {
+      type: "object",
+      required: ["source_path"],
+      properties: { source: { type: "string" }, source_path: { type: "string" } }
+    },
     output_schema: { type: "object", required: ["insights_plan", "backend"] },
     write_mode: "plan_only",
     risk_level: "medium",
     required_permissions: ["system.read"],
     requires_approval: false,
-    examples: ["evozeus insights plan --source codex --json"]
+    examples: ["evozeus insights plan --source codex --source-path ~/.codex/sessions --json"]
   },
   {
     name: "insights.sessions",
     domain: "insights",
     summary: "Route approved session insights execution to the built-in EvoZeus Runtime.",
-    input_schema: { type: "object", properties: { source: { type: "string" }, project: { type: "string" } } },
+    input_schema: {
+      type: "object",
+      required: ["source_path"],
+      properties: { source: { type: "string" }, source_path: { type: "string" }, project: { type: "string" } }
+    },
     output_schema: { type: "object", required: ["execution", "backend"] },
     write_mode: "plan_only",
     risk_level: "high",
     required_permissions: ["session.scanLocalStore"],
     requires_approval: true,
-    examples: ["evozeus insights sessions --source codex --reuse-factors --html --json"]
+    examples: ["evozeus insights sessions --source codex --source-path ~/.codex/sessions --reuse-factors --html --json"]
   },
   {
     name: "harness.attachPlan",
@@ -283,23 +308,39 @@ const CAPABILITIES = [
 
 const PRODUCT_FEATURES = [
   {
-    id: "activate",
-    title: "Activate workspace",
-    title_zh: "激活并检查本地 EvoZeus 工作区",
-    lifecycle_stage: "activate",
-    user_goal: "确认本地 EvoZeus 是否已安装、注册和可继续使用。",
-    command: "evozeus activate --json",
-    backend_owner: "evozeus",
+    id: "insights.sessions",
+    title: "Build an AI usage profile from approved local Codex history",
+    title_zh: "扫描本机 Codex 历史并生成 AI 使用画像",
+    lifecycle_stage: "interact",
+    product_tier: "primary",
+    user_goal: "当前只支持 Codex；在用户明确批准读取本机 Codex 历史和写入报告后，生成 AI 使用习惯、优势与盲区、人格画像（例如 INTJ 倾向）；证据不足时明确说明。",
+    command: "evozeus insights plan --source codex --source-path <approved-codex-history-path> --json",
+    backend_owner: "EvoZeus",
     status: "available",
-    approval_boundary: "Reads EvoZeus local state only.",
-    related_capabilities: ["workspace.activate"],
-    aliases: []
+    approval_boundary: "The plan supports Codex history only and is read-only. Reading local Codex history, running Factors, writing the report, and opening its HTML require explicit approval; no upload is implied.",
+    related_capabilities: ["insights.plan", "insights.sessions", "session.scanPlan"],
+    aliases: ["evozeus session scan --dry-run --json"]
+  },
+  {
+    id: "coevolve.target",
+    title: "Attach a CoEvolve Harness to an independent Skillware repository",
+    title_zh: "为独立 Skillware Repo 接入 CoEvolve Harness",
+    lifecycle_stage: "coevolve",
+    product_tier: "primary",
+    user_goal: "先检查指定 Skill、Plugin 或路径所在的独立 Git Repo，生成接入计划；经明确批准后接入 feedback、Issue、Design、PR、UAT 和 Release 循环。",
+    command: "evozeus coevolve attach --target <path|url> --json",
+    backend_owner: "EvoZeus-CoEvolve",
+    status: "alias",
+    approval_boundary: "Plan only by default; repo writes and GitHub actions require explicit approval.",
+    related_capabilities: ["harness.attachPlan"],
+    aliases: ["evozeus harness attach --target <path|url> --json"]
   },
   {
     id: "review.session",
     title: "Review one explicit session",
     title_zh: "分析一个用户显式提供的 session",
     lifecycle_stage: "interact",
+    product_tier: "supporting",
     user_goal: "把一次用户提供的 Agent Session 转成 Evidence、Signals、Verdict Card 和 Artifact Route。",
     command: "evozeus review session --input <path|-> --json",
     backend_owner: "evozeus",
@@ -309,23 +350,11 @@ const PRODUCT_FEATURES = [
     aliases: ["evozeus session analyze --input <path|-> --json"]
   },
   {
-    id: "insights.sessions",
-    title: "Generate session insights report",
-    title_zh: "扫描历史 sessions 并生成项目洞察报告",
-    lifecycle_stage: "interact",
-    user_goal: "从历史 session 中发现可复用 insight、重复表达、项目差异和可进化点。",
-    command: "evozeus insights plan --source codex --json",
-    backend_owner: "EvoZeus",
-    status: "available",
-    approval_boundary: "Plan is read-only; raw session scan, factor execution, report write, and HTML open require explicit approval.",
-    related_capabilities: ["insights.plan", "insights.sessions", "session.scanPlan"],
-    aliases: ["evozeus session scan --dry-run --json"]
-  },
-  {
     id: "preserve.artifact",
     title: "Preserve a Verdict / report as an artifact draft",
     title_zh: "把 Verdict 或报告沉淀为 Artifact 草稿",
     lifecycle_stage: "decide",
+    product_tier: "supporting",
     user_goal: "从已有本地报告生成 Case、Factor、Habit 或 Rule 的隐私安全草稿。",
     command: "evozeus preserve draft --from-report <path> --json",
     backend_owner: "evozeus",
@@ -335,23 +364,25 @@ const PRODUCT_FEATURES = [
     aliases: []
   },
   {
-    id: "coevolve.target",
-    title: "Co-evolve an independent Skillware repository",
-    title_zh: "让独立 Skillware Repo 接入协同进化机制",
-    lifecycle_stage: "coevolve",
-    user_goal: "把包含目标 Skill 或 plugin 的独立 Git Repo 接入 feedback、issue、design doc、PR、CHANGELOG、UAT 和 release 循环。",
-    command: "evozeus coevolve attach --target <path|url> --json",
-    backend_owner: "EvoZeus-CoEvolve",
-    status: "alias",
-    approval_boundary: "Plan only by default; repo writes and GitHub actions require explicit approval.",
-    related_capabilities: ["harness.attachPlan"],
-    aliases: ["evozeus harness attach --target <path|url> --json"]
+    id: "activate",
+    title: "Activate workspace",
+    title_zh: "激活并检查本地 EvoZeus 工作区",
+    lifecycle_stage: "activate",
+    product_tier: "supporting",
+    user_goal: "确认本地 EvoZeus 是否已安装、注册和可继续使用。",
+    command: "evozeus activate --json",
+    backend_owner: "evozeus",
+    status: "available",
+    approval_boundary: "Reads EvoZeus local state only.",
+    related_capabilities: ["workspace.activate"],
+    aliases: []
   },
   {
     id: "maintain",
     title: "Maintain EvoZeus",
     title_zh: "诊断、更新和维护 EvoZeus",
     lifecycle_stage: "maintain",
+    product_tier: "supporting",
     user_goal: "检查安装状态、组件状态、更新计划和修复路径。",
     command: "evozeus doctor --json",
     backend_owner: "evozeus",
@@ -365,6 +396,7 @@ const PRODUCT_FEATURES = [
     title: "Uninstall or archive EvoZeus",
     title_zh: "卸载或归档 EvoZeus 本地状态",
     lifecycle_stage: "uninstall",
+    product_tier: "supporting",
     user_goal: "规划停用、删除、归档或保留本地 EvoZeus 状态与报告。",
     command: "evozeus uninstall --dry-run --json",
     backend_owner: "evozeus",
@@ -398,6 +430,7 @@ function parseArgs(argv) {
     input: null,
     target: null,
     source: "codex",
+    sourcePath: null,
     project: null,
     projectMode: "auto",
     fromReport: null,
@@ -441,6 +474,8 @@ function parseArgs(argv) {
       options.target = argv[++index];
     } else if (arg === "--source") {
       options.source = argv[++index];
+    } else if (arg === "--source-path") {
+      options.sourcePath = argv[++index];
     } else if (arg === "--project") {
       options.project = argv[++index];
     } else if (arg === "--project-mode") {
@@ -669,7 +704,7 @@ function componentReadiness(options) {
   };
 }
 
-function infraBackendCommand(options, mode) {
+function infraBackendCommand(options, mode, sourcePath = null) {
   const readiness = componentReadiness(options)["EvoZeus Runtime"];
   const official = componentReadiness(options)["EvoZeus Session Signal"];
   const workspace = workspaceInfo(options).root;
@@ -677,30 +712,18 @@ function infraBackendCommand(options, mode) {
   const runtimeStateRoot = active
     ? join(workspaceInfo(options).evozeus_root, "state", active.channel)
     : null;
-  const args =
-    mode === "project"
-      ? [
-          "project-insights",
-          "--workspace",
-          workspace,
-          "--project",
-          options.project,
-          "--format",
-          "markdown",
-          "--format",
-          "json",
-          "--format",
-          "html",
-          ...(options.projectMode === "keyword" || options.projectMode === "contains" ? ["--contains"] : [])
-        ]
-      : [
-          "session-insights",
-          "--workspace",
-          workspace,
-          "--official-repo-root",
-          official.detected_path,
-          ...(options.force ? ["--force"] : [])
-        ];
+  const args = [
+    "session-insights",
+    "--workspace",
+    workspace,
+    "--source-path",
+    sourcePath,
+    "--official-repo-root",
+    official.detected_path,
+    ...(mode === "project" ? ["--project", options.project] : []),
+    ...(mode === "project" && ["keyword", "contains"].includes(options.projectMode) ? ["--contains"] : []),
+    ...(options.force ? ["--force"] : [])
+  ];
 
   return {
     owner: "EvoZeus",
@@ -1090,17 +1113,41 @@ function scanPlan(options) {
   );
 }
 
+function requireCodexInsightsSource(options, operation) {
+  if (options.source !== "codex") {
+    throw new CliError(
+      "UNSUPPORTED_INSIGHTS_SOURCE",
+      `AI usage profiles currently support Codex history only; received ${options.source}.`,
+      operation
+    );
+  }
+}
+
+function approvedInsightsSourcePath(options, operation) {
+  if (!options.sourcePath) {
+    throw new CliError(
+      "MISSING_INSIGHTS_SOURCE_PATH",
+      "AI usage profiles require --source-path <approved-codex-history-path>.",
+      operation
+    );
+  }
+  return resolve(workspaceInfo(options).root, options.sourcePath);
+}
+
 function insightsPlan(options) {
-  const backend = infraBackendCommand(options, "session");
+  requireCodexInsightsSource(options, "insights.plan");
+  const sourcePath = approvedInsightsSourcePath(options, "insights.plan");
+  const backend = infraBackendCommand(options, "session", sourcePath);
   return envelope("insights.plan", options, {
     insights_plan: {
       source: options.source || "codex",
+      source_path: sourcePath,
       reads_raw_store_now: false,
       writes_report_now: false,
       runs_factor_now: false,
       opens_browser_now: false,
       required_before_execution: [
-        "specific source path or approved provider",
+        "specific approved Codex history source path",
         "redaction policy",
         "factor reuse policy",
         "artifact write destination",
@@ -1120,8 +1167,10 @@ function insightsPlan(options) {
 
 function insightsSessions(options) {
   const isProject = Boolean(options.project);
-  const backend = infraBackendCommand(options, isProject ? "project" : "session");
   const operation = isProject ? "insights.projectSessions" : "insights.sessions";
+  requireCodexInsightsSource(options, operation);
+  const sourcePath = approvedInsightsSourcePath(options, operation);
+  const backend = infraBackendCommand(options, isProject ? "project" : "session", sourcePath);
 
   return envelope(
     operation,
@@ -1135,6 +1184,7 @@ function insightsSessions(options) {
         : null,
       execution: {
         source: options.source || "codex",
+        source_path: sourcePath,
         runs_backend_now: false,
         reads_raw_store_now: false,
         writes_now: false,
@@ -1572,6 +1622,8 @@ function doctor(options) {
     next_command:
       version.health === "migration_required"
         ? "~/.evozeus/bin/evozeus align --channel stable --host auto --json"
+        : doctorVerdict === "repair_required"
+          ? `~/.evozeus/bin/evozeus align --channel ${version.active_channel || "stable"} --host auto --json`
         : doctorVerdict === "align_required"
           ? `~/.evozeus/bin/evozeus align --channel ${version.active_channel || "stable"} --host auto --json`
           : doctorVerdict === "ready_after_new_session"
@@ -1618,6 +1670,20 @@ function alignEntryPlugin(options, entry, hosts) {
   });
 }
 
+function verifyEntryPlugin(options, entry, hosts) {
+  const verification = inspectPluginHosts({
+    evozeusHome: workspaceInfo(options).evozeus_root,
+    channel: entry.manifest.channel,
+    productVersion: entry.manifest.product_version,
+    commit: entry.manifest.components.evozeus.commit,
+    availableHosts: hosts
+  });
+  if (!["ready", "ready_after_new_session", "not_applicable"].includes(verification.status)) {
+    throw new Error(`plugin verification failed: ${verification.status}`);
+  }
+  return verification;
+}
+
 function channelUse(options) {
   if (!options.channel || !["stable", "uat"].includes(options.channel)) {
     throw new CliError("INVALID_CHANNEL", "channel use requires stable or uat.", "system.channelUse");
@@ -1641,26 +1707,44 @@ function channelUse(options) {
       { required: true, reason: "Changing the active EvoZeus channel writes ~/.evozeus/active-channel.json." }
     );
   }
-  const activeBefore = readActiveChannel(workspaceInfo(options).evozeus_root);
+  const evozeusHome = workspaceInfo(options).evozeus_root;
+  const activeBefore = readActiveChannel(evozeusHome);
   const entryBefore = activeBefore?.channel ? installedChannelEntry(options, activeBefore.channel) : null;
+  const hosts = requestedPluginHosts(options);
   try {
-    const hosts = requestedPluginHosts(options);
     const active = activateInstalledChannel(
-      workspaceInfo(options).evozeus_root,
+      evozeusHome,
       options.channel,
       options.autoRefresh
     );
     const entry = installedChannelEntry(options, options.channel);
+    refreshChannelBootstrap(evozeusHome, entry.component_roots.evozeus);
     const plugin = alignEntryPlugin(options, entry, hosts);
-    return envelope("system.channelUse", options, { channel: options.channel, active, plugin, writes_now: true });
+    const verification = verifyEntryPlugin(options, entry, hosts);
+    return envelope(
+      "system.channelUse",
+      options,
+      { channel: options.channel, active, plugin, verification, writes_now: true }
+    );
   } catch (error) {
-    if (activeBefore?.channel && activeBefore.channel !== options.channel) {
-      try {
-        activateInstalledChannel(workspaceInfo(options).evozeus_root, activeBefore.channel, activeBefore.auto_refresh);
-        if (entryBefore) alignEntryPlugin(options, entryBefore, requestedPluginHosts(options));
-      } catch {
-        // Keep the original failure; Doctor will expose any remaining mismatch.
+    let recoveryError = null;
+    try {
+      if (!activeBefore?.channel || !entryBefore) {
+        throw new Error("no prior active channel is available for recovery");
       }
+      activateInstalledChannel(evozeusHome, activeBefore.channel, activeBefore.auto_refresh);
+      refreshChannelBootstrap(evozeusHome, entryBefore.component_roots.evozeus);
+      alignEntryPlugin(options, entryBefore, hosts);
+      verifyEntryPlugin(options, entryBefore, hosts);
+    } catch (caughtRecoveryError) {
+      recoveryError = caughtRecoveryError;
+    }
+    if (recoveryError) {
+      throw new CliError(
+        "CHANNEL_USE_RECOVERY_FAILED",
+        `${error.message}. Product or Plugin recovery is incomplete: ${recoveryError.message}`,
+        "system.channelUse"
+      );
     }
     throw channelCliError(error, "system.channelUse");
   }
@@ -1683,26 +1767,47 @@ function channelRollback(options) {
     );
   }
   try {
+    const evozeusHome = workspaceInfo(options).evozeus_root;
+    const activeBefore = readActiveChannel(evozeusHome);
+    const entryBefore = activeBefore?.channel ? installedChannelEntry(options, activeBefore.channel) : null;
     const hosts = requestedPluginHosts(options);
-    const rollback = rollbackChannel(workspaceInfo(options).evozeus_root, options.channel);
+    const rollback = rollbackChannel(evozeusHome, options.channel);
     try {
       const entry = installedChannelEntry(options, options.channel);
+      const plugin = alignEntryPlugin(options, entry, hosts);
+      const verification = verifyEntryPlugin(options, entry, hosts);
       return envelope(
         "system.channelRollback",
         options,
-        { rollback, plugin: alignEntryPlugin(options, entry, hosts) }
+        { rollback, plugin, verification }
       );
     } catch (pluginError) {
-      rollbackChannel(workspaceInfo(options).evozeus_root, options.channel);
-      const restored = installedChannelEntry(options, options.channel);
+      let recoveryError = null;
       try {
-        alignEntryPlugin(options, restored, hosts);
-      } catch {
-        // Keep the original plugin failure; Doctor will expose any remaining mismatch.
+        rollbackChannel(evozeusHome, options.channel);
+        if (!activeBefore?.channel || !entryBefore) {
+          throw new Error("no prior active channel is available for recovery");
+        }
+        if (activeBefore.channel !== options.channel) {
+          activateInstalledChannel(evozeusHome, activeBefore.channel, activeBefore.auto_refresh);
+          refreshChannelBootstrap(evozeusHome, entryBefore.component_roots.evozeus);
+        }
+        alignEntryPlugin(options, entryBefore, hosts);
+        verifyEntryPlugin(options, entryBefore, hosts);
+      } catch (caughtRecoveryError) {
+        recoveryError = caughtRecoveryError;
+      }
+      if (recoveryError) {
+        throw new CliError(
+          "CHANNEL_ROLLBACK_RECOVERY_FAILED",
+          `${pluginError.message}. Product or Plugin recovery is incomplete: ${recoveryError.message}`,
+          "system.channelRollback"
+        );
       }
       throw pluginError;
     }
   } catch (error) {
+    if (error instanceof CliError) throw error;
     throw channelCliError(error, "system.channelRollback");
   }
 }
@@ -1727,6 +1832,11 @@ async function alignProduct(options) {
         channel,
         manifestSource: manifestSourceFor(options, channel)
       });
+      if (updatePlan.decision === "unsafe_stop") {
+        throw new ChannelError("LOCAL_STATE_UNSAFE", "installed channel state is unsafe or unverifiable", {
+          issues: updatePlan.current_integrity.issues
+        });
+      }
       const pluginPlan = planPluginAlignment({
         evozeusHome: workspaceInfo(options).evozeus_root,
         sourceRoot: SOURCE_ROOT,
@@ -1757,31 +1867,36 @@ async function alignProduct(options) {
     const entry = installedChannelEntry(options, channel);
     try {
       const plugin = alignEntryPlugin(options, entry, hosts);
-      const verification = inspectPluginHosts({
-        evozeusHome: workspaceInfo(options).evozeus_root,
-        channel,
-        productVersion: entry.manifest.product_version,
-        commit: entry.manifest.components.evozeus.commit,
-        availableHosts: hosts
-      });
+      const verification = verifyEntryPlugin(options, entry, hosts);
       return envelope("system.align", options, { channel, update, plugin, verification, writes_now: true });
     } catch (pluginError) {
-      if (update.rollback) {
-        rollbackChannel(workspaceInfo(options).evozeus_root, channel);
-      } else if (activeBefore?.channel && activeBefore.channel !== channel) {
-        activateInstalledChannel(
-          workspaceInfo(options).evozeus_root,
-          activeBefore.channel,
-          activeBefore.auto_refresh
-        );
-      }
-      if (entryBefore) {
-        try {
-          const restored = installedChannelEntry(options, activeBefore.channel);
-          alignEntryPlugin(options, restored || entryBefore, hosts);
-        } catch {
-          // Keep the original failure; Doctor will report any residual host mismatch.
+      const evozeusHome = workspaceInfo(options).evozeus_root;
+      let recoveryError = null;
+      try {
+        if (update.rollback) {
+          rollbackChannel(evozeusHome, channel);
         }
+        if (activeBefore?.channel && activeBefore.channel !== channel) {
+          activateInstalledChannel(evozeusHome, activeBefore.channel, activeBefore.auto_refresh);
+          const restoredActiveEntry = installedChannelEntry(options, activeBefore.channel);
+          refreshChannelBootstrap(evozeusHome, restoredActiveEntry.component_roots.evozeus);
+        } else if (update.writes_now && !update.rollback) {
+          throw new Error("the completed product transaction has no verified rollback target");
+        }
+        if (entryBefore) {
+          const restored = installedChannelEntry(options, activeBefore.channel) || entryBefore;
+          alignEntryPlugin(options, restored, hosts);
+          verifyEntryPlugin(options, restored, hosts);
+        }
+      } catch (error) {
+        recoveryError = error;
+      }
+      if (recoveryError) {
+        throw new CliError(
+          "PLUGIN_ALIGNMENT_RECOVERY_FAILED",
+          `${pluginError.message}. Product or Plugin recovery is incomplete: ${recoveryError.message}`,
+          "system.align"
+        );
       }
       throw new CliError(
         "PLUGIN_ALIGNMENT_FAILED",
@@ -1891,6 +2006,7 @@ function printHelp() {
   console.log(`Usage: evozeus <command> [options]
 
 Commands:
+  install preflight [--channel stable] --json
   version --json
   align --channel stable|uat [--host auto|all|codex|claude] [--approve-write] --json
   channel status --json
@@ -1900,8 +2016,8 @@ Commands:
   capabilities --json
   activate --json
   review session --input <path|-> --json
-  insights plan --source codex --json
-  insights sessions --source codex --reuse-factors --html --json
+  insights plan --source codex --source-path <approved-path> --json
+  insights sessions --source codex --source-path <approved-path> --reuse-factors --html --json
   insights open --latest --json
   preserve draft --from-report <path> --json
   session analyze --input <path|-> --json
@@ -1926,6 +2042,7 @@ Global options:
   --auto-refresh
   --host auto|all|codex|claude
   --target-visibility public|private
+  --source-path <approved-codex-history-path>
 `);
 }
 
@@ -1936,6 +2053,10 @@ async function route(parsed) {
   if (options.help || !command) {
     printHelp();
     return null;
+  }
+
+  if (command === "install" && subcommand === "preflight") {
+    return runInstallPreflight({ evozeusHome: options.evozeusHome, channel: options.channel || "stable" });
   }
 
   if (command === "version") {
@@ -2035,7 +2156,13 @@ async function main() {
   const parsed = parseArgs(process.argv.slice(2));
   const result = await route(parsed);
   if (result) {
-    printResult(await maybeSendActivity(result, parsed.options), parsed.options);
+    const output = result.operation === "system.installPreflight"
+      ? result
+      : await maybeSendActivity(result, parsed.options);
+    printResult(output, parsed.options);
+    if (result.operation === "system.installPreflight" && result.status === "blocked") {
+      process.exitCode = 2;
+    }
   }
 }
 
