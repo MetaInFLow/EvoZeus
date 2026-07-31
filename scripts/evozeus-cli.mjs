@@ -8,13 +8,12 @@ import { homedir } from "node:os";
 import { fileURLToPath } from "node:url";
 import {
   ChannelError,
-  activateInstalledChannel,
+  activateInstalledProductChannel,
   applyChannelUpdate,
   channelSnapshot,
   prepareChannelUpdate,
   readActiveChannel,
   readChannelState,
-  refreshChannelBootstrap,
   rollbackChannel,
   resolveInstalledComponentRoot
 } from "./evozeus-channels.mjs";
@@ -1712,13 +1711,12 @@ function channelUse(options) {
   const entryBefore = activeBefore?.channel ? installedChannelEntry(options, activeBefore.channel) : null;
   const hosts = requestedPluginHosts(options);
   try {
-    const active = activateInstalledChannel(
+    const active = activateInstalledProductChannel(
       evozeusHome,
       options.channel,
       options.autoRefresh
     );
     const entry = installedChannelEntry(options, options.channel);
-    refreshChannelBootstrap(evozeusHome, entry.component_roots.evozeus);
     const plugin = alignEntryPlugin(options, entry, hosts);
     const verification = verifyEntryPlugin(options, entry, hosts);
     return envelope(
@@ -1732,8 +1730,7 @@ function channelUse(options) {
       if (!activeBefore?.channel || !entryBefore) {
         throw new Error("no prior active channel is available for recovery");
       }
-      activateInstalledChannel(evozeusHome, activeBefore.channel, activeBefore.auto_refresh);
-      refreshChannelBootstrap(evozeusHome, entryBefore.component_roots.evozeus);
+      activateInstalledProductChannel(evozeusHome, activeBefore.channel, activeBefore.auto_refresh);
       alignEntryPlugin(options, entryBefore, hosts);
       verifyEntryPlugin(options, entryBefore, hosts);
     } catch (caughtRecoveryError) {
@@ -1789,8 +1786,7 @@ function channelRollback(options) {
           throw new Error("no prior active channel is available for recovery");
         }
         if (activeBefore.channel !== options.channel) {
-          activateInstalledChannel(evozeusHome, activeBefore.channel, activeBefore.auto_refresh);
-          refreshChannelBootstrap(evozeusHome, entryBefore.component_roots.evozeus);
+          activateInstalledProductChannel(evozeusHome, activeBefore.channel, activeBefore.auto_refresh);
         }
         alignEntryPlugin(options, entryBefore, hosts);
         verifyEntryPlugin(options, entryBefore, hosts);
@@ -1877,9 +1873,7 @@ async function alignProduct(options) {
           rollbackChannel(evozeusHome, channel);
         }
         if (activeBefore?.channel && activeBefore.channel !== channel) {
-          activateInstalledChannel(evozeusHome, activeBefore.channel, activeBefore.auto_refresh);
-          const restoredActiveEntry = installedChannelEntry(options, activeBefore.channel);
-          refreshChannelBootstrap(evozeusHome, restoredActiveEntry.component_roots.evozeus);
+          activateInstalledProductChannel(evozeusHome, activeBefore.channel, activeBefore.auto_refresh);
         } else if (update.writes_now && !update.rollback) {
           throw new Error("the completed product transaction has no verified rollback target");
         }

@@ -1027,13 +1027,16 @@ function managedCliShimContentForCore(coreRoot) {
   const moduleUrl = pathToFileURL(realpathSync(channelsPath)).href;
   const script = [
     "const target = await import(process.argv[1]);",
-    "if (typeof target.buildManagedCliShimContent !== 'function') process.exit(2);",
+    "if (typeof target.buildManagedCliShimContent !== 'function') process.exit(42);",
     "process.stdout.write(target.buildManagedCliShimContent());"
   ].join("\n");
   const result = spawnSync(process.execPath, ["--input-type=module", "--eval", script, moduleUrl], {
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"]
   });
+  if (result.status === 42) {
+    return buildManagedCliShimContent();
+  }
   if (result.status !== 0 || !result.stdout.startsWith("#!/bin/sh\n") || result.stdout.includes("\0")) {
     throw new ChannelError("CLI_SHIM_TEMPLATE_INVALID", "the target Core managed-shim generator is unavailable or invalid", {
       stderr: String(result.stderr || "").trim()
@@ -1648,6 +1651,51 @@ export function activateInstalledChannel(evozeusHome, channel, autoRefresh = fal
   } catch (error) {
     if (activeBefore) atomicWriteJson(activePath, activeBefore);
     else rmSync(activePath, { force: true });
+    throw error;
+  }
+}
+
+export function activateInstalledProductChannel(
+  evozeusHome,
+  channel,
+  autoRefresh = false,
+  { bootstrapCopy = cpSync, shimWrite = writeFileSync } = {}
+) {
+  const home = resolve(evozeusHome);
+  const state = readChannelState(home);
+  const entry = state.channels[channel];
+  if (!entry?.component_roots?.evozeus) {
+    throw new ChannelError("CHANNEL_NOT_INSTALLED", `${channel} is not installed`);
+  }
+  const activeBefore = readActiveChannel(home);
+  const managedSurfaceBefore = captureManagedSurface(home);
+  try {
+    const active = activateInstalledChannel(home, channel, autoRefresh);
+    refreshChannelBootstrap(home, entry.component_roots.evozeus, { copyImpl: bootstrapCopy });
+    const cliReconciliation = reconcileCliShims(home, entry.component_roots.evozeus, {
+      writeImpl: shimWrite
+    });
+    return { ...active, cli_reconciliation: cliReconciliation };
+  } catch (error) {
+    let restorationError = null;
+    try {
+      const priorEntry = activeBefore?.channel ? state.channels[activeBefore.channel] : null;
+      if (!activeBefore?.channel || !priorEntry) {
+        throw new Error("no prior active channel is available for recovery");
+      }
+      activateInstalledChannel(home, activeBefore.channel, activeBefore.auto_refresh === true);
+      atomicWriteJson(join(home, "active-channel.json"), activeBefore);
+      restoreManagedSurface(managedSurfaceBefore);
+    } catch (caughtRestorationError) {
+      restorationError = caughtRestorationError;
+    }
+    if (restorationError) {
+      throw new ChannelError(
+        "ACTIVATION_ROLLBACK_FAILED",
+        "channel activation failed and the prior managed surface could not be restored",
+        { activation_error: error.message, rollback_error: restorationError.message }
+      );
+    }
     throw error;
   }
 }
