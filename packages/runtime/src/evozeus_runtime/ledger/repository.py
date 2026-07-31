@@ -123,6 +123,15 @@ class LedgerRepository:
         with self._connect() as conn:
             for ref in refs:
                 metadata = {**(ref.metadata or {}), "source_ref": str(ref.source_path)}
+                existing = conn.execute(
+                    "SELECT provider, source_ref FROM sessions WHERE session_id = ?",
+                    (ref.session_id,),
+                ).fetchone()
+                if existing is not None and (
+                    str(existing["provider"]) != ref.provider
+                    or str(existing["source_ref"]) != str(ref.source_path)
+                ):
+                    conn.execute("DELETE FROM sessions WHERE session_id = ?", (ref.session_id,))
                 conn.execute(
                     """
                     INSERT INTO source_refs (
