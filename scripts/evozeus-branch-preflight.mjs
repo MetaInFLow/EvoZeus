@@ -51,9 +51,15 @@ function checkoutStatus(path, { bare = false } = {}) {
   const reason = bare ? "bare" : (!existsSync(path) ? "missing" : null);
   if (reason) return { path, available: false, reason, dirty_entries: [] };
   const result = git(path, ["status", "--porcelain=v1", "--untracked-files=all"]);
-  if (result.status !== 0) return { path, available: false, reason: "git_status_failed", dirty_entries: [] };
-  const dirtyEntries = result.stdout.trim().split("\n").filter(Boolean);
-  return { path, available: true, reason: null, dirty_entries: dirtyEntries };
+  if (result.status !== 0) {
+    return { path, available: false, reason: "git_status_failed", dirty_entries: [] };
+  }
+  return {
+    path,
+    available: true,
+    reason: null,
+    dirty_entries: result.stdout.trim().split("\n").filter(Boolean)
+  };
 }
 
 function githubRepoFromRemote(remoteUrl) {
@@ -99,9 +105,11 @@ function readJson(path) {
 
 export function loadContributorBranchContract(path = DEFAULT_CONTRACT) {
   const contract = readJson(resolve(path));
-  const supported = contract.contract === "evozeus.contributor_branch"
-    && contract.schema_version === "v1" && /^1\.[0-9]+\.[0-9]+$/.test(contract.version);
-  if (!supported) {
+  if (
+    contract.contract !== "evozeus.contributor_branch"
+    || contract.schema_version !== "v1"
+    || !/^1\.[0-9]+\.[0-9]+$/.test(contract.version)
+  ) {
     throw new Error("unsupported contributor branch contract identity, schema, or major version");
   }
   return contract;
@@ -112,7 +120,8 @@ export function collectGitFacts(repoPath, baseRef, targetBranch) {
   const worktrees = parseWorktrees(gitText(root, ["worktree", "list", "--porcelain"]));
   const currentStatus = checkoutStatus(root);
   const canonicalDescriptor = worktrees[0] || { path: root, bare: false };
-  const canonicalStatus = canonicalDescriptor.path === root ? currentStatus
+  const canonicalStatus = canonicalDescriptor.path === root
+    ? currentStatus
     : checkoutStatus(canonicalDescriptor.path, canonicalDescriptor);
   const originUrl = gitText(root, ["config", "--get", "remote.origin.url"], false);
   const baseCommit = gitText(root, ["rev-parse", "--verify", `${baseRef}^{commit}`], false);
@@ -173,16 +182,23 @@ export function collectGitHubPermissionEvidence(repo, checkedAt, runner = spawnS
   const permissionAvailable = Boolean(viewerPermission);
 
   return {
-    source: identityAvailable && permissionAvailable && forkPolicyAvailable ? "github_api"
+    source: identityAvailable && permissionAvailable && forkPolicyAvailable
+      ? "github_api"
       : (identityAvailable || permissionAvailable || forkPolicyAvailable ? "github_api_partial" : "unavailable"),
     checked_at: checkedAt,
-    identity: { source: "gh api user", available: identityAvailable, login },
+    identity: {
+      source: "gh api user",
+      available: identityAvailable,
+      login
+    },
     repository: {
       canonical: repo,
       permission_source: "gh api graphql repository.viewerPermission",
-      permission_available: permissionAvailable, viewer_permission: viewerPermission,
+      permission_available: permissionAvailable,
+      viewer_permission: viewerPermission,
       fork_policy_source: `gh api repos/${repo}`,
-      fork_policy_available: forkPolicyAvailable, fork_allowed: forkAllowed
+      fork_policy_available: forkPolicyAvailable,
+      fork_allowed: forkAllowed
     }
   };
 }
@@ -255,8 +271,11 @@ export function buildBranchPlan(options, contract, facts, permissionEvidence, re
   if (isProtectedRef(branchName, contract)) addBlocker(blockers, "protected_target", "target branch is protected");
   if (!facts.base_commit) addBlocker(blockers, "missing_base", `base ref does not resolve: ${options.base}`);
   if (facts.dirty_entries.length > 0) addBlocker(blockers, "dirty_tree", "repository worktree is dirty");
-  if (!facts.canonical_status.available) addBlocker(blockers, "canonical_checkout_status_unavailable", "canonical checkout status cannot be verified");
-  else if (facts.canonical_status.dirty_entries.length > 0) addBlocker(blockers, "canonical_checkout_dirty", "canonical checkout must remain clean");
+  if (!facts.canonical_status.available) {
+    addBlocker(blockers, "canonical_checkout_status_unavailable", "canonical checkout status cannot be verified");
+  } else if (facts.canonical_status.dirty_entries.length > 0) {
+    addBlocker(blockers, "canonical_checkout_dirty", "canonical checkout must remain clean");
+  }
   if (!facts.origin_repo) {
     addBlocker(blockers, "missing_origin_identity", "remote.origin must identify a GitHub OWNER/REPO");
   } else if (facts.origin_repo.toLowerCase() !== options.repo.toLowerCase()) {
@@ -369,10 +388,14 @@ export function buildBranchPlan(options, contract, facts, permissionEvidence, re
       canonical_checkout_path: canonicalCheckout,
       isolated: requestedWorktree !== canonicalCheckout,
       registered: Boolean(registeredAtPath),
-      current_checkout: { status_available: facts.current_status.available, dirty_entry_count: facts.current_status.dirty_entries.length },
+      current_checkout: {
+        status_available: facts.current_status.available,
+        dirty_entry_count: facts.current_status.dirty_entries.length
+      },
       canonical_checkout: {
         status_source: "git status --porcelain=v1",
-        status_available: facts.canonical_status.available, status_reason: facts.canonical_status.reason,
+        status_available: facts.canonical_status.available,
+        status_reason: facts.canonical_status.reason,
         dirty_entry_count: facts.canonical_status.dirty_entries.length
       }
     },

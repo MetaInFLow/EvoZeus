@@ -18,7 +18,9 @@ const CONTRACT = join(ROOT, "contracts", "v1", "contributor-branch-contract.json
 const FIXED_NOW = "2026-07-31T00:00:00.000Z";
 const contract = loadContributorBranchContract(CONTRACT);
 
-function execute(command, args, cwd) { return spawnSync(command, args, { cwd, encoding: "utf8", shell: false }); }
+function execute(command, args, cwd) {
+  return spawnSync(command, args, { cwd, encoding: "utf8", shell: false });
+}
 
 function git(cwd, ...args) {
   const result = execute("git", args, cwd);
@@ -79,10 +81,19 @@ function runPlan(fixture, overrides = {}) {
   const github = overrides.github;
   const resumePlanPath = overrides.resume_plan;
   const values = {
-    profile: "evozeus_core_direct", repo: "MetaInFLow/EvoZeus", repo_path: fixture.repo,
-    base: "origin/main", issue: "MetaInFLow/EvoZeus#44", actor: "alice",
-    type: "dev", component: "governance", summary: "branch-contract", permission: "direct",
-    worktree: fixture.worktree, date: "20260731", now: FIXED_NOW,
+    profile: "evozeus_core_direct",
+    repo: "MetaInFLow/EvoZeus",
+    repo_path: fixture.repo,
+    base: "origin/main",
+    issue: "MetaInFLow/EvoZeus#44",
+    actor: "alice",
+    type: "dev",
+    component: "governance",
+    summary: "branch-contract",
+    permission: "direct",
+    worktree: fixture.worktree,
+    date: "20260731",
+    now: FIXED_NOW,
     ...overrides
   };
   delete values.github;
@@ -101,13 +112,19 @@ function runPlan(fixture, overrides = {}) {
   return { result, plan };
 }
 
-function blockerCodes(plan) { return plan.blockers.map(({ code }) => code); }
+function blockerCodes(plan) {
+  return plan.blockers.map(({ code }) => code);
+}
 
 test("contract exposes the four required profiles", () => {
   const contract = JSON.parse(readFileSync(CONTRACT, "utf8"));
   const expected = ["evozeus_core_direct", "uat_repair_development", "community_contribution", "coevolve_target_skillware_consumer"];
   assert.deepEqual(Object.keys(contract.profiles), expected);
-  assert.deepEqual(contract.host_compatibility, { supported_hosts: ["codex", "claude"], plan_semantics: "identical", host_input_to_planner: false });
+  assert.deepEqual(contract.host_compatibility, {
+    supported_hosts: ["codex", "claude"],
+    plan_semantics: "identical",
+    host_input_to_planner: false
+  });
 });
 
 test("plans a clean new direct contribution with zero writes", (context) => {
@@ -187,8 +204,10 @@ test("blocks a clean isolated worktree when the canonical checkout is dirty", (c
   const fixture = fixtureFor(context);
   git(fixture.repo, "worktree", "add", "-b", "inspection", fixture.worktree, "origin/main");
   writeFileSync(join(fixture.repo, "canonical-dirty.txt"), "dirty\n");
-  const { result, plan } = runPlan(fixture, { repo_path: fixture.worktree,
-    worktree: join(fixture.root, "planned-worktree") });
+  const { result, plan } = runPlan(fixture, {
+    repo_path: fixture.worktree,
+    worktree: join(fixture.root, "planned-worktree")
+  });
   assert.equal(result.status, 2);
   assert(!blockerCodes(plan).includes("dirty_tree"));
   assert(blockerCodes(plan).includes("canonical_checkout_dirty"));
@@ -233,9 +252,24 @@ test("blocks stale ownership metadata", (context) => {
   assert(blockerCodes(plan).includes("stale_ownership"));
 });
 
-test("selects a deterministic no-PR local-patch fallback", (context) => {
-  const fixture = fixtureFor(context);
-  const local = runPlan(fixture, {
+test("selects deterministic fork-only and local-patch fallbacks", (context) => {
+  const forkFixture = createFixture();
+  const localFixture = createFixture();
+  context.after(() => rmSync(forkFixture.root, { recursive: true, force: true }));
+  context.after(() => rmSync(localFixture.root, { recursive: true, force: true }));
+
+  const fork = runPlan(forkFixture, {
+    profile: "community_contribution",
+    type: "docs",
+    component: "docs",
+    permission: "fork",
+    github: { viewerPermission: "READ" }
+  }).plan;
+  assert.equal(fork.permission_path.mode, "fork_pull_request");
+  assert.equal(fork.repo.source, "alice/EvoZeus");
+  assert.equal(fork.next_write_action, "create_fork_branch_in_isolated_worktree");
+
+  const local = runPlan(localFixture, {
     profile: "community_contribution",
     type: "docs",
     component: "docs",
