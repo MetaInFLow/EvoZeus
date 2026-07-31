@@ -52,10 +52,10 @@ Planner 通过只读 GitHub API 查询声明的 Issue，并核验 Repo、编号�
 
 `--actor` 与 `--permission` 只声明调用方的预期。Planner 使用只读 GitHub API 取得当前 viewer login、目标 Repo `viewerPermission` 和 fork policy，再确定实际路径：
 
-- `ADMIN`、`MAINTAIN`、`WRITE` 解析为 direct。
+- `ADMIN`、`MAINTAIN`、`WRITE` 且 Repo 未 archived/disabled 时解析为 direct。
 - `READ`、`TRIAGE` 且目标 Repo 允许 fork 时解析为 fork。
 - 无可验证身份、权限证据不完整、Repo 禁止 fork 或无 PR 能力时解析为 local patch。
-- 预期 actor/permission 与证据不一致时阻断。`--repo` 还必须匹配本地 `remote.origin`。
+- 预期 actor/permission 与证据不一致时阻断。`--repo` 还必须匹配本地 `remote.origin` 的有效 fetch URL 及全部有效 push URL；`pushurl`、`insteadOf` 或 `pushInsteadOf` 重写后的目标同样参与校验。
 
 GitHub 权限证据不可用时，权限路径解析为 local patch，且固定 `push_allowed=false`、`pull_request_allowed=false`。Issue 证据不可用时整个计划阻断，因此恢复 API 取证前不得开始业务写入。Repo 内容、合同覆盖文件或命令参数均不能授予 direct/fork 权限。
 

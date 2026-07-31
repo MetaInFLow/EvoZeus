@@ -163,6 +163,9 @@ test("contract exposes the four required profiles", () => {
   assert.equal(contract.worktree.registered_worktree_descendant, "block");
   assert.equal(contract.worktree.dangling_symlink_path, "occupied_and_blocked");
   assert.equal(contract.blocking_handling.current_checkout_status_unavailable, "block");
+  assert.equal(contract.permission_resolution.direct_repository_state, "not_archived_and_not_disabled");
+  assert.equal(contract.remote_resolution.push_urls,
+    "every_effective_origin_push_url_must_match_canonical_github_repo");
 });
 
 test("plans a clean new direct contribution with zero writes", (context) => {
@@ -188,6 +191,28 @@ test("resolves ADMIN and WRITE viewers to direct from GitHub evidence", (context
     assert.equal(result.status, 0);
     assert.equal(plan.permission_path.resolved, "direct");
     assert.equal(plan.permission_evidence.repository.viewer_permission, viewerPermission);
+  }
+});
+
+test("resolves archived or disabled repositories away from direct", (context) => {
+  const cases = [
+    { archived: true, disabled: false },
+    { archived: false, disabled: true }
+  ];
+  const fixtures = cases.map(() => createFixture());
+  context.after(() => fixtures.forEach(({ root }) => rmSync(root, { recursive: true, force: true })));
+
+  for (const [index, state] of cases.entries()) {
+    const { result, plan } = runPlan(fixtures[index], {
+      github: {
+        viewerPermission: "ADMIN",
+        repository: { private: false, allow_forking: true, ...state }
+      }
+    });
+    assert.equal(result.status, 2);
+    assert.equal(plan.permission_path.resolved, "local");
+    assert.equal(plan.permission_evidence.repository.write_allowed, false);
+    assert(blockerCodes(plan).includes("permission_expectation_mismatch"));
   }
 });
 
@@ -417,6 +442,22 @@ test("accepts exact GitHub HTTPS, SSH, and scp-like origins and rejects lookalik
     git(fixture.repo, "remote", "set-url", "origin", origin);
     assert(blockerCodes(runPlan(fixture).plan).includes("missing_origin_identity"), origin);
   }
+});
+
+test("validates every effective origin push URL after Git rewrites", (context) => {
+  const explicitPush = createFixture();
+  const rewrittenPush = createFixture();
+  context.after(() => rmSync(explicitPush.root, { recursive: true, force: true }));
+  context.after(() => rmSync(rewrittenPush.root, { recursive: true, force: true }));
+
+  git(explicitPush.repo, "remote", "set-url", "--add", "--push", "origin", "https://github.com/MetaInFLow/EvoZeus.git");
+  git(explicitPush.repo, "remote", "set-url", "--add", "--push", "origin", "https://evilgithub.com/MetaInFLow/EvoZeus.git");
+  const explicitPlan = runPlan(explicitPush).plan;
+  assert(blockerCodes(explicitPlan).includes("missing_origin_push_identity"));
+
+  git(rewrittenPush.repo, "config", "url.https://evilgithub.com/.insteadOf", "https://github.com/");
+  const rewrittenPlan = runPlan(rewrittenPush).plan;
+  assert(blockerCodes(rewrittenPlan).includes("missing_origin_push_identity"));
 });
 
 test("blocks a new plan when HEAD is not the requested base commit", (context) => {
