@@ -16,6 +16,7 @@ import {
 } from "node:fs";
 import { dirname, isAbsolute, join, parse, relative, resolve, sep } from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 export const PRODUCT_COMPONENTS = ["evozeus", "coevolve"];
 export const EMBEDDED_COMPONENTS = ["runtime", "session_signal"];
@@ -58,9 +59,12 @@ const CHANNEL_BOOTSTRAP_FILES = [
   "evozeus-install-preflight.mjs",
   "evozeus-launcher.mjs"
 ];
+const CHANNEL_DISPATCHER = fileURLToPath(new URL("./evozeus-coevolve-dispatcher.py", import.meta.url));
+const MANAGED_CLI_SHIM_TEMPLATE_VERSION = "evozeus.managed-cli.v1";
 
 export function buildManagedCliShimContent() {
   return `#!/bin/sh
+# ${MANAGED_CLI_SHIM_TEMPLATE_VERSION}
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
 EVOZEUS_HOME="\${EVOZEUS_HOME:-$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)}"
 export EVOZEUS_HOME
@@ -943,7 +947,9 @@ function validateInstalledCompatibility(manifest, componentRoots) {
 
 export function fixedComponentSmoke(componentId, destination) {
   if (componentId === "evozeus") {
-    execChecked("node", [join(destination, "scripts", "evozeus-cli.mjs"), "features", "--json"]);
+    execChecked("node", [join(destination, "scripts", "evozeus-cli.mjs"), "features", "--json"], {
+      env: { ...process.env, EVOZEUS_HOME: join(destination, ".evozeus-smoke") }
+    });
   } else if (componentId === "coevolve") {
     execChecked("python3", [join(destination, "scripts", "evozeus_wrapper.py"), "--help"], {
       cwd: destination,
@@ -1060,7 +1066,93 @@ export function refreshChannelBootstrap(evozeusHome, coreRoot, { copyImpl = cpSy
   }
 }
 
-function reconcileCliShims(evozeusHome) {
+function managedCliShimContentForCore(coreRoot) {
+  const root = resolve(coreRoot);
+  const channelsPath = join(root, "scripts", "evozeus-channels.mjs");
+  if (containedPathSafety(root, channelsPath, "file") !== "ready") {
+    throw new ChannelError("CLI_SHIM_TEMPLATE_UNAVAILABLE", "the target Core has no safe managed-shim generator");
+  }
+  const moduleUrl = pathToFileURL(realpathSync(channelsPath)).href;
+  const script = [
+    "const target = await import(process.argv[1]);",
+    "if (typeof target.buildManagedCliShimContent !== 'function') process.exit(2);",
+    "process.stdout.write(target.buildManagedCliShimContent());"
+  ].join("\n");
+  const result = spawnSync(process.execPath, ["--input-type=module", "--eval", script, moduleUrl], {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"]
+  });
+  if (result.status !== 0 || !result.stdout.startsWith("#!/bin/sh\n") || result.stdout.includes("\0")) {
+    throw new ChannelError("CLI_SHIM_TEMPLATE_INVALID", "the target Core managed-shim generator is unavailable or invalid", {
+      stderr: String(result.stderr || "").trim()
+    });
+  }
+  return result.stdout;
+}
+
+function managedSurfacePaths(home) {
+  return {
+    roots: [join(home, "skeleton", "scripts"), join(home, "bin")],
+    files: [
+      ...CHANNEL_BOOTSTRAP_FILES.map((file) => join(home, "skeleton", "scripts", file)),
+      join(home, "bin", "evozeus"),
+      join(home, "bin", "evozeus-repair")
+    ]
+  };
+}
+
+function captureManagedSurface(evozeusHome) {
+  const home = resolve(evozeusHome);
+  const paths = managedSurfacePaths(home);
+  const roots = paths.roots.map((path) => {
+    const node = lstatEvidence(path);
+    if (node.status === "unknown" || (node.status === "ready" && (node.stats.isSymbolicLink() || !node.stats.isDirectory()))) {
+      throw new ChannelError("MANAGED_SURFACE_UNSAFE", `managed directory is unsafe: ${path}`);
+    }
+    return { path, existed: node.status === "ready", mode: node.status === "ready" ? node.stats.mode & 0o777 : null };
+  });
+  const files = paths.files.map((path) => {
+    const node = lstatEvidence(path);
+    if (node.status === "unknown" || (node.status === "ready" && (node.stats.isSymbolicLink() || !node.stats.isFile()))) {
+      throw new ChannelError("MANAGED_SURFACE_UNSAFE", `managed file is unsafe: ${path}`);
+    }
+    return {
+      path,
+      existed: node.status === "ready",
+      mode: node.status === "ready" ? node.stats.mode & 0o777 : null,
+      bytes: node.status === "ready" ? readFileSync(path) : null
+    };
+  });
+  return { roots, files };
+}
+
+function restoreManagedSurface(snapshot) {
+  for (const file of snapshot.files) {
+    if (!file.existed) {
+      rmSync(file.path, { force: true });
+      continue;
+    }
+    privateDirectory(dirname(file.path));
+    const temporary = `${file.path}.${randomUUID()}.restore`;
+    try {
+      writeFileSync(temporary, file.bytes);
+      chmodSync(temporary, file.mode);
+      renameSync(temporary, file.path);
+    } catch (error) {
+      rmSync(temporary, { force: true });
+      throw error;
+    }
+  }
+  for (const root of snapshot.roots) {
+    if (!root.existed) {
+      rmSync(root.path, { recursive: true, force: true });
+    } else {
+      chmodSync(root.path, root.mode);
+    }
+  }
+}
+
+function reconcileCliShims(evozeusHome, coreRoot, { writeImpl = writeFileSync } = {}) {
   const home = resolve(evozeusHome);
   const binRoot = join(home, "bin");
   if (creatableDirectorySafety(binRoot) !== "ready") {
@@ -1078,7 +1170,7 @@ function reconcileCliShims(evozeusHome) {
   if (mainNode.status === "missing" && recoveryNode.status === "missing") {
     return { status: "not_managed", repaired: false };
   }
-  const canonical = Buffer.from(buildManagedCliShimContent(), "utf8");
+  const canonical = Buffer.from(managedCliShimContentForCore(coreRoot), "utf8");
   privateDirectory(binRoot);
   const restored = [];
   for (const [name, target, node] of [["primary", main, mainNode], ["recovery", recovery, recoveryNode]]) {
@@ -1093,7 +1185,7 @@ function reconcileCliShims(evozeusHome) {
     if (!requiresRepair) continue;
     const temporary = `${target}.${randomUUID()}.tmp`;
     try {
-      writeFileSync(temporary, canonical);
+      writeImpl(temporary, canonical);
       chmodSync(temporary, 0o755);
       renameSync(temporary, target);
       restored.push(name);
@@ -1286,8 +1378,10 @@ function installedEntryIntegrity(evozeusHome, entry, manifest, { historical = fa
     if (recoveryCliSafety === "ready" && (lstatSync(recoveryCli).mode & 0o111) === 0) {
       issues.push("cli_recovery:not_executable");
     }
-    const canonicalCliShim = Buffer.from(buildManagedCliShimContent(), "utf8");
-    if (mainCliSafety === "ready") {
+    const canonicalCliShim = cliManaged && coreRoot
+      ? Buffer.from(managedCliShimContentForCore(coreRoot), "utf8")
+      : null;
+    if (mainCliSafety === "ready" && canonicalCliShim) {
       try {
         if (!readFileSync(mainCli).equals(canonicalCliShim)) {
           issues.push("cli:content_mismatch");
@@ -1296,7 +1390,7 @@ function installedEntryIntegrity(evozeusHome, entry, manifest, { historical = fa
         unsafe.push("cli:unreadable");
       }
     }
-    if (recoveryCliSafety === "ready") {
+    if (recoveryCliSafety === "ready" && canonicalCliShim) {
       try {
         if (!readFileSync(recoveryCli).equals(canonicalCliShim)) {
           issues.push("cli_recovery:content_mismatch");
@@ -1748,7 +1842,8 @@ export async function applyChannelUpdate({
   fetchImpl = globalThis.fetch,
   smokeRunner = fixedComponentSmoke,
   embeddedSmokeRunner = fixedEmbeddedSmoke,
-  bootstrapCopy = cpSync
+  bootstrapCopy = cpSync,
+  shimWrite = writeFileSync
 }) {
   const home = resolve(evozeusHome);
   const plan = await prepareChannelUpdate({ evozeusHome: home, channel, manifestSource, fetchImpl });
@@ -1770,12 +1865,13 @@ export async function applyChannelUpdate({
       active: readActiveChannel(home)
     };
   }
+  const managedSurfaceBefore = captureManagedSurface(home);
   if (plan.decision === "activate" && existing?.install_root && existsSync(existing.install_root)) {
     let active;
     try {
       active = activateInstalledChannel(home, channel, autoRefresh);
       refreshChannelBootstrap(home, existing.component_roots.evozeus, { copyImpl: bootstrapCopy });
-      reconcileCliShims(home);
+      reconcileCliShims(home, existing.component_roots.evozeus, { writeImpl: shimWrite });
     } catch (error) {
       let rollbackError = null;
       try {
@@ -1784,8 +1880,8 @@ export async function applyChannelUpdate({
           throw new Error("no prior active channel is available for recovery");
         }
         activateInstalledChannel(home, activeBefore.channel, activeBefore.auto_refresh === true);
-        refreshChannelBootstrap(home, priorEntry.component_roots.evozeus);
         atomicWriteJson(join(home, "active-channel.json"), activeBefore);
+        restoreManagedSurface(managedSurfaceBefore);
       } catch (caughtRollbackError) {
         rollbackError = caughtRollbackError;
       }
@@ -1912,7 +2008,7 @@ export async function applyChannelUpdate({
       atomicWriteJson(join(home, "channel-state.json"), nextState);
     }
     refreshChannelBootstrap(home, coreRoot, { copyImpl: bootstrapCopy });
-    reconcileCliShims(home);
+    reconcileCliShims(home, coreRoot, { writeImpl: shimWrite });
     return {
       status: migrating ? "migrated" : repairing ? "repaired" : reuseExistingRoot ? "reused_verified" : "installed",
       ...plan,
@@ -1943,6 +2039,7 @@ export async function applyChannelUpdate({
         else rmSync(currentLink, { force: true });
       }
       if (hookMigrationStarted && backupPath) restoreLegacyState(home, backupPath);
+      restoreManagedSurface(managedSurfaceBefore);
     } catch (caughtRollbackError) {
       rollbackError = caughtRollbackError;
     }
@@ -1964,6 +2061,7 @@ export function rollbackChannel(
   channel,
   {
     bootstrapCopy = cpSync,
+    shimWrite = writeFileSync,
     smokeRunner = fixedComponentSmoke,
     embeddedSmokeRunner = fixedEmbeddedSmoke
   } = {}
@@ -2010,7 +2108,7 @@ export function rollbackChannel(
   const currentLink = currentLinkFor(home, channel);
   const linkBefore = linkTarget(currentLink);
   const activeBefore = readActiveChannel(home);
-  const activeBeforeEntry = activeBefore?.channel ? state.channels[activeBefore.channel] : null;
+  const managedSurfaceBefore = captureManagedSurface(home);
   const restored = {
     ...previous,
     previous: { ...current, previous: null },
@@ -2035,7 +2133,7 @@ export function rollbackChannel(
       activeBefore?.channel === channel && activeBefore.auto_refresh === true
     );
     refreshChannelBootstrap(home, previous.component_roots.evozeus, { copyImpl: bootstrapCopy });
-    reconcileCliShims(home);
+    reconcileCliShims(home, previous.component_roots.evozeus, { writeImpl: shimWrite });
     return {
       status: "rolled_back",
       channel,
@@ -2056,11 +2154,7 @@ export function rollbackChannel(
       } else {
         rmSync(join(home, "active-channel.json"), { force: true });
       }
-      if (activeBeforeEntry?.component_roots?.evozeus) {
-        refreshChannelBootstrap(home, activeBeforeEntry.component_roots.evozeus);
-      } else if (error.code === "BOOTSTRAP_ROLLBACK_FAILED") {
-        throw new Error("the prior bootstrap bytes cannot be verified without an active channel");
-      }
+      restoreManagedSurface(managedSurfaceBefore);
     } catch (caughtRestorationError) {
       restorationError = caughtRestorationError;
     }

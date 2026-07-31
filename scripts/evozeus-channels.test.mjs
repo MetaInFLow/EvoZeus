@@ -860,6 +860,93 @@ describe("channel transactions", () => {
       assert.equal(channelSnapshot(home).health, "healthy");
     }));
 
+  it("uses the target Core shim template and restores bootstrap and shims after a partial write failure", async () =>
+    fixture(async (root) => {
+      const home = join(root, "home");
+      const components = Object.fromEntries(
+        Object.keys(COMPONENT_PATHS).map((componentId) => [componentId, initComponent(root, componentId)])
+      );
+      const initialManifest = writeManifest(root, "uat-target-shim-v1.json", uatManifest(components, "v0.4.0"));
+      await applyChannelUpdate({
+        evozeusHome: home,
+        channel: "uat",
+        manifestSource: initialManifest,
+        smokeRunner: noSmoke
+      });
+      const binRoot = join(home, "bin");
+      const primaryCli = join(binRoot, "evozeus");
+      const recoveryCli = join(binRoot, "evozeus-repair");
+      mkdirSync(binRoot, { recursive: true });
+      for (const path of [primaryCli, recoveryCli]) {
+        writeFileSync(path, buildManagedCliShimContent());
+        chmodSync(path, 0o755);
+      }
+
+      const channelsSource = join(components.evozeus.repo, "scripts", "evozeus-channels.mjs");
+      const updateTargetTemplate = (from, to, message) => {
+        const source = readFileSync(channelsSource, "utf8");
+        assert.ok(source.includes(from));
+        writeFileSync(channelsSource, source.replace(from, to));
+        git(components.evozeus.repo, "add", "scripts/evozeus-channels.mjs");
+        git(components.evozeus.repo, "commit", "-m", message);
+        components.evozeus.commit = git(components.evozeus.repo, "rev-parse", "HEAD");
+      };
+
+      updateTargetTemplate("evozeus.managed-cli.v1", "evozeus.managed-cli.v2", "target shim v2");
+      const v2Manifest = writeManifest(root, "uat-target-shim-v2.json", uatManifest(components, "v0.4.1"));
+      const updated = await applyChannelUpdate({
+        evozeusHome: home,
+        channel: "uat",
+        manifestSource: v2Manifest,
+        smokeRunner: noSmoke
+      });
+      assert.equal(updated.status, "installed");
+      const v2Shim = readFileSync(primaryCli, "utf8");
+      assert.match(v2Shim, /evozeus\.managed-cli\.v2/);
+      assert.equal(readFileSync(recoveryCli, "utf8"), v2Shim);
+      assert.equal(channelSnapshot(home).health, "healthy");
+
+      const stateBefore = readFileSync(join(home, "channel-state.json"));
+      const activeBefore = readFileSync(join(home, "active-channel.json"));
+      const linkBefore = readlinkSync(join(home, "worktrees", "uat", "current"));
+      const bootstrapRoot = join(home, "skeleton", "scripts");
+      const bootstrapBefore = Object.fromEntries(
+        readdirSync(bootstrapRoot).map((name) => [name, readFileSync(join(bootstrapRoot, name))])
+      );
+      const primaryBefore = readFileSync(primaryCli);
+      const recoveryBefore = readFileSync(recoveryCli);
+
+      updateTargetTemplate("evozeus.managed-cli.v2", "evozeus.managed-cli.v3", "target shim v3");
+      const v3Manifest = writeManifest(root, "uat-target-shim-v3.json", uatManifest(components, "v0.4.2"));
+      let shimWrites = 0;
+      await assert.rejects(
+        applyChannelUpdate({
+          evozeusHome: home,
+          channel: "uat",
+          manifestSource: v3Manifest,
+          smokeRunner: noSmoke,
+          shimWrite: (path, bytes) => {
+            shimWrites += 1;
+            if (shimWrites === 2) throw new Error("injected second shim write failure");
+            writeFileSync(path, bytes);
+          }
+        }),
+        /injected second shim write failure/
+      );
+
+      assert.equal(shimWrites, 2);
+      assert.deepEqual(readFileSync(join(home, "channel-state.json")), stateBefore);
+      assert.deepEqual(readFileSync(join(home, "active-channel.json")), activeBefore);
+      assert.equal(readlinkSync(join(home, "worktrees", "uat", "current")), linkBefore);
+      assert.deepEqual(readFileSync(primaryCli), primaryBefore);
+      assert.deepEqual(readFileSync(recoveryCli), recoveryBefore);
+      assert.deepEqual(
+        Object.fromEntries(readdirSync(bootstrapRoot).map((name) => [name, readFileSync(join(bootstrapRoot, name))])),
+        bootstrapBefore
+      );
+      assert.equal(channelSnapshot(home).health, "healthy");
+    }));
+
   it("refreshes bootstrap on activation and restores the prior active channel when refresh fails", async () =>
     fixture(async (root) => {
       const home = join(root, "home");
