@@ -57,7 +57,7 @@ Planner 通过只读 GitHub API 查询声明的 Issue，并核验 Repo、编号�
 - `ADMIN`、`MAINTAIN`、`WRITE` 且 Repo 未 archived/disabled 时解析为 direct。
 - `READ`、`TRIAGE` 且目标 Repo 允许 fork 时解析为 fork。
 - 无可验证身份、权限证据不完整、Repo 禁止 fork 或无 PR 能力时解析为 local patch。
-- 预期 actor/permission 与证据不一致时阻断。`--repo` 还必须匹配本地 `remote.origin` 的有效 fetch URL 及全部有效 push URL；`pushurl`、`insteadOf` 或 `pushInsteadOf` 重写后的目标同样参与校验。目标 branch 是否存在通过有效 origin 的 live `git ls-remote` 取证，查询不可用或本地/live remote 同名分支分叉时阻断。
+- 预期 actor/permission 与证据不一致时阻断。`--repo` 还必须匹配本地 `remote.origin` 的有效 fetch URL 及全部有效 push URL；`pushurl`、`insteadOf` 或 `pushInsteadOf` 重写后的目标同样参与校验。Canonical base 与目标 branch 都通过有效 origin 的 live `git ls-remote` 取证；查询不可用、cached base 过期或本地/live remote 同名目标分支分叉时阻断。
 
 GitHub 权限证据不可用时，权限路径解析为 local patch，且固定 `push_allowed=false`、`pull_request_allowed=false`。Issue 证据不可用时整个计划阻断，因此恢复 API 取证前不得开始业务写入。Repo 内容、合同覆盖文件或命令参数均不能授予 direct/fork 权限。
 
@@ -66,7 +66,7 @@ Branch plan 对 Codex 与 Claude 使用完全相同的输入、判定和输出�
 ## New 与 Resume
 
 - `new`：目标分支不存在，当前 checkout clean 且 HEAD 与 canonical base commit 一致，计划指向新的隔离 worktree。目标路径不得位于任何已注册 worktree 内。
-- `resume`：调用方提供之前保存的 plan，resume key、owner、base ref/commit、完整 purpose（type/component/summary）和含 actor 所有权段的目标 branch 全部匹配，且 ownership 未过期。目标 worktree 已注册、目录可用且自身 clean 时输出 `resume_existing_branch_in_isolated_worktree`；分支仍存在、目标路径不存在且未被其他 worktree 占用时输出零写入 `recreate_resume_worktree_for_existing_branch`；Git 仍保留 prunable registration 时输出 `prune_and_recreate_resume_worktree_for_existing_branch`。后续清理或创建仍需独立授权。
+- `resume`：调用方提供之前保存的 plan，resume key、owner、base ref/commit、完整 purpose（type/component/summary）和含 actor 所有权段的目标 branch 全部匹配，且 ownership 未过期。目标 worktree 已注册、目录可用且自身 clean 时输出 `resume_existing_branch_in_isolated_worktree`；分支仍存在、目标路径不存在且未被其他 worktree 占用时输出零写入 `recreate_resume_worktree_for_existing_branch`；Git 仍保留 prunable registration 且目录已消失时输出 `prune_and_recreate_resume_worktree_for_existing_branch`。Prunable registration 的目录仍存在时先阻断，由 Owner 处理遗留内容。
 - Resume 未显式提供 `--date` 时，仅从 purpose 完全匹配的既有 plan target branch 恢复原 `yyyymmdd`；无法验证时使用当前日期并由完整 ownership/branch identity 检查继续 fail closed。
 - 同名 branch 存在但缺少匹配 plan 时视为 collision。
 - Resume evidence 必须来自 blocker-free、`writes=false` 且 next action 可执行的既有 plan；blocked/error output 不能把 collision 转成 resume。目标 branch 还必须证明 saved canonical base 是其 ancestor。
@@ -80,11 +80,13 @@ Branch plan 对 Codex 与 Claude 使用完全相同的输入、判定和输出�
 | current checkout status unavailable | 阻断，修复当前 checkout/index 后重新取证。 |
 | canonical checkout dirty/unavailable | 即使当前隔离 worktree clean 也阻断，并输出独立 status evidence。 |
 | requested registered worktree dirty/unavailable | 阻断，处理该 resume worktree 的已有改动或 status 错误后重新取证。 |
-| live target remote state unavailable/diverged | 阻断，恢复有效 origin 查询并对齐本地/live remote 同名分支。 |
+| live base/target remote state unavailable/diverged | 阻断，恢复有效 origin 查询并对齐 cached base 或本地/live remote 同名分支。 |
 | wrong/missing base | 阻断，重新取得 canonical ref 与 commit。 |
 | protected checkout direct write | 阻断，改用外部 worktree。 |
 | branch/worktree collision | 阻断，禁止复用来源不明的分支。 |
 | dangling symlink at requested path | 视为路径已占用并阻断。 |
+| requested path ancestor is a file/dangling symlink | 视为不可创建路径并阻断。 |
+| prunable registration path still exists | 阻断，显式处理目录内容后再 prune/recreate。 |
 | blocked resume evidence / target branch wrong base | 阻断，重新取得有效 plan 或从 saved canonical base 重建 branch。 |
 | requested path nested in any registered worktree | 阻断，选择所有 worktree 外部的隔离路径。 |
 | stale ownership | 默认阻断；身份完全匹配时由 Owner 使用 `--reconfirm-owner` 刷新，身份不匹配继续阻断。 |

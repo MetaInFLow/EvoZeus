@@ -143,12 +143,18 @@ function runPlan(fixture, overrides = {}) {
   const before = snapshot(fixture.repo);
   const evidence = collectGitHubPermissionEvidence(values.repo, values.now, fakeGitHubRunner(github));
   const branch = targetBranchFor(values, evidence.identity.login || values.actor);
+  const baseBranch = values.base.replace(/^origin\//, "");
+  const baseCommit = git(fixture.repo, "rev-parse", values.base);
+  const remoteEvidence = {
+    ...gitRemote,
+    heads: { [baseBranch]: baseCommit, ...gitRemote?.heads }
+  };
   const facts = collectGitFacts(
     values.repo_path,
     values.base,
     branch,
     values.worktree,
-    fakeGitFactsRunner(gitRemote)
+    fakeGitFactsRunner(remoteEvidence)
   );
   const issueNumber = Number(String(values.issue).split("#").at(-1));
   const issueEvidence = collectGitHubIssueEvidence(values.repo, issueNumber, values.now, fakeGitHubRunner(github));
@@ -193,6 +199,8 @@ test("contract exposes the four required profiles", () => {
   assert.equal(contract.remote_resolution.push_urls,
     "every_effective_origin_push_url_must_match_canonical_github_repo");
   assert.equal(contract.remote_resolution.target_branch_state,
+    "live_git_ls_remote_effective_origin_required");
+  assert.equal(contract.remote_resolution.canonical_base_state,
     "live_git_ls_remote_effective_origin_required");
 });
 
@@ -359,6 +367,22 @@ test("offers cleanup and recreation when a matching registered worktree is pruna
   assert.equal(existsSync(fixture.worktree), false);
 });
 
+test("blocks a prunable worktree registration while its path remains occupied", (context) => {
+  const fixture = fixtureFor(context);
+  const initial = runPlan(fixture).plan;
+  git(fixture.repo, "worktree", "add", "-b", initial.branch.target, fixture.worktree, "origin/main");
+  const resumePath = join(fixture.root, "resume-plan.json");
+  writeFileSync(resumePath, JSON.stringify(initial));
+  rmSync(join(fixture.worktree, ".git"));
+
+  const { result, plan } = runPlan(fixture, { resume_plan: resumePath });
+  assert.equal(result.status, 2);
+  assert(blockerCodes(plan).includes("prunable_worktree_path_occupied"));
+  assert.equal(plan.worktree.registration_prunable, true);
+  assert.equal(plan.next_write_action, "blocked");
+  assert.equal(existsSync(join(fixture.worktree, "fixture.txt")), true);
+});
+
 test("rejects a blocked plan as resume ownership evidence", (context) => {
   const fixture = fixtureFor(context);
   git(fixture.repo, "branch", "codex/dev/20260731-alice-governance-branch-contract", "origin/main");
@@ -476,6 +500,16 @@ test("treats a dangling symlink at the requested worktree path as occupied", (co
   assert(blockerCodes(plan).includes("worktree_collision"));
   assert.equal(plan.next_write_action, "blocked");
   assert.equal(existsSync(fixture.worktree), false);
+
+  const fileAncestor = join(fixture.root, "regular-file");
+  writeFileSync(fileAncestor, "occupied\n");
+  const belowFile = runPlan(fixture, { worktree: join(fileAncestor, "child") }).plan;
+  assert(blockerCodes(belowFile).includes("worktree_collision"));
+
+  const danglingAncestor = join(fixture.root, "dangling-ancestor");
+  symlinkSync(join(fixture.root, "missing-directory"), danglingAncestor, "dir");
+  const belowDangling = runPlan(fixture, { worktree: join(danglingAncestor, "child") }).plan;
+  assert(blockerCodes(belowDangling).includes("worktree_collision"));
 });
 
 test("accepts exact GitHub HTTPS, SSH, and scp-like origins and rejects lookalike hosts", (context) => {
@@ -523,7 +557,8 @@ test("uses live origin target state and blocks local divergence or unavailable e
   const staleFixture = createFixture();
   const divergedFixture = createFixture();
   const unavailableFixture = createFixture();
-  const fixtures = [liveFixture, staleFixture, divergedFixture, unavailableFixture];
+  const staleBaseFixture = createFixture();
+  const fixtures = [liveFixture, staleFixture, divergedFixture, unavailableFixture, staleBaseFixture];
   context.after(() => fixtures.forEach(({ root }) => rmSync(root, { recursive: true, force: true })));
 
   const liveCommit = git(liveFixture.repo, "rev-parse", "HEAD");
@@ -542,6 +577,13 @@ test("uses live origin target state and blocks local divergence or unavailable e
 
   const unavailable = runPlan(unavailableFixture, { git_remote: { unavailable: true } }).plan;
   assert(blockerCodes(unavailable).includes("target_remote_status_unavailable"));
+  assert(blockerCodes(unavailable).includes("base_remote_status_unavailable"));
+
+  const staleBase = runPlan(staleBaseFixture, {
+    git_remote: { heads: { main: "e".repeat(40) } }
+  }).plan;
+  assert(blockerCodes(staleBase).includes("base_remote_mismatch"));
+  assert.equal(staleBase.base.remote_commit, "e".repeat(40));
 });
 
 test("blocks a new plan when HEAD is not the requested base commit", (context) => {
