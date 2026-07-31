@@ -36,6 +36,8 @@ const COMPONENT_PATHS = {
     "scripts/evozeus-channels.mjs",
     "scripts/evozeus-hosts.mjs",
     "scripts/evozeus-coevolve-dispatcher.py",
+    "scripts/evozeus-install-prefetch.sh",
+    "scripts/evozeus-install-preflight.mjs",
     "scripts/evozeus-launcher.mjs",
     "SKILL.md",
     "packages/runtime/src/evozeus_runtime/cli/main.py",
@@ -64,6 +66,8 @@ const REAL_BOOTSTRAP = new Map(
     "scripts/evozeus-channels.mjs",
     "scripts/evozeus-hosts.mjs",
     "scripts/evozeus-coevolve-dispatcher.py",
+    "scripts/evozeus-install-prefetch.sh",
+    "scripts/evozeus-install-preflight.mjs",
     "scripts/evozeus-launcher.mjs"
   ].map((entry) => [entry, readFileSync(new URL(`../${entry}`, import.meta.url), "utf8")])
 );

@@ -1,7 +1,7 @@
 # Reference（参考）
 
 - Status: active
-- Last updated: 2026-06-15
+- Last updated: 2026-07-31
 - Audience: 需要稳定协议、schema、模板和 contract 的人
 
 ## 这里放什么
@@ -19,6 +19,7 @@
 | [Scanner Pack Protocol](scanner-pack-protocol.md) | Scanner pack 的结构、resolver、SKILL 和脚本规范 |
 | [Source Locator Protocol](source-locator-protocol.md) | SQLite locator envelope 与原文定位协议 |
 | [Install Onboarding Conversation](install-onboarding-conversation.md) | `/skill` 安装路径的注册引导、CLI help 调用和能力介绍话术 |
+| [Install Preflight](install-preflight.md) | Stable 安装预检、依赖清单、本机状态决策表与 installer 消费边界 |
 
 ## 边界
 

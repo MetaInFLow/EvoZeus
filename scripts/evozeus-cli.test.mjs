@@ -50,7 +50,7 @@ function stableManifest() {
 }
 
 function withTempWorkspace(callback) {
-  const root = mkdtempSync(join(tmpdir(), "evozeus-cli-"));
+  const root = realpathSync(mkdtempSync(join(tmpdir(), "evozeus-cli-")));
   try {
     return callback(root);
   } finally {
@@ -92,12 +92,17 @@ describe("evozeus-cli", () => {
     assert.equal(report.ok, true);
     assert.equal(report.operation, "capabilities.describe");
     assert.ok(names.includes("session.analyze"));
+    assert.ok(names.includes("system.installPreflight"));
     assert.ok(names.includes("harness.attachPlan"));
     assert.ok(names.includes("system.updatePlan"));
     assert.ok(names.includes("system.uninstallPlan"));
     assert.equal(
       report.data.capabilities.find((capability) => capability.name === "session.scanPlan").requires_approval,
       true
+    );
+    assert.equal(
+      report.data.capabilities.find((capability) => capability.name === "system.installPreflight").input_schema.properties.channel.const,
+      "stable"
     );
   });
 
@@ -148,6 +153,7 @@ describe("evozeus-cli", () => {
 
     assert.equal(result.status, 0, result.stderr);
     assert.match(result.stdout, /Usage: evozeus/);
+    assert.match(result.stdout, /install preflight/);
     assert.match(result.stdout, /features --json/);
     assert.match(result.stdout, /review session/);
     assert.match(result.stdout, /insights plan/);
@@ -156,6 +162,48 @@ describe("evozeus-cli", () => {
     assert.match(result.stdout, /session analyze/);
     assert.match(result.stdout, /approve-feedback/);
   });
+
+  it("exposes the read-only local-state-first install preflight", () =>
+    withTempWorkspace((workspace) => {
+      const evozeusHome = join(workspace, "home", ".evozeus");
+      const result = runCli(["install", "preflight", "--channel", "stable", "--approve-feedback", "--json"], {
+        cwd: workspace,
+        evozeusHome,
+        env: {
+          NODE_ENV: "test",
+          EVOZEUS_HOSTS_AVAILABLE: "codex",
+          EVOZEUS_PREFLIGHT_TEST_RELEASE_TAG: "v0.4.1"
+        }
+      });
+      const report = parseJson(result);
+
+      assert.equal(report.operation, "system.installPreflight");
+      assert.equal(report.schema_version, "evozeus.install-preflight.v1");
+      assert.equal(report.status === "ready" || report.status === "ready_with_fallbacks", true);
+      assert.equal(report.writes, false);
+      assert.deepEqual(report.target, { channel: "stable", evozeus_home: evozeusHome });
+      assert.equal(report.local_state.status, "not_installed");
+      assert.equal(report.network.product_assets_downloaded, 0);
+      assert.equal("activity" in report, false);
+      assert.equal(existsSync(evozeusHome), false);
+    }));
+
+  it("fails closed on UAT install preflight without refresh, activity, or network", () =>
+    withTempWorkspace((workspace) => {
+      const evozeusHome = join(workspace, "home", ".evozeus");
+      const result = runCli(["install", "preflight", "--channel", "uat", "--approve-feedback", "--json"], {
+        cwd: workspace,
+        evozeusHome
+      });
+      const report = parseJson(result, 2);
+
+      assert.equal(report.status, "blocked");
+      assert.deepEqual(report.target, { channel: "uat", evozeus_home: evozeusHome });
+      assert.ok(report.blockers.some((item) => item.code === "PREFLIGHT_CHANNEL_UNSUPPORTED"));
+      assert.equal(report.network.head_requests, 0);
+      assert.equal("activity" in report, false);
+      assert.equal(existsSync(evozeusHome), false);
+    }));
 
   it("rejects session analysis without explicit input", () => {
     const result = runCli(["session", "analyze", "--json"]);

@@ -1,7 +1,7 @@
 # EvoZeus Install Onboarding Conversation Reference
 
-- Status: superseded by the EvoZeus plugin entry
-- Last updated: 2026-07-30
+- Status: active install conversation reference
+- Last updated: 2026-07-31
 - Audience: local agents guiding a user from community `/skill` to registration, install, capability selection, and the first meaningful next step
 
 ## Purpose
@@ -18,18 +18,32 @@ The public copy prompt must stay short:
 加入 EvoZeus: https://evozeus-community.vercel.app/skill
 ```
 
-Do not expand the user-facing copy prompt with approval lists, command lists, privacy policy details, or capability descriptions. Those details belong in this reference and `skills/evozeus-install-registration/SKILL.md`.
+Do not expand the user-facing copy prompt with approval lists, command lists, privacy policy details, or capability descriptions. Those details belong in this reference and `maintainer/skills/evozeus-install-registration/SKILL.md`.
 
 ## Conversation Goal
 
-The agent must move the user through four gates:
+The agent must move the user through five gates:
 
-1. Confirm the user's intent to join EvoZeus.
-2. Explain registration and privacy boundaries before asking for approval.
-3. Install or reconcile EvoZeus only after approval.
-4. Run CLI help, features, and capabilities; translate the user's relevant product feature into plain language, then ask the user to choose one next path.
+1. Inspect and classify local install state before Release resolution or product download.
+2. Confirm the user's intent to join EvoZeus.
+3. Explain registration and privacy boundaries before asking for approval.
+4. Run only the state-specific no-op, update, repair, migration, or fresh install path; writes still require approval.
+5. Run CLI help, features, and capabilities after a successful install path; translate the user's relevant product feature into plain language, then ask the user to choose one next path.
 
 The goal is not to sell every capability. The goal is to help the user decide the next safe, useful EvoZeus action.
+
+## Local State and Preflight Talk Track
+
+Before requesting installation approval, report the executable result in user language:
+
+```text
+我先完成只读检查：本机状态为 <state>，预检结论为 <ready | ready_with_fallbacks | blocked>。
+检查期间没有下载产品、解压、注册 Plugin 或写入 `~/.evozeus`。
+<fallbacks or blockers and remediation>
+下一步：<state-specific action>。
+```
+
+For `healthy_current`, report completion and stop the install flow. For `unknown_or_unverifiable`, report the missing evidence and stop. Ask for fresh installation approval only when the full report says `not_installed`, has no blockers, and returns `request_fresh_install_approval`.
 
 ## Pre-Registration Talk Track
 
@@ -45,7 +59,7 @@ Before writing `~/.evozeus/`, creating `agent-identity.json`, or calling the reg
 
 不会上传 raw session、客户资料、token、私有路径、workspace 内容或未公开代码。任何写入、联网注册、活动反馈、扫描、本地报告、GitHub Issue/PR 都会再次请求你的明确批准。
 
-我现在可以先做 dry-run，展示将写入什么；也可以在你批准后直接完成注册和本地安装。
+环境与本机状态通过后，我可以先做 dry-run 展示计划；也可以在你批准后执行对应的本地路径。
 ```
 
 Then ask for a concrete approval:

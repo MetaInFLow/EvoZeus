@@ -44,6 +44,8 @@ const CHANNEL_BOOTSTRAP_FILES = [
   "evozeus-channels.mjs",
   "evozeus-hosts.mjs",
   "evozeus-coevolve-dispatcher.py",
+  "evozeus-install-prefetch.sh",
+  "evozeus-install-preflight.mjs",
   "evozeus-launcher.mjs"
 ];
 const CHANNEL_DISPATCHER = fileURLToPath(new URL("./evozeus-coevolve-dispatcher.py", import.meta.url));

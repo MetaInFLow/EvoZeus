@@ -277,7 +277,7 @@ async function autoUpdateActiveChannel() {
 }
 
 const command = process.argv[2] || "";
-const skipRefresh = ["update", "channel", "align"].includes(command) || process.env.EVOZEUS_AUTO_UPDATE_CHILD === "1";
+const skipRefresh = ["install", "update", "channel", "align"].includes(command) || process.env.EVOZEUS_AUTO_UPDATE_CHILD === "1";
 if (channel && !skipRefresh) {
   await autoUpdateActiveChannel();
   active = readJson(join(home, "active-channel.json"));

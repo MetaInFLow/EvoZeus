@@ -24,12 +24,28 @@ import {
   planPluginAlignment,
   selectPluginHosts
 } from "./evozeus-hosts.mjs";
+import { runInstallPreflight } from "./evozeus-install-preflight.mjs";
 
 const SCHEMA_VERSION = 1;
 const CLI_VERSION = "0.4.1";
 const SOURCE_ROOT = resolve(fileURLToPath(new URL("..", import.meta.url)));
 
 const CAPABILITIES = [
+  {
+    name: "system.installPreflight",
+    domain: "system",
+    summary: "Inspect local install state and installation prerequisites before any product asset download or write.",
+    input_schema: { type: "object", properties: { channel: { const: "stable" } } },
+    output_schema: {
+      type: "object",
+      required: ["status", "local_state", "checks", "fallbacks", "blockers", "remediation", "next_action"]
+    },
+    write_mode: "read_only",
+    risk_level: "low",
+    required_permissions: ["system.read", "network.releaseHead"],
+    requires_approval: false,
+    examples: ["evozeus install preflight --channel stable --json"]
+  },
   {
     name: "system.version",
     domain: "system",
@@ -1910,6 +1926,7 @@ function printHelp() {
   console.log(`Usage: evozeus <command> [options]
 
 Commands:
+  install preflight [--channel stable] --json
   version --json
   align --channel stable|uat [--host auto|all|codex|claude] [--approve-write] --json
   channel status --json
@@ -1955,6 +1972,10 @@ async function route(parsed) {
   if (options.help || !command) {
     printHelp();
     return null;
+  }
+
+  if (command === "install" && subcommand === "preflight") {
+    return runInstallPreflight({ evozeusHome: options.evozeusHome, channel: options.channel || "stable" });
   }
 
   if (command === "version") {
@@ -2054,7 +2075,13 @@ async function main() {
   const parsed = parseArgs(process.argv.slice(2));
   const result = await route(parsed);
   if (result) {
-    printResult(await maybeSendActivity(result, parsed.options), parsed.options);
+    const output = result.operation === "system.installPreflight"
+      ? result
+      : await maybeSendActivity(result, parsed.options);
+    printResult(output, parsed.options);
+    if (result.operation === "system.installPreflight" && result.status === "blocked") {
+      process.exitCode = 2;
+    }
   }
 }
 

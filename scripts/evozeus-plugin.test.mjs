@@ -57,6 +57,31 @@ test("installed onboarding and the root plugin route keep primary and supporting
   assert.match(usingEvoZeus, /Read Codex history, run Factors, or write the report only after explicit approval/);
 });
 
+test("install instructions share the local-state-first Stable preflight contract", () => {
+  const maintain = readFileSync(new URL("../skills/maintain-evozeus/SKILL.md", import.meta.url), "utf8");
+  const install = readFileSync(new URL("../maintainer/skills/evozeus-install-registration/SKILL.md", import.meta.url), "utf8");
+  const reference = readFileSync(new URL("../docs/reference/install-preflight.md", import.meta.url), "utf8");
+  const states = [
+    "not_installed",
+    "healthy_current",
+    "update_available",
+    "repair_required",
+    "legacy_migration_required",
+    "unknown_or_unverifiable"
+  ];
+
+  for (const state of states) {
+    assert.match(maintain, new RegExp(state));
+    assert.match(install, new RegExp(state));
+    assert.match(reference, new RegExp(state));
+  }
+  assert.ok(install.indexOf("Step 0: inspect the local CLI") < install.indexOf("resolve the latest immutable EvoZeus Stable Release"));
+  assert.match(maintain, /Only `not_installed` may enter fresh install/);
+  assert.match(maintain, /strict zero-download, zero-write, zero-registration no-op/);
+  assert.match(install, /Preflight v1 supports Stable only/);
+  assert.match(install, /--preflight-stdin --approve-write/);
+});
+
 test("Claude plugin auto-discovers one read-only SessionStart Lesson check", () => {
   const hooks = JSON.parse(readFileSync(new URL("../hooks/hooks.json", import.meta.url), "utf8"));
   const entries = hooks.hooks.SessionStart;
