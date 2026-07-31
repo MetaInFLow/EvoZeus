@@ -1,6 +1,7 @@
 from pathlib import Path
 from types import SimpleNamespace
 
+from click.exceptions import MissingParameter
 from typer.testing import CliRunner
 
 import evozeus_runtime.cli.main as cli_main
@@ -24,13 +25,20 @@ def test_status_command_prints_runtime_status():
 
 
 def test_session_insights_requires_one_approved_source_path(tmp_path):
-    result = CliRunner().invoke(
-        app,
-        ["session-insights", "--official-repo-root", str(tmp_path / "official")],
-    )
+    args = ["session-insights", "--official-repo-root", str(tmp_path / "official")]
+    result = CliRunner().invoke(app, args)
 
     assert result.exit_code == 2
-    assert "--source-path" in result.output
+
+    validation = CliRunner().invoke(
+        app,
+        args,
+        standalone_mode=False,
+    )
+
+    assert isinstance(validation.exception, MissingParameter)
+    assert validation.exception.param is not None
+    assert validation.exception.param.name == "source_path"
 
 
 def test_session_insights_command_runs_full_scan_factor_report_pipeline(monkeypatch, tmp_path):
