@@ -203,7 +203,10 @@ test("contract exposes the four required profiles", () => {
   assert.equal(contract.blocking_handling.current_checkout_status_unavailable, "block");
   assert.equal(contract.branch_naming.template, "codex/{type}/{yyyymmdd}-{actor}-{component}-{summary}");
   assert.equal(contract.branch_naming.max_leaf_bytes, 240);
+  assert.equal(contract.branch_naming.local_ref_namespace_conflicts, "block");
   assert.equal(contract.worktree.requested_registered_worktree_status_evidence, "required");
+  assert.deepEqual(contract.worktree.registered_worktree_live_identity,
+    ["top_level", "common_dir", "branch"]);
   assert.equal(contract.permission_resolution.direct_repository_state, "not_archived_and_not_disabled");
   assert.equal(contract.remote_resolution.push_urls,
     "every_effective_origin_push_url_must_match_canonical_github_repo");
@@ -368,6 +371,24 @@ test("blocks a dirty requested resume worktree", (context) => {
   assert.equal(plan.worktree.registered, false);
   assert.equal(plan.worktree.requested_checkout.status_available, true);
   assert.equal(plan.worktree.requested_checkout.dirty_entry_count, 1);
+});
+
+test("blocks a registered resume worktree whose git metadata redirects to another branch", (context) => {
+  const fixture = fixtureFor(context);
+  const initial = runPlan(fixture).plan;
+  git(fixture.repo, "worktree", "add", "-b", initial.branch.target, fixture.worktree, "origin/main");
+  const resumePath = join(fixture.root, "resume-plan.json");
+  writeFileSync(resumePath, JSON.stringify(initial));
+  const canonicalGitDir = git(fixture.repo, "rev-parse", "--absolute-git-dir");
+  writeFileSync(join(fixture.worktree, ".git"), `gitdir: ${canonicalGitDir}\n`);
+
+  const { result, plan } = runPlan(fixture, { resume_plan: resumePath });
+  assert.equal(result.status, 2);
+  assert(blockerCodes(plan).includes("requested_worktree_status_unavailable"));
+  assert.equal(plan.worktree.requested_checkout.status_reason, "worktree_branch_mismatch");
+  assert.equal(plan.worktree.requested_checkout.branch, "refs/heads/main");
+  assert.equal(plan.worktree.requested_checkout.expected_branch, `refs/heads/${initial.branch.target}`);
+  assert.equal(plan.next_write_action, "blocked");
 });
 
 test("recovers the original branch date from a matching resume plan", (context) => {
@@ -670,6 +691,23 @@ test("blocks a branch collision without matching resume metadata", (context) => 
   const { result, plan } = runPlan(fixture);
   assert.equal(result.status, 2);
   assert(blockerCodes(plan).includes("branch_collision"));
+});
+
+test("blocks local branch prefix and descendant namespace conflicts", (context) => {
+  const prefixFixture = createFixture();
+  const descendantFixture = createFixture();
+  context.after(() => rmSync(prefixFixture.root, { recursive: true, force: true }));
+  context.after(() => rmSync(descendantFixture.root, { recursive: true, force: true }));
+  const target = "codex/dev/20260731-alice-governance-branch-contract";
+  git(prefixFixture.repo, "branch", "codex/dev", "origin/main");
+  git(descendantFixture.repo, "branch", `${target}/child`, "origin/main");
+
+  for (const fixture of [prefixFixture, descendantFixture]) {
+    const { result, plan } = runPlan(fixture);
+    assert.equal(result.status, 2);
+    assert(blockerCodes(plan).includes("branch_namespace_collision"));
+    assert.equal(plan.next_write_action, "blocked");
+  }
 });
 
 test("binds the resume key to the full purpose including type", (context) => {

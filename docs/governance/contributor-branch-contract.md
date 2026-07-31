@@ -66,7 +66,7 @@ Branch plan 对 Codex 与 Claude 使用完全相同的输入、判定和输出�
 
 ## New 与 Resume
 
-- `new`：目标分支不存在，当前 checkout clean 且 HEAD 与 canonical base commit 一致，计划指向新的隔离 worktree。目标路径不得位于任何已注册 worktree 内。
+- `new`：目标分支不存在，当前 checkout clean 且 HEAD 与 canonical base commit 一致，计划指向新的隔离 worktree。目标路径不得位于任何已注册 worktree 内，本地 ref namespace 也不得存在目标分支的 prefix 或 descendant。
 - `resume`：调用方提供之前保存的 plan，resume key、owner、base ref/commit、完整 purpose（type/component/summary）和含 actor 所有权段的目标 branch 全部匹配，且 ownership 未过期。目标 worktree 已注册、目录可用且自身 clean 时输出 `resume_existing_branch_in_isolated_worktree`；本地分支仍存在、目标路径不存在且未被其他 worktree 占用时输出零写入 `recreate_resume_worktree_for_existing_branch`；Git 仍保留 prunable registration 且目录已消失时输出 `prune_and_recreate_resume_worktree_for_existing_branch`。目标分支仅存在于 live remote 时先阻断，获得独立写入授权后 fetch 并创建本地分支。Prunable registration 的目录仍存在时先阻断，由 Owner 处理遗留内容。
 - Resume 未显式提供 `--date` 时，仅从 purpose 完全匹配的既有 plan target branch 恢复原 `yyyymmdd`；无法验证时使用当前日期并由完整 ownership/branch identity 检查继续 fail closed。
 - 同名 branch 存在但缺少匹配 plan 时视为 collision。
@@ -81,9 +81,11 @@ Branch plan 对 Codex 与 Claude 使用完全相同的输入、判定和输出�
 | current checkout status unavailable | 阻断，修复当前 checkout/index 后重新取证。 |
 | canonical checkout dirty/unavailable | 即使当前隔离 worktree clean 也阻断，并输出独立 status evidence。 |
 | requested registered worktree dirty/unavailable | 阻断，处理该 resume worktree 的已有改动或 status 错误后重新取证。 |
+| registered worktree live top-level/common-dir/branch mismatch | 阻断，修复被重定向或损坏的 `.git` 元数据后重新取证。 |
 | live base/target remote state unavailable/diverged | 阻断，恢复有效 origin 查询并对齐 cached base 或本地/live remote 同名分支。 |
 | fork remote missing/mismatched | 阻断，配置 effective fetch/push URL 均指向 verified actor exact fork 的 remote。 |
 | generated branch leaf exceeds 240 bytes | 阻断，缩短 component 或 summary。 |
+| local branch prefix/descendant namespace conflict | 阻断，处理冲突 ref 或选择新的 purpose token。 |
 | wrong/missing base | 阻断，重新取得 canonical ref 与 commit。 |
 | protected checkout direct write | 阻断，改用外部 worktree。 |
 | branch/worktree collision | 阻断，禁止复用来源不明的分支。 |
