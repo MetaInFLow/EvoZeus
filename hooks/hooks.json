@@ -1,5 +1,5 @@
 {
-  "description": "Load the lightweight EvoZeus Lesson-check contract at Claude Code session boundaries.",
+  "description": "Check the selected EvoZeus product channel and load the lightweight Lesson contract at Claude Code session boundaries.",
   "hooks": {
     "SessionStart": [
       {
@@ -8,7 +8,7 @@
           {
             "type": "command",
             "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/session-start.mjs\"",
-            "timeout": 5
+            "timeout": 120
           }
         ]
       }

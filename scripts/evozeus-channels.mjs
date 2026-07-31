@@ -40,7 +40,12 @@ const EMBEDDED_FALLBACK = {
   runtime: "packages/runtime",
   session_signal: "packs/session-signal"
 };
-const CHANNEL_BOOTSTRAP_FILES = ["evozeus-channels.mjs", "evozeus-launcher.mjs"];
+const CHANNEL_BOOTSTRAP_FILES = [
+  "evozeus-channels.mjs",
+  "evozeus-hosts.mjs",
+  "evozeus-coevolve-dispatcher.py",
+  "evozeus-launcher.mjs"
+];
 const CHANNEL_DISPATCHER = fileURLToPath(new URL("./evozeus-coevolve-dispatcher.py", import.meta.url));
 
 export class ChannelError extends Error {
@@ -421,12 +426,27 @@ function dispatcherSnapshot(evozeusHome) {
     return { status: "not_installed", managed: false, source: null };
   }
   const managed = state?.wrapper_source === "channel-managed" && existsSync(dispatcher)
-    && readFileSync(dispatcher, "utf8").includes("evozeus.channel-coevolve-dispatcher.v1");
+    && readFileSync(dispatcher, "utf8").includes("evozeus.channel-coevolve-dispatcher.v2");
   return {
     status: managed ? "ready" : "legacy",
     managed,
     source: state?.wrapper_source ?? null,
     installed_version: state?.installed_version ?? null
+  };
+}
+
+function autoUpdateSnapshot(evozeusHome, channel) {
+  const home = resolve(evozeusHome);
+  const policy = readJson(join(home, "update-policy.json"));
+  const report = channel ? readJson(join(home, "state", channel, "auto-update-last.json")) : null;
+  return {
+    enabled: policy?.enabled !== false,
+    check_interval_seconds: Number(policy?.check_interval_seconds ?? 3600),
+    channels: {
+      stable: policy?.channels?.stable !== false,
+      uat: policy?.channels?.uat !== false
+    },
+    last_check: report
   };
 }
 
@@ -441,6 +461,7 @@ export function channelSnapshot(evozeusHome) {
       status: legacy ? "legacy" : "not_installed",
       health: legacy?.migration_required ? "migration_required" : "missing",
       legacy,
+      auto_update: autoUpdateSnapshot(home, null),
       channels: state.channels
     };
   }
@@ -450,6 +471,7 @@ export function channelSnapshot(evozeusHome) {
       active_channel: active.channel,
       status: "mixed",
       health: "channel_state_missing",
+      auto_update: autoUpdateSnapshot(home, active.channel),
       channels: state.channels,
       components: {}
     };
@@ -470,6 +492,7 @@ export function channelSnapshot(evozeusHome) {
       manifest_source: entry.manifest_source ?? null,
       components: {},
       embedded: {},
+      auto_update: autoUpdateSnapshot(home, active.channel),
       legacy: {
         migration_required: true,
         manifest_schema: entry.manifest?.schema_version ?? "unknown",
@@ -519,6 +542,7 @@ export function channelSnapshot(evozeusHome) {
     components,
     embedded,
     dispatcher,
+    auto_update: autoUpdateSnapshot(home, active.channel),
     channels: state.channels
   };
 }
@@ -677,11 +701,16 @@ function installGitComponent({ evozeusHome, componentId, component, destination 
 }
 
 async function installReleaseComponent({ componentId, component, destination, fetchImpl }) {
-  const response = await fetchImpl(component.source.url);
-  if (!response.ok) {
-    throw new ChannelError("ARCHIVE_FETCH_FAILED", `${componentId} archive fetch failed with HTTP ${response.status}`);
+  let bytes;
+  if (component.source.url.startsWith("file://")) {
+    bytes = readFileSync(new URL(component.source.url));
+  } else {
+    const response = await fetchImpl(component.source.url);
+    if (!response.ok) {
+      throw new ChannelError("ARCHIVE_FETCH_FAILED", `${componentId} archive fetch failed with HTTP ${response.status}`);
+    }
+    bytes = Buffer.from(await response.arrayBuffer());
   }
-  const bytes = Buffer.from(await response.arrayBuffer());
   const expected = component.source.sha256.replace(/^sha256:/, "");
   const actual = sha256(bytes);
   if (actual !== expected) {

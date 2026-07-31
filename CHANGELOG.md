@@ -2,7 +2,22 @@
 
 ## [Unreleased]
 
-No changes yet.
+### Added
+
+- Stable and the single UAT now check their selected product channel automatically at SessionStart or EvoZeus/CoEvolve entry, using a one-hour freshness window by default.
+- Automatic updates show concise `发现更新`, `自动更新中`, `自动更新完成`, or safe-failure EvoZeus markers only when user-visible state changes.
+- New installations create a configurable `~/.evozeus/update-policy.json` with both channels enabled; rollback after a failed switch remains mandatory.
+
+### Changed
+
+- EvoZeus Core, the active Codex/Claude plugin, Runtime, Session Signal, and pinned CoEvolve now update as one verified transaction inside the selected channel.
+- Stable and UAT are quality subscriptions: automatic updates remain in the active channel, while UAT fixes overwrite the single candidate.
+- Stable v0.4.0 and earlier require one explicit bootstrap alignment; the new launcher then owns all later automatic updates.
+
+### Verification
+
+- Channel regressions cover automatic Stable promotion, single-UAT overwrite, visible lifecycle logs, and safe continuation after a failed candidate.
+- Claude SessionStart regressions cover quiet current-version checks and visible update progress.
 
 ## [v0.4.0] - 2026-07-30
 

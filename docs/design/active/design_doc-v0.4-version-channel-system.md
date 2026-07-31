@@ -15,7 +15,7 @@
 
 | Persona | Scenario | Pain | Solution Surface |
 | --- | --- | --- | --- |
-| 正式用户 | 安装、运行或更新 EvoZeus | 无法判断本地代码是否来自正式 Release | Stable 产品清单、版本命令、只读更新检查、批准后覆盖更新 |
+| 正式用户 | 安装、运行或更新 EvoZeus | 无法判断本地代码是否来自正式 Release | Stable 产品清单、运行入口自动检查、产品级事务更新与失败回滚 |
 | UAT 用户 | 发现 Bug 后继续测试修复版 | 修复可能产生多个测试版本或污染正式环境 | 唯一 `uat`、隔离 worktree、独立 state、事务刷新 |
 | Maintainer | 发布主产品与独立扩展 | 主产品、CoEvolve 和本地安装无法统一对账 | EvoZeus 产品清单、独立组件门禁、内嵌模块门禁、发布证据 |
 | Agent | 运行前检查环境 | Doctor 只检查文件存在，无法识别版本漂移 | 渠道状态、清单摘要、组件健康与 Legacy 诊断 |
@@ -27,13 +27,13 @@
 - `version`、`channel status/use`、`update`、`doctor`。
 - Stable Release 安装和 UAT Git worktree 事务更新。
 - Stable / UAT Runtime state 隔离。
+- Stable / UAT 渠道内自动检查、产品级更新和用户可见状态日志。
 - 旧 install manifest 和 CoEvolve dispatcher 状态诊断、备份与迁移。
 - 独立组件路径从渠道状态解析；Runtime 与 Session Signal 从当前 EvoZeus 根目录解析。
 
 ## 4. Non-goals
 
 - 多 UAT 渠道。
-- Stable 静默自动更新。
 - 完整 TUI 或桌面更新器。
 - Factor 算法和 Session Signal 判断逻辑修改。
 - 自动执行目标 Repo 提供的任意脚本。
@@ -78,11 +78,14 @@ Stable清单作为EvoZeus Release资产发布。UAT清单从唯一`uat/current`�
 ~/.evozeus/
 ├── active-channel.json
 ├── channel-state.json
+├── update-policy.json
 ├── releases/stable/<product-version>/
 ├── worktrees/uat/versions/<manifest-digest>/
 ├── worktrees/uat/current -> versions/<manifest-digest>
 ├── state/stable/
 ├── state/uat/
+├── state/<channel>/auto-update-last.json
+├── state/auto-update.lock
 ├── backups/channel-migrations/
 └── bin/evozeus
 ```
@@ -93,7 +96,7 @@ Stable清单作为EvoZeus Release资产发布。UAT清单从唯一`uat/current`�
 
 - 每个渠道当前manifest、digest、安装根目录和上一个可回滚版本。
 - 最近成功/失败事务。
-- UAT运行前自动刷新是否已由用户授权。
+- 自动更新政策、最近检查结果与回滚记录。
 
 ## 8. Component Resolution
 
@@ -114,16 +117,25 @@ Stable清单作为EvoZeus Release资产发布。UAT清单从唯一`uat/current`�
 2. Schema、渠道、Commit、archive checksum和必需文件预检。
 3. 下载到事务目录并解包。
 4. 固定smoke验证。
-5. 原子更新Stable current state。
-6. 用户批准后激活；运行内只返回`update_available`。
+5. 对齐唯一活动 Plugin，验证 Core、Runtime、Session Signal 和 CoEvolve。
+6. 原子更新 Stable current state；任一步失败恢复上一验证版本。
 
 ### 9.2 UAT
 
 1. 获取唯一UAT清单。
 2. 为 EvoZeus 与 CoEvolve 准备 Git mirror/cache并检出固定 Commit 到事务目录。
 3. 检查独立 Commit、内嵌模块路径、必需文件和固定 smoke。
-4. 原子切换`worktrees/uat/current`和UAT channel state。
-5. 任一步失败时清理事务目录，保留旧current和旧state。
+4. 对齐唯一活动 Plugin。
+5. 原子切换`worktrees/uat/current`和UAT channel state。
+6. 任一步失败时清理事务目录，保留旧current和旧state。
+
+### 9.3 Automatic check
+
+1. Claude `SessionStart`、EvoZeus Skill 入口和 CoEvolve 受管入口调用已安装 launcher。
+2. launcher 读取 `update-policy.json`；默认一小时内已检查则直接运行当前版本。
+3. 发现新 manifest 时输出 `发现更新` 与 `自动更新中`，完成后输出结果。
+4. 已是最新时不输出用户日志。
+5. 进程锁防止并发会话同时更新；超时锁可自动清理。
 
 临时事务目录不进入用户渠道列表。
 
@@ -131,10 +143,11 @@ Stable清单作为EvoZeus Release资产发布。UAT清单从唯一`uat/current`�
 
 - `version`、`channel status`、`doctor`：只读。
 - `update --dry-run`：只读网络检查或显式本地manifest检查。
-- `update --approve-write`：写`~/.evozeus`，需要用户明确批准。
+- 首次安装批准：写 `~/.evozeus` 并启用当前渠道内已验证自动更新。
+- `update --approve-write`：用于手动立即更新、调试或指定 manifest。
 - `channel use`：默认plan；`--approve-write`后更新active channel。
-- UAT自动刷新：加入UAT时单独保存`auto_refresh=true`授权。
-- Stable始终禁止运行内自动写入。
+- `update-policy.json`：可关闭全局或单渠道自动更新，可调整检查间隔；失败回滚是不可关闭的安全门禁。
+- 自动更新不切换渠道、不发布 Repo、不读取用户业务数据。
 
 ## 11. Legacy Migration
 
@@ -188,7 +201,8 @@ evozeus doctor --json
 - Schema反例：未知渠道、短Commit、Stable缺checksum、额外字段。
 - CLI：version、status、use、dry-run、apply、Legacy、Mixed、Unsupported。
 - UAT：首次安装、覆盖更新、重复执行、错误Commit、缺文件、切换失败和回滚。
-- Stable：Release archive安装、checksum失败、运行内只提示。
+- Stable：Release archive安装、自动更新、checksum失败与上一版保留。
+- 自动更新：无变化静默、状态标记、并发锁、检查间隔和策略关闭。
 - Doctor：当前真实Legacy样本必须返回`migration_required`。
 - E2E：Stable和UAT同时存在，主仓内嵌模块分别跟随各自 EvoZeus 根目录，互不修改对方 state。
 
