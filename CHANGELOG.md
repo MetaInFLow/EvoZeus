@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+No changes yet.
+
+## [v0.4.1] - 2026-07-31
+
 ### Added
 
 - Stable and the single UAT now check their selected product channel automatically at SessionStart or EvoZeus/CoEvolve entry, using a one-hour freshness window by default.
