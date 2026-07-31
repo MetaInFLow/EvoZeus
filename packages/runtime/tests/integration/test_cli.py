@@ -1,7 +1,6 @@
 from pathlib import Path
 from types import SimpleNamespace
 
-from click.exceptions import MissingParameter
 from typer.testing import CliRunner
 
 import evozeus_runtime.cli.main as cli_main
@@ -36,7 +35,8 @@ def test_session_insights_requires_one_approved_source_path(tmp_path):
         standalone_mode=False,
     )
 
-    assert isinstance(validation.exception, MissingParameter)
+    assert validation.exception is not None
+    assert type(validation.exception).__name__ == "MissingParameter"
     assert validation.exception.param is not None
     assert validation.exception.param.name == "source_path"
 
