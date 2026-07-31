@@ -4,6 +4,7 @@ import {
   chmodSync,
   cpSync,
   existsSync,
+  lstatSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -16,7 +17,7 @@ import {
   writeFileSync
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { basename, dirname, join, resolve } from "node:path";
+import { basename, dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, it } from "node:test";
 import Ajv2020 from "ajv/dist/2020.js";
@@ -298,6 +299,25 @@ function noSmoke(componentId) {
   return { component: componentId, status: "passed" };
 }
 
+function treeInventory(root) {
+  const inventory = [];
+  const visit = (directory) => {
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+      const path = join(directory, entry.name);
+      const stats = lstatSync(path);
+      inventory.push({
+        path: relative(root, path),
+        kind: entry.isDirectory() ? "directory" : entry.isSymbolicLink() ? "symlink" : "file",
+        size: stats.size,
+        mtime_ms: stats.mtimeMs
+      });
+      if (entry.isDirectory()) visit(path);
+    }
+  };
+  visit(root);
+  return inventory;
+}
+
 function runInstalledCli(cliPath, args, { home, path, env = {} }) {
   return spawnSync(process.execPath, [cliPath, ...args], {
     encoding: "utf8",
@@ -506,6 +526,15 @@ describe("channel transactions", () => {
       writeFileSync(runtimeCliPath, "raise SystemExit(17)\n");
       assertRejectedWithoutActivation("embedded:runtime:smoke:COMMAND_FAILED");
       writeFileSync(runtimeCliPath, runtimeCliBefore);
+
+      const wrapperPath = join(previous.component_roots.coevolve, "scripts", "evozeus_wrapper.py");
+      const wrapperBefore = readFileSync(wrapperPath, "utf8");
+      writeFileSync(join(previous.component_roots.coevolve, "scripts", "smoke_helper.py"), "VALUE = 1\n");
+      writeFileSync(wrapperPath, `import smoke_helper\n${wrapperBefore}`);
+      const inventoryBefore = treeInventory(previous.install_root);
+      const rollback = rollbackChannel(home, "stable");
+      assert.equal(rollback.status, "rolled_back");
+      assert.deepEqual(treeInventory(previous.install_root), inventoryBefore);
     }));
 
   it("restores the active channel bootstrap when an inactive-channel rollback fails", async () =>

@@ -812,7 +812,8 @@ export function fixedComponentSmoke(componentId, destination) {
     execChecked("node", [join(destination, "scripts", "evozeus-cli.mjs"), "features", "--json"]);
   } else if (componentId === "coevolve") {
     execChecked("python3", [join(destination, "scripts", "evozeus_wrapper.py"), "--help"], {
-      cwd: destination
+      cwd: destination,
+      env: { ...process.env, PYTHONDONTWRITEBYTECODE: "1" }
     });
   }
   return { component: componentId, status: "passed" };
