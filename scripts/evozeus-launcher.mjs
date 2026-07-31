@@ -199,6 +199,9 @@ async function autoUpdateActiveChannel() {
     });
 
     if (!plan.update_available) {
+      if (plan.decision === "repair") {
+        visibleLog(`🛠️ EvoZeus · 发现损坏｜${channelLabel(currentChannel)} ${plan.target_product_version} · 准备隔离修复`);
+      }
       update = await applyChannelUpdate({
         evozeusHome: home,
         channel: currentChannel,
@@ -213,7 +216,11 @@ async function autoUpdateActiveChannel() {
         visibleLog(`✅ EvoZeus · 自动更新完成｜${channelLabel(currentChannel)} ${plan.target_product_version} · Plugin已对齐`);
       }
       writeUpdateReport(currentChannel, {
-        status: "current",
+        status: update.status === "repaired"
+          ? "repaired"
+          : update.status === "activated"
+            ? "activated"
+            : "current",
         product_version: plan.target_product_version,
         latest_product_version: plan.target_product_version,
         manifest_digest: plan.manifest_digest,

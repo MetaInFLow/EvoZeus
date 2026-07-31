@@ -538,6 +538,15 @@ describe("local state inspection", () => {
       });
       assert.equal(broken.status, "repair_required");
 
+      const unsafeChannelState = inspectLocalInstallState({
+        evozeusHome: current,
+        cliRunner: (_path, command) => command === "version"
+          ? { ok: true, data: { health: "state_unverifiable", product_version: "v0.4.1" } }
+          : { ok: true, data: { doctor_verdict: "repair_required" } }
+      });
+      assert.equal(unsafeChannelState.status, "unknown_or_unverifiable");
+      assert.ok(unsafeChannelState.evidence.includes("version_reports_unsafe_channel_state"));
+
       const external = join(root, "external-home");
       const externalCore = join(root, "outside-component-root");
       writeInstalledState(external, { componentRoot: externalCore });

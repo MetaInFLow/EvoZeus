@@ -366,6 +366,15 @@ export function inspectLocalInstallState({
 
   const health = version.data?.health;
   const verdict = doctor.data?.doctor_verdict;
+  if (health === "state_unverifiable") {
+    return {
+      status: "unknown_or_unverifiable",
+      preliminary: true,
+      channel,
+      product_version: version.data?.product_version ?? null,
+      evidence: ["version_reports_unsafe_channel_state"]
+    };
+  }
   if (health === "migration_required" || verdict === "migration_required") {
     return {
       status: "legacy_migration_required",

@@ -1,12 +1,18 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
 import {
+  chmodSync,
+  cpSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
   readlinkSync,
+  readdirSync,
+  realpathSync,
   rmSync,
+  symlinkSync,
+  unlinkSync,
   writeFileSync
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -32,14 +38,21 @@ import {
 
 const COMPONENT_PATHS = {
   evozeus: [
+    ".codex-plugin/plugin.json",
+    ".claude-plugin/plugin.json",
+    "hooks/hooks.json",
     "scripts/evozeus-cli.mjs",
     "scripts/evozeus-channels.mjs",
     "scripts/evozeus-hosts.mjs",
     "scripts/evozeus-coevolve-dispatcher.py",
+    "scripts/evozeus-install.mjs",
+    "scripts/evozeus-doctor.mjs",
     "scripts/evozeus-install-prefetch.sh",
     "scripts/evozeus-install-preflight.mjs",
     "scripts/evozeus-launcher.mjs",
     "SKILL.md",
+    "skills/using-evozeus/SKILL.md",
+    "skills/maintain-evozeus/SKILL.md",
     "packages/runtime/src/evozeus_runtime/cli/main.py",
     "packages/runtime/pyproject.toml",
     "packs/session-signal/scripts/validate_official_factor_spec.py",
@@ -63,6 +76,10 @@ const EMBEDDED = {
 const LAUNCHER = fileURLToPath(new URL("./evozeus-launcher.mjs", import.meta.url));
 const REAL_BOOTSTRAP = new Map(
   [
+    ".codex-plugin/plugin.json",
+    ".claude-plugin/plugin.json",
+    "hooks/hooks.json",
+    "scripts/evozeus-cli.mjs",
     "scripts/evozeus-channels.mjs",
     "scripts/evozeus-hosts.mjs",
     "scripts/evozeus-coevolve-dispatcher.py",
@@ -222,7 +239,7 @@ function writeManifest(root, name, manifest) {
 }
 
 async function fixture(callback) {
-  const root = mkdtempSync(join(tmpdir(), "evozeus-channels-"));
+  const root = realpathSync(mkdtempSync(join(tmpdir(), "evozeus-channels-")));
   try {
     return await callback(root);
   } finally {
@@ -232,6 +249,29 @@ async function fixture(callback) {
 
 function noSmoke(componentId) {
   return { component: componentId, status: "passed" };
+}
+
+function runInstalledCli(cliPath, args, { home, path }) {
+  return spawnSync(process.execPath, [cliPath, ...args], {
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      PATH: path,
+      EVOZEUS_HOME: home,
+      EVOZEUS_HOSTS_AVAILABLE: "codex",
+      EVOZEUS_AUTO_UPDATE: "0",
+      EVOZEUS_AUTO_UPDATE_CHILD: "1",
+      EVOZEUS_APPROVE_FEEDBACK: "0",
+      NODE_ENV: "test",
+      EVOZEUS_PREFLIGHT_TEST_RELEASE_TAG: "v0.4.0"
+    }
+  });
+}
+
+function installedCliJson(cliPath, args, options) {
+  const result = runInstalledCli(cliPath, args, options);
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  return JSON.parse(result.stdout);
 }
 
 describe("product channel manifest", () => {
@@ -374,7 +414,7 @@ describe("channel transactions", () => {
       assert.equal(readlinkSync(join(home, "worktrees", "uat", "current")), currentBefore);
     }));
 
-  it("is idempotent for the same UAT manifest", async () =>
+  it("is a strict zero-write no-op for the same healthy UAT manifest", async () =>
     fixture(async (root) => {
       const home = join(root, "home");
       const components = Object.fromEntries(
@@ -395,11 +435,338 @@ describe("channel transactions", () => {
         smokeRunner: noSmoke
       });
       assert.equal(second.status, "already_current");
+      assert.equal(second.decision, "healthy_noop");
+      assert.equal(second.writes_now, false);
       assert.equal(second.install_root, first.install_root);
       assert.equal(
         readFileSync(join(home, "skeleton/scripts/evozeus-channels.mjs"), "utf8"),
-        readFileSync(join(first.component_roots.evozeus, "scripts/evozeus-channels.mjs"), "utf8")
+        "legacy bootstrap\n"
       );
+    }));
+
+  it("repairs a damaged same-version UAT from a new verified root and retains rollback", async () =>
+    fixture(async (root) => {
+      const home = join(root, "home");
+      const components = Object.fromEntries(
+        Object.keys(COMPONENT_PATHS).map((componentId) => [componentId, initComponent(root, componentId)])
+      );
+      const manifestPath = writeManifest(root, "uat-repair.json", uatManifest(components));
+      const installed = await applyChannelUpdate({
+        evozeusHome: home,
+        channel: "uat",
+        manifestSource: manifestPath,
+        smokeRunner: noSmoke
+      });
+      const customBootstrap = join(home, "skeleton", "scripts", "custom-helper.mjs");
+      writeFileSync(customBootstrap, "preserve this non-bootstrap file\n");
+      const missingPath = join(installed.component_roots.evozeus, "SKILL.md");
+      rmSync(missingPath);
+      const stateBefore = readFileSync(join(home, "channel-state.json"), "utf8");
+      const activeBefore = readFileSync(join(home, "active-channel.json"), "utf8");
+      const currentBefore = readlinkSync(join(home, "worktrees", "uat", "current"));
+      const rootsBefore = readdirSync(join(home, "worktrees", "uat", "versions")).sort();
+      const bootstrapBefore = Object.fromEntries(
+        readdirSync(join(home, "skeleton", "scripts")).sort().map((name) => [
+          name,
+          readFileSync(join(home, "skeleton", "scripts", name), "utf8")
+        ])
+      );
+      const dispatcherBefore = readFileSync(join(home, "hooks", "evozeus_wrapper_dispatcher.py"), "utf8");
+      const dispatcherStateBefore = readFileSync(join(home, "hooks", "state.json"), "utf8");
+
+      const plan = await prepareChannelUpdate({
+        evozeusHome: home,
+        channel: "uat",
+        manifestSource: manifestPath
+      });
+
+      assert.equal(plan.decision, "repair");
+      assert.equal(plan.repair_required, true);
+      assert.ok(plan.current_integrity.issues.includes("component:evozeus:missing:SKILL.md"));
+      assert.equal(plan.writes_now, false);
+      assert.equal(readFileSync(join(home, "channel-state.json"), "utf8"), stateBefore);
+      assert.equal(readlinkSync(join(home, "worktrees", "uat", "current")), currentBefore);
+      assert.equal(existsSync(missingPath), false);
+
+      await assert.rejects(
+        applyChannelUpdate({
+          evozeusHome: home,
+          channel: "uat",
+          manifestSource: manifestPath,
+          smokeRunner: (componentId) => {
+            if (componentId === "evozeus") throw new ChannelError("SMOKE_FAILED", "simulated repair failure");
+            return noSmoke(componentId);
+          }
+        }),
+        /simulated repair failure/
+      );
+      assert.equal(readFileSync(join(home, "channel-state.json"), "utf8"), stateBefore);
+      assert.equal(readFileSync(join(home, "active-channel.json"), "utf8"), activeBefore);
+      assert.equal(readlinkSync(join(home, "worktrees", "uat", "current")), currentBefore);
+      assert.deepEqual(readdirSync(join(home, "worktrees", "uat", "versions")).sort(), rootsBefore);
+
+      let bootstrapCopies = 0;
+      await assert.rejects(
+        applyChannelUpdate({
+          evozeusHome: home,
+          channel: "uat",
+          manifestSource: manifestPath,
+          smokeRunner: noSmoke,
+          bootstrapCopy: (source, target) => {
+            bootstrapCopies += 1;
+            if (bootstrapCopies === 3) throw new Error("simulated bootstrap copy failure");
+            cpSync(source, target);
+          }
+        }),
+        /simulated bootstrap copy failure/
+      );
+      assert.equal(readFileSync(join(home, "channel-state.json"), "utf8"), stateBefore);
+      assert.equal(readFileSync(join(home, "active-channel.json"), "utf8"), activeBefore);
+      assert.equal(readlinkSync(join(home, "worktrees", "uat", "current")), currentBefore);
+      assert.deepEqual(readdirSync(join(home, "worktrees", "uat", "versions")).sort(), rootsBefore);
+      assert.deepEqual(
+        Object.fromEntries(
+          readdirSync(join(home, "skeleton", "scripts")).sort().map((name) => [
+            name,
+            readFileSync(join(home, "skeleton", "scripts", name), "utf8")
+          ])
+        ),
+        bootstrapBefore
+      );
+      assert.equal(readFileSync(join(home, "hooks", "evozeus_wrapper_dispatcher.py"), "utf8"), dispatcherBefore);
+      assert.equal(readFileSync(join(home, "hooks", "state.json"), "utf8"), dispatcherStateBefore);
+
+      const repaired = await applyChannelUpdate({
+        evozeusHome: home,
+        channel: "uat",
+        manifestSource: manifestPath,
+        smokeRunner: noSmoke
+      });
+      const entry = readChannelState(home).channels.uat;
+
+      assert.equal(repaired.status, "repaired");
+      assert.equal(repaired.decision, "repair");
+      assert.notEqual(repaired.install_root, installed.install_root);
+      assert.equal(entry.previous.install_root, installed.install_root);
+      assert.equal(existsSync(installed.install_root), true);
+      assert.equal(existsSync(join(entry.component_roots.evozeus, "SKILL.md")), true);
+      assert.equal(readFileSync(customBootstrap, "utf8"), "preserve this non-bootstrap file\n");
+      assert.equal(channelSnapshot(home).health, "healthy");
+    }));
+
+  it("routes a damaged active dispatcher through repair", async () =>
+    fixture(async (root) => {
+      const home = join(root, "home");
+      const manifest = stableManifest(join(root, "archives"));
+      const manifestPath = writeManifest(root, "stable-dispatcher-repair.json", manifest);
+      const installed = await applyChannelUpdate({
+        evozeusHome: home,
+        channel: "stable",
+        manifestSource: manifestPath,
+        fetchImpl: fileFetch,
+        smokeRunner: noSmoke
+      });
+      rmSync(join(home, "hooks", "state.json"));
+
+      const plan = await prepareChannelUpdate({
+        evozeusHome: home,
+        channel: "stable",
+        manifestSource: manifestPath,
+        fetchImpl: fileFetch
+      });
+      assert.equal(plan.decision, "repair");
+      assert.ok(plan.current_integrity.issues.includes("dispatcher_state:missing"));
+
+      const repaired = await applyChannelUpdate({
+        evozeusHome: home,
+        channel: "stable",
+        manifestSource: manifestPath,
+        fetchImpl: fileFetch,
+        smokeRunner: noSmoke
+      });
+      assert.equal(repaired.status, "repaired");
+      assert.notEqual(repaired.install_root, installed.install_root);
+      assert.equal(channelSnapshot(home).health, "healthy");
+    }));
+
+  it("repairs a current link that no longer targets the installed entry", async () =>
+    fixture(async (root) => {
+      const home = join(root, "home");
+      const manifest = stableManifest(join(root, "archives"));
+      const manifestPath = writeManifest(root, "stable-link-repair.json", manifest);
+      const installed = await applyChannelUpdate({
+        evozeusHome: home,
+        channel: "stable",
+        manifestSource: manifestPath,
+        fetchImpl: fileFetch,
+        smokeRunner: noSmoke
+      });
+      const currentLink = join(home, "releases", "stable", "current");
+      const wrongRoot = join(home, "releases", "stable", "wrong-root");
+      mkdirSync(wrongRoot);
+      unlinkSync(currentLink);
+      symlinkSync(wrongRoot, currentLink, "dir");
+      assert.equal(channelSnapshot(home).health, "channel_integrity_mismatch");
+
+      const plan = await prepareChannelUpdate({
+        evozeusHome: home,
+        channel: "stable",
+        manifestSource: manifestPath,
+        fetchImpl: fileFetch
+      });
+      assert.equal(plan.decision, "repair");
+      assert.ok(plan.current_integrity.issues.includes("current_link:target_mismatch"));
+
+      const repaired = await applyChannelUpdate({
+        evozeusHome: home,
+        channel: "stable",
+        manifestSource: manifestPath,
+        fetchImpl: fileFetch,
+        smokeRunner: noSmoke
+      });
+      assert.equal(repaired.status, "repaired");
+      assert.notEqual(repaired.install_root, installed.install_root);
+      assert.equal(resolve(dirname(currentLink), readlinkSync(currentLink)), repaired.install_root);
+      assert.equal(readChannelState(home).channels.stable.install_root, repaired.install_root);
+    }));
+
+  it("stops on same-manifest symlink evidence without writing a repair", async () =>
+    fixture(async (root) => {
+      const home = join(root, "home");
+      const components = Object.fromEntries(
+        Object.keys(COMPONENT_PATHS).map((componentId) => [componentId, initComponent(root, componentId)])
+      );
+      const manifestPath = writeManifest(root, "uat-unsafe.json", uatManifest(components));
+      const installed = await applyChannelUpdate({
+        evozeusHome: home,
+        channel: "uat",
+        manifestSource: manifestPath,
+        smokeRunner: noSmoke
+      });
+      const requiredPath = join(installed.component_roots.evozeus, "SKILL.md");
+      const outside = join(root, "outside-skill.md");
+      writeFileSync(outside, "outside\n");
+      rmSync(requiredPath);
+      symlinkSync(outside, requiredPath);
+      const stateBefore = readFileSync(join(home, "channel-state.json"), "utf8");
+      assert.equal(channelSnapshot(home).health, "state_unverifiable");
+
+      const plan = await prepareChannelUpdate({
+        evozeusHome: home,
+        channel: "uat",
+        manifestSource: manifestPath
+      });
+      assert.equal(plan.decision, "unsafe_stop");
+      assert.equal(plan.unsafe_state, true);
+      await assert.rejects(
+        applyChannelUpdate({
+          evozeusHome: home,
+          channel: "uat",
+          manifestSource: manifestPath,
+          smokeRunner: noSmoke
+        }),
+        (error) => error.code === "LOCAL_STATE_UNSAFE"
+      );
+      assert.equal(readFileSync(join(home, "channel-state.json"), "utf8"), stateBefore);
+    }));
+
+  it("fails closed on a self-consistent but structurally incomplete installed manifest", async () =>
+    fixture(async (root) => {
+      const home = join(root, "home");
+      const manifest = stableManifest(join(root, "malformed-installed-archives"));
+      const manifestPath = writeManifest(root, "malformed-installed-target.json", manifest);
+      await applyChannelUpdate({
+        evozeusHome: home,
+        channel: "stable",
+        manifestSource: manifestPath,
+        fetchImpl: fileFetch,
+        smokeRunner: noSmoke
+      });
+      const state = readChannelState(home);
+      state.channels.stable.manifest = {
+        ...state.channels.stable.manifest,
+        components: {}
+      };
+      state.channels.stable.manifest_digest = productManifestDigest(state.channels.stable.manifest);
+      writeFileSync(join(home, "channel-state.json"), `${JSON.stringify(state, null, 2)}\n`);
+      const stateBefore = readFileSync(join(home, "channel-state.json"), "utf8");
+
+      const snapshot = channelSnapshot(home);
+      assert.equal(snapshot.health, "state_unverifiable");
+      assert.equal(snapshot.integrity.status, "unsafe");
+      const plan = await prepareChannelUpdate({
+        evozeusHome: home,
+        channel: "stable",
+        manifestSource: manifestPath,
+        fetchImpl: fileFetch
+      });
+      assert.equal(plan.decision, "unsafe_stop");
+      assert.ok(plan.current_integrity.issues.some((issue) => issue.includes("components.evozeus is required")));
+      await assert.rejects(
+        applyChannelUpdate({
+          evozeusHome: home,
+          channel: "stable",
+          manifestSource: manifestPath,
+          fetchImpl: fileFetch,
+          smokeRunner: noSmoke
+        }),
+        (error) => error.code === "LOCAL_STATE_UNSAFE"
+      );
+      assert.equal(readFileSync(join(home, "channel-state.json"), "utf8"), stateBefore);
+    }));
+
+  it("stops an update when rollback history points outside EVOZEUS_HOME", async () =>
+    fixture(async (root) => {
+      const home = join(root, "home");
+      const components = Object.fromEntries(
+        Object.keys(COMPONENT_PATHS).map((componentId) => [componentId, initComponent(root, componentId)])
+      );
+      const firstManifest = uatManifest(components);
+      const firstPath = writeManifest(root, "uat-safe-current.json", firstManifest);
+      await applyChannelUpdate({
+        evozeusHome: home,
+        channel: "uat",
+        manifestSource: firstPath,
+        smokeRunner: noSmoke
+      });
+      const state = readChannelState(home);
+      const outsideRoot = join(root, "outside-rollback");
+      mkdirSync(outsideRoot);
+      state.channels.uat.previous = {
+        ...state.channels.uat,
+        install_root: outsideRoot,
+        component_roots: {
+          evozeus: join(outsideRoot, "evozeus"),
+          coevolve: join(outsideRoot, "coevolve")
+        },
+        embedded_roots: {
+          runtime: join(outsideRoot, "evozeus", "packages/runtime"),
+          session_signal: join(outsideRoot, "evozeus", "packs/session-signal")
+        },
+        previous: null
+      };
+      writeFileSync(join(home, "channel-state.json"), `${JSON.stringify(state, null, 2)}\n`);
+      updateComponent(components.evozeus, "newer");
+      const updatePath = writeManifest(root, "uat-newer.json", uatManifest(components, "v0.4.1"));
+      const stateBefore = readFileSync(join(home, "channel-state.json"), "utf8");
+
+      const plan = await prepareChannelUpdate({
+        evozeusHome: home,
+        channel: "uat",
+        manifestSource: updatePath
+      });
+      assert.equal(plan.decision, "unsafe_stop");
+      assert.ok(plan.current_integrity.issues.includes("previous:install_root:unsafe"));
+      await assert.rejects(
+        applyChannelUpdate({
+          evozeusHome: home,
+          channel: "uat",
+          manifestSource: updatePath,
+          smokeRunner: noSmoke
+        }),
+        (error) => error.code === "LOCAL_STATE_UNSAFE"
+      );
+      assert.equal(readFileSync(join(home, "channel-state.json"), "utf8"), stateBefore);
     }));
 
   it("revalidates and reuses the prior UAT root when uat/current points back to it", async () =>
@@ -450,6 +817,7 @@ describe("channel transactions", () => {
         manifestSource: path,
         fetchImpl: fileFetch
       });
+      assert.equal(plan.decision, "install");
       assert.equal(plan.writes_now, false);
       assert.equal(readChannelState(home).channels.stable, null);
 
@@ -464,6 +832,269 @@ describe("channel transactions", () => {
       assert.equal(readActiveChannel(home).channel, "stable");
       assert.ok(applied.install_root.includes("releases/stable/v0.4.0"));
       assert.ok(!applied.install_root.includes("worktrees/uat"));
+    }));
+
+  it("fails closed without writes when persisted channel control JSON is invalid", async () =>
+    fixture(async (root) => {
+      const manifest = stableManifest(join(root, "invalid-control-archives"));
+      const manifestPath = writeManifest(root, "invalid-control-stable.json", manifest);
+      const validEmptyState = `${JSON.stringify({
+        schema_version: "evozeus.channel-state.v1",
+        channels: { stable: null, uat: null },
+        last_transaction: null
+      })}\n`;
+      const cases = [
+        {
+          name: "channel-json",
+          files: { "channel-state.json": "{invalid\n" },
+          issue: "channel_state:invalid"
+        },
+        {
+          name: "channel-schema",
+          files: { "channel-state.json": '{"schema_version":"wrong","channels":{}}\n' },
+          issue: "channel_state:invalid"
+        },
+        {
+          name: "active-json",
+          files: { "channel-state.json": validEmptyState, "active-channel.json": "{invalid\n" },
+          issue: "active_channel:invalid"
+        },
+        {
+          name: "active-schema",
+          files: {
+            "channel-state.json": validEmptyState,
+            "active-channel.json": '{"schema_version":"wrong","channel":"stable"}\n'
+          },
+          issue: "active_channel:invalid"
+        },
+        {
+          name: "active-without-state",
+          files: {
+            "active-channel.json": '{"schema_version":"evozeus.active-channel.v1","channel":"stable"}\n'
+          },
+          issue: "channel_state:missing_with_active_channel"
+        }
+      ];
+
+      for (const fixtureCase of cases) {
+        const home = join(root, fixtureCase.name);
+        mkdirSync(home);
+        for (const [name, content] of Object.entries(fixtureCase.files)) {
+          writeFileSync(join(home, name), content);
+        }
+        const before = Object.fromEntries(
+          readdirSync(home).sort().map((name) => [name, readFileSync(join(home, name), "utf8")])
+        );
+        let fetchCalls = 0;
+        const plan = await prepareChannelUpdate({
+          evozeusHome: home,
+          channel: "stable",
+          manifestSource: "https://example.invalid/evozeus-product-stable.json",
+          fetchImpl: async () => {
+            fetchCalls += 1;
+            throw new Error("unsafe local state must stop before manifest fetch");
+          }
+        });
+        assert.equal(plan.decision, "unsafe_stop", fixtureCase.name);
+        assert.ok(plan.current_integrity.issues.includes(fixtureCase.issue), fixtureCase.name);
+        assert.equal(fetchCalls, 0, fixtureCase.name);
+        await assert.rejects(
+          applyChannelUpdate({
+            evozeusHome: home,
+            channel: "stable",
+            manifestSource: manifestPath,
+            fetchImpl: fileFetch,
+            smokeRunner: noSmoke
+          }),
+          (error) => error.code === "LOCAL_STATE_UNSAFE"
+        );
+        assert.deepEqual(
+          Object.fromEntries(readdirSync(home).sort().map((name) => [name, readFileSync(join(home, name), "utf8")])),
+          before,
+          fixtureCase.name
+        );
+      }
+    }));
+
+  it("stops before manifest fetch when a target channel or skeleton write parent is symlinked", async () =>
+    fixture(async (root) => {
+      const home = join(root, "home");
+      const components = Object.fromEntries(
+        Object.keys(COMPONENT_PATHS).map((componentId) => [componentId, initComponent(root, componentId)])
+      );
+      await applyChannelUpdate({
+        evozeusHome: home,
+        channel: "uat",
+        manifestSource: writeManifest(root, "uat-before-unsafe-stable.json", uatManifest(components)),
+        smokeRunner: noSmoke
+      });
+      const stableManifestValue = stableManifest(join(root, "unsafe-write-archives"));
+      const stableManifestPath = writeManifest(root, "stable-after-unsafe-parent.json", stableManifestValue);
+      const outsideRelease = join(root, "outside-release");
+      const outsideSkeleton = join(root, "outside-skeleton");
+      mkdirSync(outsideRelease);
+      mkdirSync(outsideSkeleton);
+      symlinkSync(outsideRelease, join(home, "releases"), "dir");
+      rmSync(join(home, "skeleton", "scripts"), { recursive: true });
+      symlinkSync(outsideSkeleton, join(home, "skeleton", "scripts"), "dir");
+      const stateBefore = readFileSync(join(home, "channel-state.json"), "utf8");
+      let fetchCalls = 0;
+
+      const plan = await prepareChannelUpdate({
+        evozeusHome: home,
+        channel: "stable",
+        manifestSource: "https://example.invalid/evozeus-product-stable.json",
+        fetchImpl: async () => {
+          fetchCalls += 1;
+          throw new Error("unsafe write roots must stop before manifest fetch");
+        }
+      });
+
+      assert.equal(plan.decision, "unsafe_stop");
+      assert.ok(plan.current_integrity.issues.includes("write_root:stable_channel:unsafe"));
+      assert.ok(plan.current_integrity.issues.includes("write_root:skeleton_scripts:unsafe"));
+      assert.equal(fetchCalls, 0);
+      await assert.rejects(
+        applyChannelUpdate({
+          evozeusHome: home,
+          channel: "stable",
+          manifestSource: stableManifestPath,
+          fetchImpl: fileFetch,
+          smokeRunner: noSmoke
+        }),
+        (error) => error.code === "LOCAL_STATE_UNSAFE"
+      );
+      assert.equal(readFileSync(join(home, "channel-state.json"), "utf8"), stateBefore);
+      assert.deepEqual(readdirSync(outsideRelease), []);
+      assert.deepEqual(readdirSync(outsideSkeleton), []);
+    }));
+
+  it("stops before manifest fetch when a UAT Git mirror is an external symlink", async () =>
+    fixture(async (root) => {
+      const home = join(root, "home");
+      const cache = join(home, "cache", "git");
+      const outsideMirror = join(root, "outside-evozeus-mirror");
+      mkdirSync(cache, { recursive: true });
+      mkdirSync(outsideMirror);
+      symlinkSync(outsideMirror, join(cache, "evozeus.git"), "dir");
+      const components = Object.fromEntries(
+        Object.keys(COMPONENT_PATHS).map((componentId) => [componentId, initComponent(root, componentId)])
+      );
+      const manifestPath = writeManifest(root, "uat-after-unsafe-mirror.json", uatManifest(components));
+      let fetchCalls = 0;
+
+      const plan = await prepareChannelUpdate({
+        evozeusHome: home,
+        channel: "uat",
+        manifestSource: "https://example.invalid/uat.json",
+        fetchImpl: async () => {
+          fetchCalls += 1;
+          throw new Error("unsafe UAT mirror must stop before manifest fetch");
+        }
+      });
+
+      assert.equal(plan.decision, "unsafe_stop");
+      assert.ok(plan.current_integrity.issues.includes("write_root:uat_git_mirror:evozeus:unsafe"));
+      assert.equal(fetchCalls, 0);
+      await assert.rejects(
+        applyChannelUpdate({
+          evozeusHome: home,
+          channel: "uat",
+          manifestSource: manifestPath,
+          smokeRunner: noSmoke
+        }),
+        (error) => error.code === "LOCAL_STATE_UNSAFE"
+      );
+      assert.deepEqual(readdirSync(outsideMirror), []);
+      assert.deepEqual(readdirSync(home).sort(), ["cache"]);
+    }));
+
+  it("routes a broken Stable install through preflight, zero-write plan, approved repair, and healthy Doctor", async () =>
+    fixture(async (root) => {
+      const home = join(root, "home");
+      const manifest = stableManifest(join(root, "repair-archives"));
+      const manifestPath = writeManifest(root, "stable-repair.json", manifest);
+      const installed = await applyChannelUpdate({
+        evozeusHome: home,
+        channel: "stable",
+        manifestSource: manifestPath,
+        fetchImpl: fileFetch,
+        smokeRunner: noSmoke
+      });
+      mkdirSync(join(home, "bin"), { recursive: true });
+      writeFileSync(join(home, "bin", "evozeus"), "installed shim\n");
+      const fakeBin = join(root, "bin");
+      mkdirSync(fakeBin);
+      const codex = join(fakeBin, "codex");
+      writeFileSync(codex, "#!/bin/sh\nprintf '%s\\n' evozeus\n");
+      chmodSync(codex, 0o755);
+      const commandPath = `${fakeBin}:${process.env.PATH}`;
+      const initialCli = join(installed.component_roots.evozeus, "scripts", "evozeus-cli.mjs");
+
+      const initialAlignment = installedCliJson(
+        initialCli,
+        ["align", "--channel", "stable", "--host", "codex", "--manifest", manifestPath, "--approve-write", "--json"],
+        { home, path: commandPath }
+      );
+      assert.equal(initialAlignment.data.update.status, "already_current");
+      assert.equal(installedCliJson(initialCli, ["doctor", "--json"], { home, path: commandPath }).data.doctor_verdict, "ready");
+
+      const missingRelative = "skills/using-evozeus/SKILL.md";
+      const missingPath = join(installed.component_roots.evozeus, missingRelative);
+      rmSync(missingPath);
+      const brokenDoctor = installedCliJson(initialCli, ["doctor", "--json"], { home, path: commandPath });
+      assert.equal(brokenDoctor.data.doctor_verdict, "repair_required");
+      assert.match(brokenDoctor.data.next_command, /align --channel stable --host auto --json/);
+      const preflight = installedCliJson(
+        initialCli,
+        ["install", "preflight", "--channel", "stable", "--json"],
+        { home, path: commandPath }
+      );
+      assert.equal(preflight.local_state.status, "repair_required");
+      assert.equal(preflight.next_action.action, "request_repair_approval");
+
+      const stateBefore = readFileSync(join(home, "channel-state.json"), "utf8");
+      const activeBefore = readFileSync(join(home, "active-channel.json"), "utf8");
+      const currentBefore = readlinkSync(join(home, "releases", "stable", "current"));
+      const rootsBefore = readdirSync(join(home, "releases", "stable")).sort();
+      const dryRun = installedCliJson(
+        initialCli,
+        ["align", "--channel", "stable", "--host", "codex", "--manifest", manifestPath, "--json"],
+        { home, path: commandPath }
+      );
+      assert.equal(dryRun.operation, "system.alignPlan");
+      assert.equal(dryRun.data.update.decision, "repair");
+      assert.equal(dryRun.data.update.writes_now, false);
+      assert.equal(readFileSync(join(home, "channel-state.json"), "utf8"), stateBefore);
+      assert.equal(readFileSync(join(home, "active-channel.json"), "utf8"), activeBefore);
+      assert.equal(readlinkSync(join(home, "releases", "stable", "current")), currentBefore);
+      assert.deepEqual(readdirSync(join(home, "releases", "stable")).sort(), rootsBefore);
+      assert.equal(existsSync(missingPath), false);
+
+      const approved = installedCliJson(
+        initialCli,
+        ["align", "--channel", "stable", "--host", "codex", "--manifest", manifestPath, "--approve-write", "--json"],
+        { home, path: commandPath }
+      );
+      assert.equal(approved.operation, "system.align");
+      assert.equal(approved.data.update.status, "repaired");
+      assert.equal(approved.data.update.decision, "repair");
+      const repairedEntry = readChannelState(home).channels.stable;
+      assert.notEqual(repairedEntry.install_root, installed.install_root);
+      assert.equal(repairedEntry.previous.install_root, installed.install_root);
+      assert.equal(existsSync(installed.install_root), true);
+      assert.equal(existsSync(join(repairedEntry.component_roots.evozeus, missingRelative)), true);
+      const repairedCli = join(repairedEntry.component_roots.evozeus, "scripts", "evozeus-cli.mjs");
+      const doctor = installedCliJson(repairedCli, ["doctor", "--json"], { home, path: commandPath });
+      assert.equal(doctor.data.version.health, "healthy");
+      assert.equal(doctor.data.doctor_verdict, "ready");
+      const healthyPreflight = installedCliJson(
+        repairedCli,
+        ["install", "preflight", "--channel", "stable", "--json"],
+        { home, path: commandPath }
+      );
+      assert.equal(healthyPreflight.local_state.status, "healthy_current");
+      assert.equal(healthyPreflight.next_action.action, "report_noop");
     }));
 
   it("recovers an unreferenced partial Stable install after an interrupted update", async () =>
@@ -622,7 +1253,7 @@ describe("channel transactions", () => {
       assert.equal(channelSnapshot(home).health, "healthy");
     }));
 
-  it("boots a new launcher from a v0.4.0 skeleton that has no host module", async () =>
+  it("uses the active core when the skeleton host module is missing without rewriting it", async () =>
     fixture(async (root) => {
       const home = join(root, "home");
       const components = Object.fromEntries(
@@ -655,7 +1286,7 @@ describe("channel transactions", () => {
       );
 
       assert.equal(result.status, 0, result.stderr);
-      assert.equal(existsSync(bootstrapHostModule), true);
+      assert.equal(existsSync(bootstrapHostModule), false);
       assert.equal(readChannelState(home).channels.uat.manifest.product_version, "v0.4.1");
     }));
 

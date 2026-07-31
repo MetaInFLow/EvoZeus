@@ -24,7 +24,7 @@
 | `not_installed` | 请求 fresh install 批准；只有该状态可进入 bootstrap installer |
 | `healthy_current` | 报告 no-op；不下载产品、不写文件、不注册 Plugin |
 | `update_available` | 进入已安装产品的 update / align 路径并单独请求批准 |
-| `repair_required` | 保留当前可用版本和 rollback 证据，进入 repair 路径 |
+| `repair_required` | 保留当前 root 和 rollback 证据，先输出 `align` repair plan，批准后从已验证 manifest/archive 修复 |
 | `legacy_migration_required` | 进入 migration 路径，不调用 fresh installer |
 | `unknown_or_unverifiable` | 停止，补齐本机版本、Doctor 或渠道证据 |
 
@@ -105,6 +105,21 @@
 - 预检期间没有产品资产下载。
 
 repair、migration、update 和 healthy no-op 报告均不能复用 fresh installer。
+
+## 已安装状态的 Align 决策
+
+已安装渠道的 `align` plan 必须显式输出且只输出一个 decision：
+
+- `healthy_noop`：目标 manifest、组件、embedded 内容、current link 和 active dispatcher 完整一致；产品路径零写入。
+- `repair`：同一 manifest 的必需文件、embedded 内容、current link 或 active dispatcher 缺失/不一致。dry-run 仅报告修复计划；批准后在新隔离 root 重新获取和验证完整产品，通过 required-path、smoke 和 compatibility 检查后原子切换 current link 与 state。
+- `update`：已验证的目标 manifest digest 发生变化，在新隔离 root 完成升级验证后切换。
+- `activate`：目标渠道已安装且完整，当前 active channel 不同；批准后仅执行渠道激活和必要的 dispatcher/Plugin 对齐。
+- `install`：该渠道没有安装 entry，进入渠道安装交易。
+- `unsafe_stop`：持久化 JSON/schema 无法验证，或 install/component/previous root、required path、control file 存在越界/symlink 证据；在 manifest 获取和任何写入前停止。
+
+prepare 必须在 manifest 获取前检查本交易可触达的现存写目录：channel/current parent、UAT Git cache、`skeleton/scripts`、`hooks`、`state/<channel>` 和 migration backup。已存在前缀中的 symlink、非目录节点或无法验证节点必须进入 `unsafe_stop`；缺失后缀可在批准交易内创建。
+
+repair 与 update 都保留切换前 entry 作为 `previous`。新 root 在验证或 smoke 阶段失败时必须删除，current link、channel state 和 active state 保持原值。bootstrap 脚本先在同父目录 staging 中完整刷新，保留既有非 bootstrap 文件，再原子交换目录；中途失败恢复全部旧字节。修复成功后必须重跑 Doctor，只有 `ready` 或 `ready_after_new_session` 才通过。
 
 Installer 在批准写入前立即重新运行本机状态检查，防止预检后状态发生变化。fresh 目标只允许两种磁盘状态：`EVOZEUS_HOME` 不存在，或已存在且严格为空目录。预先存在的 `skeleton`、`update-policy.json`、未知 entry、dangling link、任意目标 marker symlink、目录组件 symlink 或外部 component root 都必须稳定归入 `unknown_or_unverifiable`，失败时不产生 installer 写入。
 

@@ -1607,6 +1607,8 @@ function doctor(options) {
     next_command:
       version.health === "migration_required"
         ? "~/.evozeus/bin/evozeus align --channel stable --host auto --json"
+        : doctorVerdict === "repair_required"
+          ? `~/.evozeus/bin/evozeus align --channel ${version.active_channel || "stable"} --host auto --json`
         : doctorVerdict === "align_required"
           ? `~/.evozeus/bin/evozeus align --channel ${version.active_channel || "stable"} --host auto --json`
           : doctorVerdict === "ready_after_new_session"
@@ -1762,6 +1764,11 @@ async function alignProduct(options) {
         channel,
         manifestSource: manifestSourceFor(options, channel)
       });
+      if (updatePlan.decision === "unsafe_stop") {
+        throw new ChannelError("LOCAL_STATE_UNSAFE", "installed channel state is unsafe or unverifiable", {
+          issues: updatePlan.current_integrity.issues
+        });
+      }
       const pluginPlan = planPluginAlignment({
         evozeusHome: workspaceInfo(options).evozeus_root,
         sourceRoot: SOURCE_ROOT,

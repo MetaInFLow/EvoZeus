@@ -51,7 +51,7 @@ community /skill
 | `not_installed` | Ask before fresh Stable installation; this is the only state accepted by the bootstrap installer |
 | `healthy_current` | Report a strict no-op with zero product download, write, or Plugin registration |
 | `update_available` | Use the installed update / align route and request its approval separately |
-| `repair_required` | Preserve the current usable version and rollback evidence; use the repair route |
+| `repair_required` | Preserve the current root and rollback evidence; dry-run `align`, then rematerialize the same verified manifest in a new root after approval |
 | `legacy_migration_required` | Use the migration route; do not call the fresh installer |
 | `unknown_or_unverifiable` | Stop and identify the missing local version, Doctor, manifest, or channel evidence |
 
@@ -69,6 +69,16 @@ EVOZEUS_AUTO_UPDATE=0 EVOZEUS_AUTO_UPDATE_CHILD=1 ~/.evozeus/bin/evozeus doctor 
 ```
 
 Resolve the latest Stable tag with a payload-free HEAD and compare semantic versions. A healthy current result ends here. Missing install or update dependencies do not change that no-op into a repair or install attempt.
+
+For `repair_required`, run the installed channel command without approval first:
+
+```bash
+~/.evozeus/bin/evozeus align --channel <stable|uat> --host auto --manifest <verified-channel-manifest> --json
+```
+
+The plan must report `decision=repair` and `writes_now=false`. After explicit approval, rerun with `--approve-write`. Repair downloads or checks out the same verified component versions into a new isolated root, validates required paths, fixed smoke checks, embedded components, compatibility, current-link binding, and dispatcher state, then atomically switches channel state. Before manifest fetch, the plan rejects symlinked or non-directory write prefixes for channel storage, the UAT Git cache, skeleton scripts, hooks, channel runtime state, and migration backups. Bootstrap refresh stages a complete scripts directory, preserves non-bootstrap files, and swaps it atomically. The prior root remains as rollback evidence. Run Doctor after the switch.
+
+`decision=unsafe_stop` is final for that attempt. Invalid persisted JSON/schema, out-of-home roots, unsafe previous roots, and symlinked control/component evidence must stop before manifest fetch or write. Collect trusted local evidence before retrying.
 
 For a fresh candidate, run the public inline pre-fetch gate before any checker or product asset GET. A blocked gate must report zero GETs and zero writes. A passing gate allows only these bootstrap downloads:
 
