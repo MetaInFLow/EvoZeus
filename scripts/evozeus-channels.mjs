@@ -61,6 +61,93 @@ const CHANNEL_BOOTSTRAP_FILES = [
 ];
 const CHANNEL_DISPATCHER = fileURLToPath(new URL("./evozeus-coevolve-dispatcher.py", import.meta.url));
 
+export function buildManagedCliShimContent() {
+  return `#!/bin/sh
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
+EVOZEUS_HOME="\${EVOZEUS_HOME:-$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)}"
+export EVOZEUS_HOME
+ACTIVE_LAUNCHER=$(
+  node - "$EVOZEUS_HOME" 2>/dev/null <<'EVOZEUS_RESOLVE'
+const fs = require("node:fs");
+const crypto = require("node:crypto");
+const path = require("node:path");
+
+function canonicalize(value) {
+  if (Array.isArray(value)) return value.map(canonicalize);
+  if (value === null || typeof value !== "object") return value;
+  return Object.fromEntries(Object.keys(value).sort().map((key) => [key, canonicalize(value[key])]));
+}
+
+function productManifestDigest(manifest) {
+  return "sha256:" + crypto.createHash("sha256").update(JSON.stringify(canonicalize(manifest))).digest("hex");
+}
+
+function readControl(home, name) {
+  const target = path.join(home, name);
+  const stats = fs.lstatSync(target);
+  if (stats.isSymbolicLink() || !stats.isFile()) throw new Error("unsafe control file");
+  return JSON.parse(fs.readFileSync(target, "utf8"));
+}
+
+function isSafePath(root, target, finalKind) {
+  if (!path.isAbsolute(target)) return false;
+  const relative = path.relative(root, target);
+  if (!relative || relative === ".." || relative.startsWith(".." + path.sep) || path.isAbsolute(relative)) return false;
+  const rootStats = fs.lstatSync(root);
+  if (rootStats.isSymbolicLink() || !rootStats.isDirectory()) return false;
+  let current = root;
+  const segments = relative.split(path.sep).filter(Boolean);
+  for (let index = 0; index < segments.length; index += 1) {
+    current = path.join(current, segments[index]);
+    const stats = fs.lstatSync(current);
+    if (stats.isSymbolicLink()) return false;
+    const final = index === segments.length - 1;
+    if (!final && !stats.isDirectory()) return false;
+    if (final && finalKind === "directory" && !stats.isDirectory()) return false;
+    if (final && finalKind === "file" && !stats.isFile()) return false;
+  }
+  return true;
+}
+
+try {
+  const home = fs.realpathSync(path.resolve(process.argv[2]));
+  const active = readControl(home, "active-channel.json");
+  const state = readControl(home, "channel-state.json");
+  if (active.schema_version !== "evozeus.active-channel.v1" || !["stable", "uat"].includes(active.channel)) {
+    throw new Error("invalid active channel");
+  }
+  if (state.schema_version !== "evozeus.channel-state.v1") throw new Error("invalid channel state");
+  const entry = state.channels && state.channels[active.channel];
+  const installRoot = entry && entry.install_root;
+  const coreRoot = entry && entry.component_roots && entry.component_roots.evozeus;
+  if (!entry || entry.manifest?.schema_version !== "evozeus.product-channel.v2" || entry.manifest.channel !== active.channel) {
+    throw new Error("invalid active entry");
+  }
+  if (entry.manifest_digest !== productManifestDigest(entry.manifest)) {
+    throw new Error("invalid active manifest digest");
+  }
+  if (typeof installRoot !== "string" || typeof coreRoot !== "string") throw new Error("missing active roots");
+  if (path.resolve(coreRoot) !== path.resolve(path.join(installRoot, "evozeus"))) throw new Error("invalid core root");
+  const launcher = path.join(coreRoot, "scripts", "evozeus-launcher.mjs");
+  const channels = path.join(coreRoot, "scripts", "evozeus-channels.mjs");
+  if (!isSafePath(home, installRoot, "directory")) throw new Error("unsafe install root");
+  if (!isSafePath(installRoot, coreRoot, "directory")) throw new Error("unsafe core root");
+  if (!isSafePath(coreRoot, launcher, "file") || !isSafePath(coreRoot, channels, "file")) {
+    throw new Error("active launcher is unavailable");
+  }
+  process.stdout.write(launcher);
+} catch {
+  process.exit(1);
+}
+EVOZEUS_RESOLVE
+) || ACTIVE_LAUNCHER=
+if [ -n "$ACTIVE_LAUNCHER" ]; then
+  exec node "$ACTIVE_LAUNCHER" "$@"
+fi
+exec node "$SCRIPT_DIR/../skeleton/scripts/evozeus-launcher.mjs" "$@"
+`;
+}
+
 export class ChannelError extends Error {
   constructor(code, message, details = {}) {
     super(message);
@@ -945,40 +1032,33 @@ function reconcileCliShims(evozeusHome) {
   if (mainNode.status === "missing" && recoveryNode.status === "missing") {
     return { status: "not_managed", repaired: false };
   }
-  const mainExecutable = mainNode.status === "ready" && (mainNode.stats.mode & 0o111) !== 0;
-  const recoveryExecutable = recoveryNode.status === "ready" && (recoveryNode.stats.mode & 0o111) !== 0;
-  let contentsMatch = false;
-  if (mainNode.status === "ready" && recoveryNode.status === "ready") {
+  const canonical = Buffer.from(buildManagedCliShimContent(), "utf8");
+  privateDirectory(binRoot);
+  const restored = [];
+  for (const [name, target, node] of [["primary", main, mainNode], ["recovery", recovery, recoveryNode]]) {
+    let requiresRepair = node.status === "missing" || (node.stats.mode & 0o111) === 0;
+    if (node.status === "ready" && !requiresRepair) {
+      try {
+        requiresRepair = !readFileSync(target).equals(canonical);
+      } catch {
+        requiresRepair = true;
+      }
+    }
+    if (!requiresRepair) continue;
+    const temporary = `${target}.${randomUUID()}.tmp`;
     try {
-      contentsMatch = readFileSync(main).equals(readFileSync(recovery));
-    } catch {
-      throw new ChannelError("CLI_SHIM_UNREADABLE", "the managed CLI shims could not be compared");
+      writeFileSync(temporary, canonical);
+      chmodSync(temporary, 0o755);
+      renameSync(temporary, target);
+      restored.push(name);
+    } catch (error) {
+      rmSync(temporary, { force: true });
+      throw error;
     }
   }
-  let source = null;
-  let target = null;
-  if (recoveryExecutable && (!mainExecutable || !contentsMatch)) {
-    source = recovery;
-    target = main;
-  } else if (mainExecutable && !recoveryExecutable) {
-    source = main;
-    target = recovery;
-  } else if (mainExecutable && recoveryExecutable && contentsMatch) {
-    return { status: "ready", repaired: false };
-  } else {
-    throw new ChannelError("CLI_SHIM_RECOVERY_UNAVAILABLE", "at least one managed CLI shim must be executable");
-  }
-  privateDirectory(binRoot);
-  const temporary = `${target}.${randomUUID()}.tmp`;
-  try {
-    cpSync(source, temporary);
-    chmodSync(temporary, 0o755);
-    renameSync(temporary, target);
-  } catch (error) {
-    rmSync(temporary, { force: true });
-    throw error;
-  }
-  return { status: "repaired", repaired: true, restored: target === main ? "primary" : "recovery" };
+  return restored.length > 0
+    ? { status: "repaired", repaired: true, restored }
+    : { status: "ready", repaired: false, restored: [] };
 }
 
 function currentLinkFor(evozeusHome, channel) {
@@ -1160,13 +1240,23 @@ function installedEntryIntegrity(evozeusHome, entry, manifest, { historical = fa
     if (recoveryCliSafety === "ready" && (lstatSync(recoveryCli).mode & 0o111) === 0) {
       issues.push("cli_recovery:not_executable");
     }
-    if (mainCliSafety === "ready" && recoveryCliSafety === "ready") {
+    const canonicalCliShim = Buffer.from(buildManagedCliShimContent(), "utf8");
+    if (mainCliSafety === "ready") {
       try {
-        if (!readFileSync(mainCli).equals(readFileSync(recoveryCli))) {
+        if (!readFileSync(mainCli).equals(canonicalCliShim)) {
           issues.push("cli:content_mismatch");
         }
       } catch {
         unsafe.push("cli:unreadable");
+      }
+    }
+    if (recoveryCliSafety === "ready") {
+      try {
+        if (!readFileSync(recoveryCli).equals(canonicalCliShim)) {
+          issues.push("cli_recovery:content_mismatch");
+        }
+      } catch {
+        unsafe.push("cli_recovery:unreadable");
       }
     }
     for (const file of CHANNEL_BOOTSTRAP_FILES) {
