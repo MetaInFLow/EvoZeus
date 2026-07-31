@@ -294,6 +294,33 @@ class UserPromptLessonRuntimeTest(unittest.TestCase):
                 runtime.SESSION_SIGNAL_MAX_TARGETS + 1,
             )
 
+    def test_target_discovery_bounds_instruction_surface_aliases(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            user_home = root / "user-home"
+            target = self._target(user_home, root)
+            skill = target / "SKILL.md"
+
+            skill.write_text(
+                f"---\nname: {'x' * (runtime.SESSION_SIGNAL_MAX_ALIAS_CHARS + 1)}\n"
+                "---\n# Test Skill\n",
+                encoding="utf-8",
+            )
+            oversized_alias_targets = runtime.discover_wrapped_targets(user_home)
+
+            self.assertIsNotNone(oversized_alias_targets)
+            self.assertEqual(oversized_alias_targets[0]["aliases"], ["example-skill"])
+
+            skill.write_text(
+                "---\nname: bounded-name\n---\n"
+                + "x" * (runtime.SESSION_SIGNAL_MAX_INSTRUCTION_SURFACE_BYTES + 1),
+                encoding="utf-8",
+            )
+            oversized_surface_targets = runtime.discover_wrapped_targets(user_home)
+
+            self.assertIsNotNone(oversized_surface_targets)
+            self.assertEqual(oversized_surface_targets[0]["aliases"], ["example-skill"])
+
     def test_invalid_channel_evidence_and_component_files_fail_open(self):
         for failure in (
             "manifest_digest",

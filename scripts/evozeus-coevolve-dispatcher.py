@@ -36,6 +36,8 @@ SESSION_SIGNAL_MAX_OUTPUT_BYTES = 16 * 1024
 SESSION_SIGNAL_MAX_STDERR_BYTES = 16 * 1024
 SESSION_SIGNAL_MAX_PROMPT_CHARS = 32_000
 SESSION_SIGNAL_MAX_TARGETS = 256
+SESSION_SIGNAL_MAX_ALIAS_CHARS = 128
+SESSION_SIGNAL_MAX_INSTRUCTION_SURFACE_BYTES = 64 * 1024
 _ISOLATED_COMPONENT_BOOTSTRAP = (
     "import runpy,sys; namespace=runpy.run_path(sys.argv[1]); "
     "raise SystemExit(namespace['main']())"
@@ -260,11 +262,19 @@ def _version_key(tag: str) -> tuple[int, int, int] | None:
 
 
 def _read_skill_name(path: Path) -> str | None:
-    if not path.is_file() or path.is_symlink():
+    try:
+        mode = path.lstat().st_mode
+    except OSError:
+        return None
+    if path.is_symlink() or not stat.S_ISREG(mode):
         return None
     try:
-        text = path.read_text(encoding="utf-8")
-    except OSError:
+        with path.open("rb") as surface:
+            raw = surface.read(SESSION_SIGNAL_MAX_INSTRUCTION_SURFACE_BYTES + 1)
+        if len(raw) > SESSION_SIGNAL_MAX_INSTRUCTION_SURFACE_BYTES:
+            return None
+        text = raw.decode("utf-8")
+    except (OSError, UnicodeDecodeError):
         return None
     frontmatter = re.match(r"\A---\s*\n(.*?)\n---(?:\s*\n|\Z)", text, re.DOTALL)
     if not frontmatter:
@@ -312,10 +322,18 @@ def discover_wrapped_targets(user_home: Path) -> list[dict[str, Any]] | None:
                 continue
             if len(targets) >= SESSION_SIGNAL_MAX_TARGETS:
                 return None
-            aliases = [expected_repo, pointer.name]
+            aliases = [
+                alias
+                for alias in (pointer.name,)
+                if len(alias) <= SESSION_SIGNAL_MAX_ALIAS_CHARS
+            ]
             instruction_surface = wrapper_manifest.get("instruction_surface") or "SKILL.md"
             surface = _regular_file_under(canonical, instruction_surface)
-            if surface is not None and (declared_name := _read_skill_name(surface)):
+            if (
+                surface is not None
+                and (declared_name := _read_skill_name(surface))
+                and len(declared_name) <= SESSION_SIGNAL_MAX_ALIAS_CHARS
+            ):
                 aliases.append(declared_name)
             targets.append(
                 {

@@ -45,6 +45,7 @@ UserPromptSubmit
 - attachment 自身的 SHA-256 固定在渠道安装的 Core dispatcher 中；修改 attachment 与 entrypoint 不能形成自签名信任链。
 - 输入上限为 256 KiB，prompt 上限为 32,000 chars，targets 上限为 256；stdout 与 stderr 在读取期间分别限制为 16 KiB。
 - 注册目标发现读取到第 257 个有效目标后立即停止并 fail-open，不继续遍历剩余 registry。
+- instruction surface 只读取至 64 KiB，超过 128 chars 的 alias 直接丢弃；该 target 的 canonical repo 与 cwd 证据仍可用。
 - Core 用 `-I -B` 运行摘要固定的纯方法源文件，不把 component 的 scripts/src 目录加入 import path；未列入 attachment 的同名模块无法参与 import。
 - 输出不能包含 raw prompt、cwd、canonical path、component path、stderr 或内部诊断。
 - `UserPromptSubmit` 不运行 SessionStart 自动更新，不写本地状态，不访问网络。

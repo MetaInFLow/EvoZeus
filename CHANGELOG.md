@@ -11,10 +11,11 @@
 - Bound channel dispatcher reconciliation to the newly installed Core source and byte content, so Core-only updates cannot retain the prior dispatcher.
 - Shipped the digest-pinned Session Signal v0.1.1 entrypoint inside the Core product tree and declared its attachment and source files as channel-required paths.
 - Stopped registered-target discovery as soon as the 257th valid target proves the bounded inventory invalid.
+- Discarded aliases longer than 128 characters and bounded instruction-surface reads to 64 KiB without dropping an otherwise valid registered target.
 
 ### Security
 
-- Added active-channel digest verification, a trusted-dispatcher pin for the attachment bytes, root containment, non-symlink file checks, streaming stdout/stderr limits, isolated component execution, private-output rejection and silent fail-open handling.
+- Added active-channel digest verification, a trusted-dispatcher pin for the attachment bytes, root containment, non-symlink file checks, bounded registry metadata reads, streaming stdout/stderr limits, isolated component execution, private-output rejection and silent fail-open handling.
 
 ### Verification
 
