@@ -51,10 +51,11 @@ function fixtureFor(context) {
 }
 
 function snapshot(repo) {
+  const status = execute("git", ["status", "--porcelain=v1", "--untracked-files=all"], repo);
   return {
     head: git(repo, "rev-parse", "HEAD"),
     refs: git(repo, "for-each-ref", "--format=%(refname):%(objectname)"),
-    status: git(repo, "status", "--porcelain=v1", "--untracked-files=all"),
+    status: { exit_code: status.status, stdout: status.stdout, stderr: status.stderr },
     worktrees: git(repo, "worktree", "list", "--porcelain")
   };
 }
@@ -148,7 +149,10 @@ test("contract exposes the four required profiles", () => {
   });
   assert.equal(contract.resume.matching_branch_without_worktree,
     "recreate_resume_worktree_for_existing_branch");
+  assert.equal(contract.resume.matching_branch_with_prunable_worktree,
+    "prune_and_recreate_resume_worktree_for_existing_branch");
   assert.equal(contract.worktree.registered_worktree_descendant, "block");
+  assert.equal(contract.blocking_handling.current_checkout_status_unavailable, "block");
 });
 
 test("plans a clean new direct contribution with zero writes", (context) => {
@@ -231,6 +235,24 @@ test("offers an explicit zero-write recovery action for a matching resume branch
   assert.equal(existsSync(fixture.worktree), false);
 });
 
+test("offers cleanup and recreation when a matching registered worktree is prunable", (context) => {
+  const fixture = fixtureFor(context);
+  const initial = runPlan(fixture).plan;
+  git(fixture.repo, "worktree", "add", "-b", initial.branch.target, fixture.worktree, "origin/main");
+  const resumePath = join(fixture.root, "resume-plan.json");
+  writeFileSync(resumePath, JSON.stringify(initial));
+  rmSync(fixture.worktree, { recursive: true, force: true });
+
+  const { result, plan } = runPlan(fixture, { resume_plan: resumePath });
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(plan.resume.decision, "resume");
+  assert.equal(plan.worktree.registered, false);
+  assert.equal(plan.worktree.registration_present, true);
+  assert.equal(plan.worktree.registration_prunable, true);
+  assert.equal(plan.next_write_action, "prune_and_recreate_resume_worktree_for_existing_branch");
+  assert.equal(existsSync(fixture.worktree), false);
+});
+
 test("blocks a dirty tree", (context) => {
   const fixture = fixtureFor(context);
   writeFileSync(join(fixture.repo, "dirty.txt"), "dirty\n");
@@ -252,6 +274,23 @@ test("blocks a clean isolated worktree when the canonical checkout is dirty", (c
   assert(blockerCodes(plan).includes("canonical_checkout_dirty"));
   assert.deepEqual([plan.worktree.current_checkout.dirty_entry_count,
     plan.worktree.canonical_checkout.dirty_entry_count], [0, 1]);
+});
+
+test("blocks when the current linked checkout status is unavailable", (context) => {
+  const fixture = fixtureFor(context);
+  git(fixture.repo, "worktree", "add", "-b", "inspection", fixture.worktree, "origin/main");
+  const indexPath = resolve(fixture.worktree, git(fixture.worktree, "rev-parse", "--git-path", "index"));
+  writeFileSync(indexPath, "corrupt-index\n");
+
+  const { result, plan } = runPlan(fixture, {
+    repo_path: fixture.worktree,
+    worktree: join(fixture.root, "planned-worktree")
+  });
+  assert.equal(result.status, 2);
+  assert(blockerCodes(plan).includes("current_checkout_status_unavailable"));
+  assert.equal(plan.worktree.current_checkout.status_available, false);
+  assert.equal(plan.worktree.current_checkout.status_reason, "git_status_failed");
+  assert.equal(plan.worktree.canonical_checkout.status_available, true);
 });
 
 test("blocks direct use of a protected checkout as the contribution worktree", (context) => {

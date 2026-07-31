@@ -103,6 +103,7 @@
     "stale_after_days": 14,
     "mismatch_or_stale": "block_and_require_owner_reconfirmation",
     "matching_branch_without_worktree": "recreate_resume_worktree_for_existing_branch",
+    "matching_branch_with_prunable_worktree": "prune_and_recreate_resume_worktree_for_existing_branch",
     "owner_reconfirmation": {
       "cli_flag": "--reconfirm-owner",
       "requires_resume_plan": true,
@@ -118,6 +119,7 @@
     "branch_collision": "block_without_matching_resume_plan",
     "stale_ownership": "block_and_require_owner_reconfirmation",
     "canonical_checkout_dirty_or_unavailable": "block",
+    "current_checkout_status_unavailable": "block",
     "actor_or_permission_expectation_mismatch": "block",
     "issue_unavailable_or_invalid": "block",
     "github_unavailable": "local_patch_only"
