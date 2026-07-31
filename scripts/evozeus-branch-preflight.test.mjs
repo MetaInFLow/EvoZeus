@@ -146,6 +146,9 @@ test("contract exposes the four required profiles", () => {
     plan_semantics: "identical",
     host_input_to_planner: false
   });
+  assert.equal(contract.resume.matching_branch_without_worktree,
+    "recreate_resume_worktree_for_existing_branch");
+  assert.equal(contract.worktree.registered_worktree_descendant, "block");
 });
 
 test("plans a clean new direct contribution with zero writes", (context) => {
@@ -213,6 +216,21 @@ test("resumes only the matching owner, base, key, branch, and worktree", (contex
   assert.equal(plan.next_write_action, "resume_existing_branch_in_isolated_worktree");
 });
 
+test("offers an explicit zero-write recovery action for a matching resume branch without a worktree", (context) => {
+  const fixture = fixtureFor(context);
+  const initial = runPlan(fixture).plan;
+  git(fixture.repo, "branch", initial.branch.target, "origin/main");
+  const resumePath = join(fixture.root, "resume-plan.json");
+  writeFileSync(resumePath, JSON.stringify(initial));
+
+  const { result, plan } = runPlan(fixture, { resume_plan: resumePath });
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(plan.resume.decision, "resume");
+  assert.equal(plan.worktree.registered, false);
+  assert.equal(plan.next_write_action, "recreate_resume_worktree_for_existing_branch");
+  assert.equal(existsSync(fixture.worktree), false);
+});
+
 test("blocks a dirty tree", (context) => {
   const fixture = fixtureFor(context);
   writeFileSync(join(fixture.repo, "dirty.txt"), "dirty\n");
@@ -259,6 +277,43 @@ test("blocks a nonexistent worktree nested under the canonical checkout", (conte
   assert(blockerCodes(aliased).includes("canonical_checkout_write"));
   assert.equal(aliased.worktree.isolated, false);
   assert.equal(existsSync(nestedThroughAlias), false);
+});
+
+test("blocks a requested path nested under any registered contribution worktree", (context) => {
+  const fixture = fixtureFor(context);
+  const outer = join(fixture.root, "outer-worktree");
+  git(fixture.repo, "worktree", "add", "-b", "outer-contribution", outer, "origin/main");
+  const nested = join(outer, "nested-worktree");
+
+  const { result, plan } = runPlan(fixture, { worktree: nested });
+  assert.equal(result.status, 2);
+  assert(blockerCodes(plan).includes("registered_worktree_descendant"));
+  assert.equal(plan.worktree.isolated, false);
+  assert.equal(existsSync(nested), false);
+  assert.equal(git(outer, "status", "--porcelain=v1", "--untracked-files=all"), "");
+});
+
+test("accepts exact GitHub HTTPS, SSH, and scp-like origins and rejects lookalike hosts", (context) => {
+  const fixture = fixtureFor(context);
+  const accepted = [
+    "https://github.com/MetaInFLow/EvoZeus.git",
+    "ssh://git@github.com/MetaInFLow/EvoZeus.git",
+    "git@github.com:MetaInFLow/EvoZeus.git"
+  ];
+  for (const origin of accepted) {
+    git(fixture.repo, "remote", "set-url", "origin", origin);
+    assert.deepEqual(runPlan(fixture).plan.blockers, [], origin);
+  }
+
+  const rejected = [
+    "https://evilgithub.com/MetaInFLow/EvoZeus.git",
+    "https://notgithub.com/github.com/MetaInFLow/EvoZeus.git",
+    "git@evilgithub.com:MetaInFLow/EvoZeus.git"
+  ];
+  for (const origin of rejected) {
+    git(fixture.repo, "remote", "set-url", "origin", origin);
+    assert(blockerCodes(runPlan(fixture).plan).includes("missing_origin_identity"), origin);
+  }
 });
 
 test("blocks a new plan when HEAD is not the requested base commit", (context) => {

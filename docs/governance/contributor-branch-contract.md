@@ -63,8 +63,8 @@ Branch plan 对 Codex 与 Claude 使用完全相同的输入、判定和输出�
 
 ## New 与 Resume
 
-- `new`：目标分支不存在，当前 checkout clean 且 HEAD 与 canonical base commit 一致，计划指向新的隔离 worktree。
-- `resume`：调用方提供之前保存的 plan，resume key、owner、base ref/commit、完整 purpose（type/component/summary）和目标 branch 全部匹配，且 ownership 未过期。
+- `new`：目标分支不存在，当前 checkout clean 且 HEAD 与 canonical base commit 一致，计划指向新的隔离 worktree。目标路径不得位于任何已注册 worktree 内。
+- `resume`：调用方提供之前保存的 plan，resume key、owner、base ref/commit、完整 purpose（type/component/summary）和目标 branch 全部匹配，且 ownership 未过期。目标 worktree 已注册时输出 `resume_existing_branch_in_isolated_worktree`；分支仍存在、目标路径不存在且未被其他 worktree 占用时输出零写入 `recreate_resume_worktree_for_existing_branch`，后续创建仍需独立授权。
 - 同名 branch 存在但缺少匹配 plan 时视为 collision。
 - owner、base、resume key 不匹配时继续阻断。仅 ownership 时间窗超期且其余身份完全匹配时，Owner 可在 `--resume-plan` 基础上显式增加 `--reconfirm-owner` 生成 refreshed resume plan；持久化 refreshed ledger 仍需独立的 `--approve-save-plan`。
 
@@ -77,6 +77,7 @@ Branch plan 对 Codex 与 Claude 使用完全相同的输入、判定和输出�
 | wrong/missing base | 阻断，重新取得 canonical ref 与 commit。 |
 | protected checkout direct write | 阻断，改用外部 worktree。 |
 | branch/worktree collision | 阻断，禁止复用来源不明的分支。 |
+| requested path nested in any registered worktree | 阻断，选择所有 worktree 外部的隔离路径。 |
 | stale ownership | 默认阻断；身份完全匹配时由 Owner 使用 `--reconfirm-owner` 刷新，身份不匹配继续阻断。 |
 | actor/permission evidence mismatch | 阻断，以 GitHub viewer 与 Repo 权限证据为准。 |
 | permission evidence unavailable | 权限路径解析为 local patch；direct/fork 预期会阻断。 |
