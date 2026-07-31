@@ -376,6 +376,17 @@ async function autoUpdateActiveChannel() {
           message: "the isolated repair failed before a verified replacement became active"
         }
       };
+    } else if (plan?.decision === "update" && plan.current_integrity?.issues?.length > 0) {
+      recovery = {
+        attempted: true,
+        status: "incomplete",
+        product: "damaged_previous_retained",
+        plugin: "unchanged",
+        error: {
+          code: "UPDATE_FAILED_WITH_DAMAGED_PREVIOUS",
+          message: "the update failed before a verified replacement became active, and the retained installation is damaged"
+        }
+      };
     } else {
       recovery = { attempted: false, status: "transaction_not_applied" };
     }

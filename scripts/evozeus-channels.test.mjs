@@ -1828,6 +1828,52 @@ describe("channel transactions", () => {
       assert.match(result.stderr, /恢复未完成/);
     }));
 
+  it("reports recovery required when an update fails before replacing a damaged install", async () =>
+    fixture(async (root) => {
+      const home = join(root, "home");
+      const current = stableManifest(join(root, "damaged-update-current"), "v0.4.0", "1");
+      await applyChannelUpdate({
+        evozeusHome: home,
+        channel: "stable",
+        manifestSource: writeManifest(root, "damaged-update-current.json", current),
+        fetchImpl: fileFetch,
+        smokeRunner: noSmoke,
+        embeddedSmokeRunner: noSmoke
+      });
+      const beforeEntry = readChannelState(home).channels.stable;
+      const missingSkill = join(beforeEntry.component_roots.evozeus, "SKILL.md");
+      rmSync(missingSkill);
+      const target = stableManifest(join(root, "damaged-update-target"), "v0.4.1", "4");
+      writeFileSync(new URL(target.components.evozeus.source.url), "corrupted archive\n");
+      const targetPath = writeManifest(root, "damaged-update-target.json", target);
+
+      const result = spawnSync(process.execPath, [LAUNCHER, "version", "--json"], {
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          EVOZEUS_HOME: home,
+          EVOZEUS_STABLE_MANIFEST: targetPath,
+          EVOZEUS_HOSTS_AVAILABLE: "none",
+          EVOZEUS_UPDATE_CHECK_INTERVAL_SECONDS: "0"
+        }
+      });
+
+      assert.equal(result.status, 0, result.stderr);
+      const afterEntry = readChannelState(home).channels.stable;
+      const report = readJsonReport(join(home, "state", "stable", "auto-update-last.json"));
+      assert.equal(afterEntry.install_root, beforeEntry.install_root);
+      assert.equal(afterEntry.manifest.product_version, "v0.4.0");
+      assert.equal(existsSync(missingSkill), false);
+      assert.equal(report.status, "failed_recovery_required");
+      assert.equal(report.recovery.status, "incomplete");
+      assert.equal(report.recovery.product, "damaged_previous_retained");
+      assert.equal(report.recovery.plugin, "unchanged");
+      assert.equal(report.recovery.error.code, "UPDATE_FAILED_WITH_DAMAGED_PREVIOUS");
+      assert.equal(report.error.code, "ARCHIVE_CHECKSUM_MISMATCH");
+      assert.match(result.stderr, /恢复未完成/);
+      assert.doesNotMatch(result.stderr, /继续使用Stable/);
+    }));
+
   it("rolls back a cross-version auto-update and Plugin after real host registration fails", async () =>
     fixture(async (root) => {
       const home = join(root, "home");

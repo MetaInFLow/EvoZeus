@@ -372,6 +372,47 @@ describe("evozeus-install", () => {
       assert.equal(existsSync(updatePolicyPath), false);
     }));
 
+  it("uses the active installed Core when managed bootstrap startup files are missing", () =>
+    withTempInstall(({ workspace, evozeusHome }) => {
+      parseStdout(runInstall(workspace, evozeusHome, ["--approve-write"]));
+      const installRoot = join(evozeusHome, "releases", "stable", "v0.4.1-test");
+      const coreRoot = join(installRoot, "evozeus");
+      const scriptsRoot = join(coreRoot, "scripts");
+      mkdirSync(scriptsRoot, { recursive: true });
+      writeFileSync(
+        join(scriptsRoot, "evozeus-launcher.mjs"),
+        'console.log(JSON.stringify({ ok: true, operation: "recovery.probe", argv: process.argv.slice(2) }));\n'
+      );
+      writeFileSync(join(scriptsRoot, "evozeus-channels.mjs"), "export {};\n");
+      writeFileSync(join(evozeusHome, "active-channel.json"), `${JSON.stringify({
+        schema_version: "evozeus.active-channel.v1",
+        channel: "stable",
+        auto_refresh: false
+      })}\n`);
+      writeFileSync(join(evozeusHome, "channel-state.json"), `${JSON.stringify({
+        schema_version: "evozeus.channel-state.v1",
+        channels: {
+          stable: {
+            manifest: { schema_version: "evozeus.product-channel.v2", channel: "stable" },
+            install_root: installRoot,
+            component_roots: { evozeus: coreRoot }
+          },
+          uat: null
+        }
+      })}\n`);
+      rmSync(join(evozeusHome, "skeleton", "scripts", "evozeus-launcher.mjs"));
+      rmSync(join(evozeusHome, "skeleton", "scripts", "evozeus-channels.mjs"));
+
+      const result = spawnSync(join(evozeusHome, "bin", "evozeus"), ["align", "--channel", "stable"], {
+        cwd: workspace,
+        encoding: "utf8"
+      });
+      const report = parseStdout(result);
+
+      assert.equal(report.operation, "recovery.probe");
+      assert.deepEqual(report.argv, ["align", "--channel", "stable"]);
+    }));
+
   it("rejects an existing installation instead of reconciling it through the fresh installer", () =>
     withTempInstall(({ workspace, evozeusHome }) => {
       parseStdout(runInstall(workspace, evozeusHome, ["--approve-write"]));

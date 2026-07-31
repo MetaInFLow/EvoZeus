@@ -522,6 +522,70 @@ function writeCliShim(evozeusRoot, filesWritten) {
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
 EVOZEUS_HOME="\${EVOZEUS_HOME:-$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)}"
 export EVOZEUS_HOME
+ACTIVE_LAUNCHER=$(
+  node - "$EVOZEUS_HOME" 2>/dev/null <<'EVOZEUS_RESOLVE'
+const fs = require("node:fs");
+const path = require("node:path");
+
+function readControl(home, name) {
+  const target = path.join(home, name);
+  const stats = fs.lstatSync(target);
+  if (stats.isSymbolicLink() || !stats.isFile()) throw new Error("unsafe control file");
+  return JSON.parse(fs.readFileSync(target, "utf8"));
+}
+
+function isSafePath(root, target, finalKind) {
+  if (!path.isAbsolute(target)) return false;
+  const relative = path.relative(root, target);
+  if (!relative || relative === ".." || relative.startsWith(".." + path.sep) || path.isAbsolute(relative)) return false;
+  const rootStats = fs.lstatSync(root);
+  if (rootStats.isSymbolicLink() || !rootStats.isDirectory()) return false;
+  let current = root;
+  const segments = relative.split(path.sep).filter(Boolean);
+  for (let index = 0; index < segments.length; index += 1) {
+    current = path.join(current, segments[index]);
+    const stats = fs.lstatSync(current);
+    if (stats.isSymbolicLink()) return false;
+    const final = index === segments.length - 1;
+    if (!final && !stats.isDirectory()) return false;
+    if (final && finalKind === "directory" && !stats.isDirectory()) return false;
+    if (final && finalKind === "file" && !stats.isFile()) return false;
+  }
+  return true;
+}
+
+try {
+  const home = fs.realpathSync(path.resolve(process.argv[2]));
+  const active = readControl(home, "active-channel.json");
+  const state = readControl(home, "channel-state.json");
+  if (active.schema_version !== "evozeus.active-channel.v1" || !["stable", "uat"].includes(active.channel)) {
+    throw new Error("invalid active channel");
+  }
+  if (state.schema_version !== "evozeus.channel-state.v1") throw new Error("invalid channel state");
+  const entry = state.channels && state.channels[active.channel];
+  const installRoot = entry && entry.install_root;
+  const coreRoot = entry && entry.component_roots && entry.component_roots.evozeus;
+  if (!entry || entry.manifest?.schema_version !== "evozeus.product-channel.v2" || entry.manifest.channel !== active.channel) {
+    throw new Error("invalid active entry");
+  }
+  if (typeof installRoot !== "string" || typeof coreRoot !== "string") throw new Error("missing active roots");
+  if (path.resolve(coreRoot) !== path.resolve(path.join(installRoot, "evozeus"))) throw new Error("invalid core root");
+  const launcher = path.join(coreRoot, "scripts", "evozeus-launcher.mjs");
+  const channels = path.join(coreRoot, "scripts", "evozeus-channels.mjs");
+  if (!isSafePath(home, installRoot, "directory")) throw new Error("unsafe install root");
+  if (!isSafePath(installRoot, coreRoot, "directory")) throw new Error("unsafe core root");
+  if (!isSafePath(coreRoot, launcher, "file") || !isSafePath(coreRoot, channels, "file")) {
+    throw new Error("active launcher is unavailable");
+  }
+  process.stdout.write(launcher);
+} catch {
+  process.exit(1);
+}
+EVOZEUS_RESOLVE
+) || ACTIVE_LAUNCHER=
+if [ -n "$ACTIVE_LAUNCHER" ]; then
+  exec node "$ACTIVE_LAUNCHER" "$@"
+fi
 exec node "$SCRIPT_DIR/../skeleton/scripts/evozeus-launcher.mjs" "$@"
 `
   );
