@@ -13,6 +13,7 @@ EvoZeus Core 已拥有产品渠道、安装目录、活动渠道状态和本机 
 - 只从经过摘要校验的 active Stable/UAT channel 解析 Session Signal。
 - 从 `~/.evozeus/.projects` 读取 CoEvolve 注册的 canonical Repo 指针。
 - 对 Session Signal 运行固定 version、API、entrypoint 和文件摘要校验。
+- 在 Core 产品树内携带摘要固定的 Session Signal v0.1.1 入口，并把 attachment 与入口文件列入渠道 required paths。
 - 用短 timeout、流式 bounded stdout/stderr、`shell=false` 和 Python isolated mode 执行方法。
 - 仅返回 model-only guidance；异常、缺失、损坏与超时全部 fail-open。
 
@@ -57,6 +58,6 @@ UserPromptSubmit
 
 ## 发布边界
 
-本变更保持 `Unreleased`。本 PR 不下载组件、不切换渠道、不创建 tag 或 Release。后续 Stable release 需要把 Core attachment contract 与 Session Signal `v0.1.1` 文件加入产品清单。
+本变更保持 `Unreleased`。本 PR 不下载组件、不切换渠道、不创建 tag 或 Release。渠道输入已声明 Core attachment contract 与 Session Signal `v0.1.1` 文件；后续 Stable release 由既有发布流程生成并验证产品清单。
 
 依赖顺序：Core #46 → Core #48 → Core #50。#50 复用 #48 的安装预检、激活与回滚事务。

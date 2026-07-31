@@ -15,6 +15,7 @@
       "scripts/evozeus-install-preflight.mjs",
       "scripts/evozeus-launcher.mjs",
       "scripts/evozeus-coevolve-dispatcher.py",
+      "contracts/v1/user-prompt-lesson-runtime.json",
       "docs/reference/user-visible-events.md",
       "schemas/install-preflight.schema.json",
       "schemas/product-channel-manifest.schema.json",
@@ -53,11 +54,13 @@
       ]
     },
     "session_signal": {
-      "version": "v0.1.0",
+      "version": "v0.1.1",
       "path": "packs/session-signal",
       "required_paths": [
         "SKILL.md",
+        "scripts/evaluate_lesson_candidate.py",
         "scripts/validate_official_factor_spec.py",
+        "src/evozeus_session_signal_skill/lesson_candidate.py",
         "factors/task-completion/spec.json"
       ]
     }

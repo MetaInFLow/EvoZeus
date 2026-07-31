@@ -54,12 +54,15 @@ const COMPONENT_PATHS = {
     "scripts/evozeus-install-prefetch.sh",
     "scripts/evozeus-install-preflight.mjs",
     "scripts/evozeus-launcher.mjs",
+    "contracts/v1/user-prompt-lesson-runtime.json",
     "SKILL.md",
     "skills/using-evozeus/SKILL.md",
     "skills/maintain-evozeus/SKILL.md",
     "packages/runtime/src/evozeus_runtime/cli/main.py",
     "packages/runtime/pyproject.toml",
     "packs/session-signal/scripts/validate_official_factor_spec.py",
+    "packs/session-signal/scripts/evaluate_lesson_candidate.py",
+    "packs/session-signal/src/evozeus_session_signal_skill/lesson_candidate.py",
     "packs/session-signal/SKILL.md",
     "packs/session-signal/factors/task-completion/spec.json"
   ],
@@ -72,9 +75,15 @@ const EMBEDDED = {
     required_paths: ["src/evozeus_runtime/cli/main.py", "pyproject.toml"]
   },
   session_signal: {
-    version: "v0.1.0",
+    version: "v0.1.1",
     path: "packs/session-signal",
-    required_paths: ["scripts/validate_official_factor_spec.py", "SKILL.md", "factors/task-completion/spec.json"]
+    required_paths: [
+      "scripts/validate_official_factor_spec.py",
+      "scripts/evaluate_lesson_candidate.py",
+      "src/evozeus_session_signal_skill/lesson_candidate.py",
+      "SKILL.md",
+      "factors/task-completion/spec.json"
+    ]
   }
 };
 const LAUNCHER = fileURLToPath(new URL("./evozeus-launcher.mjs", import.meta.url));

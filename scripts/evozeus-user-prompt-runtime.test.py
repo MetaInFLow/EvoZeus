@@ -221,6 +221,34 @@ class UserPromptLessonRuntimeTest(unittest.TestCase):
             )
         )
 
+        session_root = ROOT / "packs" / "session-signal"
+        for entry in attachment["component"]["files"]:
+            bundled = session_root / entry["path"]
+            self.assertTrue(bundled.is_file(), entry["path"])
+            self.assertFalse(bundled.is_symlink(), entry["path"])
+            self.assertEqual(
+                hashlib.sha256(bundled.read_bytes()).hexdigest(),
+                entry["sha256"],
+                entry["path"],
+            )
+
+        release_input = json.loads(
+            (ROOT / "channels" / "stable-release-input.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        self.assertIn(
+            runtime.SESSION_SIGNAL_ATTACHMENT_PATH.as_posix(),
+            release_input["core"]["required_paths"],
+        )
+        embedded = release_input["embedded"]["session_signal"]
+        self.assertEqual(embedded["version"], attachment["component"]["version"])
+        self.assertTrue(
+            {
+                entry["path"] for entry in attachment["component"]["files"]
+            }.issubset(embedded["required_paths"])
+        )
+
     def test_custom_product_home_uses_fixed_user_project_registry(self):
         with tempfile.TemporaryDirectory() as tmp:
             fixture = self._fixture(Path(tmp))

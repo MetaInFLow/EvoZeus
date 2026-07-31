@@ -1,5 +1,20 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- Added the read-only `evozeus.session-signal.lesson-candidate.v1` method, CLI and method contract for normal Chat correction and durable-rule candidates.
+- Added deterministic target selection using cwd containment, canonical repository identity or one unique caller-provided alias.
+
+### Security
+
+- The method performs no persistence or network access and does not return raw prompts, local paths or signal identifiers.
+
+### Verification
+
+- Added 114 deterministic Lesson candidate tests, including pasted-log, attribution, question-scope, alias and subprocess privacy regressions.
+
 ## [v0.1.0] - 2026-07-26
 
 ### Added
