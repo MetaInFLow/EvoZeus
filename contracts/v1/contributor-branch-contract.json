@@ -117,6 +117,7 @@
     "mismatch_or_stale": "block_and_require_owner_reconfirmation",
     "matching_branch_without_worktree": "recreate_resume_worktree_for_existing_branch",
     "matching_branch_with_prunable_worktree": "prune_and_recreate_resume_worktree_for_existing_branch",
+    "remote_only_branch": "block_until_explicit_fetch_and_local_branch_creation",
     "missing_cli_date_source": "validated_resume_plan_target_branch",
     "evidence_requirements": { "writes": false, "blockers": "empty", "decision": ["new", "resume"], "next_write_action": "not_blocked" },
     "owner_reconfirmation": {
@@ -133,6 +134,7 @@
     "protected_ref_write": "block",
     "branch_collision": "block_without_matching_resume_plan",
     "invalid_resume_evidence_or_wrong_base": "block",
+    "resume_branch_local_missing": "block_until_explicit_fetch_and_local_branch_creation",
     "stale_ownership": "block_and_require_owner_reconfirmation",
     "canonical_checkout_dirty_or_unavailable": "block",
     "current_checkout_status_unavailable": "block",

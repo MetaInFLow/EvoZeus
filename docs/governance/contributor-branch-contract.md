@@ -67,7 +67,7 @@ Branch plan 对 Codex 与 Claude 使用完全相同的输入、判定和输出�
 ## New 与 Resume
 
 - `new`：目标分支不存在，当前 checkout clean 且 HEAD 与 canonical base commit 一致，计划指向新的隔离 worktree。目标路径不得位于任何已注册 worktree 内。
-- `resume`：调用方提供之前保存的 plan，resume key、owner、base ref/commit、完整 purpose（type/component/summary）和含 actor 所有权段的目标 branch 全部匹配，且 ownership 未过期。目标 worktree 已注册、目录可用且自身 clean 时输出 `resume_existing_branch_in_isolated_worktree`；分支仍存在、目标路径不存在且未被其他 worktree 占用时输出零写入 `recreate_resume_worktree_for_existing_branch`；Git 仍保留 prunable registration 且目录已消失时输出 `prune_and_recreate_resume_worktree_for_existing_branch`。Prunable registration 的目录仍存在时先阻断，由 Owner 处理遗留内容。
+- `resume`：调用方提供之前保存的 plan，resume key、owner、base ref/commit、完整 purpose（type/component/summary）和含 actor 所有权段的目标 branch 全部匹配，且 ownership 未过期。目标 worktree 已注册、目录可用且自身 clean 时输出 `resume_existing_branch_in_isolated_worktree`；本地分支仍存在、目标路径不存在且未被其他 worktree 占用时输出零写入 `recreate_resume_worktree_for_existing_branch`；Git 仍保留 prunable registration 且目录已消失时输出 `prune_and_recreate_resume_worktree_for_existing_branch`。目标分支仅存在于 live remote 时先阻断，获得独立写入授权后 fetch 并创建本地分支。Prunable registration 的目录仍存在时先阻断，由 Owner 处理遗留内容。
 - Resume 未显式提供 `--date` 时，仅从 purpose 完全匹配的既有 plan target branch 恢复原 `yyyymmdd`；无法验证时使用当前日期并由完整 ownership/branch identity 检查继续 fail closed。
 - 同名 branch 存在但缺少匹配 plan 时视为 collision。
 - Resume evidence 必须来自 blocker-free、`writes=false` 且 next action 可执行的既有 plan；blocked/error output 不能把 collision 转成 resume。目标 branch 还必须证明 saved canonical base 是其 ancestor。
@@ -91,6 +91,7 @@ Branch plan 对 Codex 与 Claude 使用完全相同的输入、判定和输出�
 | requested path ancestor is a file/dangling symlink | 视为不可创建路径并阻断。 |
 | prunable registration path still exists | 阻断，显式处理目录内容后再 prune/recreate。 |
 | blocked resume evidence / target branch wrong base | 阻断，重新取得有效 plan 或从 saved canonical base 重建 branch。 |
+| resume target exists only on live remote | 阻断；获得独立写入授权后 fetch 目标 ref、创建本地分支，再重新运行 preflight。 |
 | requested path nested in any registered worktree | 阻断，选择所有 worktree 外部的隔离路径。 |
 | stale ownership | 默认阻断；身份完全匹配时由 Owner 使用 `--reconfirm-owner` 刷新，身份不匹配继续阻断。 |
 | actor/permission evidence mismatch | 阻断，以 GitHub viewer 与 Repo 权限证据为准。 |

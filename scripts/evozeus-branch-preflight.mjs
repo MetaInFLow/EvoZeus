@@ -282,8 +282,8 @@ export function collectGitFacts(
   const targetCommit = localCommit || remoteCommit;
   const targetDescendsFromBase = Boolean(
     baseCommit
-    && targetCommit
-    && git(root, ["merge-base", "--is-ancestor", baseCommit, targetCommit], runner).status === 0
+    && localCommit
+    && git(root, ["merge-base", "--is-ancestor", baseCommit, localCommit], runner).status === 0
   );
   return {
     root,
@@ -604,6 +604,8 @@ export function buildBranchPlan(options, contract, facts, permissionEvidence, is
       addBlocker(blockers, "stale_base", "resume plan base commit no longer matches the canonical base");
     } else if (!facts.target_commit) {
       addBlocker(blockers, "resume_branch_missing", "resume plan target branch no longer exists");
+    } else if (!facts.target_local_commit) {
+      addBlocker(blockers, "resume_branch_local_missing", "resume target exists only on the live remote; explicit approval is required to fetch it and create the local branch");
     } else if (!facts.target_descends_from_base) {
       addBlocker(blockers, "resume_branch_wrong_base", "resume target branch does not descend from the saved canonical base");
     } else {

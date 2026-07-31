@@ -189,6 +189,8 @@ test("contract exposes the four required profiles", () => {
     "recreate_resume_worktree_for_existing_branch");
   assert.equal(contract.resume.matching_branch_with_prunable_worktree,
     "prune_and_recreate_resume_worktree_for_existing_branch");
+  assert.equal(contract.resume.remote_only_branch,
+    "block_until_explicit_fetch_and_local_branch_creation");
   assert.equal(contract.resume.missing_cli_date_source, "validated_resume_plan_target_branch");
   assert.deepEqual(contract.resume.evidence_requirements, {
     writes: false,
@@ -395,6 +397,24 @@ test("offers an explicit zero-write recovery action for a matching resume branch
   assert.equal(plan.worktree.registered, false);
   assert.equal(plan.next_write_action, "recreate_resume_worktree_for_existing_branch");
   assert.equal(existsSync(fixture.worktree), false);
+});
+
+test("blocks resume when the target branch exists only on the live remote", (context) => {
+  const fixture = fixtureFor(context);
+  const initial = runPlan(fixture).plan;
+  const resumePath = join(fixture.root, "resume-plan.json");
+  writeFileSync(resumePath, JSON.stringify(initial));
+  const remoteCommit = git(fixture.repo, "rev-parse", "origin/main");
+
+  const { result, plan } = runPlan(fixture, {
+    resume_plan: resumePath,
+    git_remote: { heads: { [initial.branch.target]: remoteCommit } }
+  });
+  assert.equal(result.status, 2);
+  assert(blockerCodes(plan).includes("resume_branch_local_missing"));
+  assert(!blockerCodes(plan).includes("resume_branch_wrong_base"));
+  assert.equal(plan.branch.existing_commit, remoteCommit);
+  assert.equal(plan.next_write_action, "blocked");
 });
 
 test("offers cleanup and recreation when a matching registered worktree is prunable", (context) => {
