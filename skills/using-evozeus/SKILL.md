@@ -1,13 +1,13 @@
 ---
 name: using-evozeus
-description: Use when the user explicitly invokes EvoZeus, asks to review Agent work, capture a reusable lesson, evolve a Skillware repository, or inspect EvoZeus stable/UAT health. Route to one user task without exposing internal component topology.
+description: Use when the user explicitly invokes EvoZeus, asks to plan or generate an AI usage profile from approved local Agent history, attach a CoEvolve Harness to an independent Skillware repository, review Agent work, capture a reusable Lesson, or inspect EvoZeus Stable/UAT health. Route to one user task without exposing internal component topology.
 ---
 
 # Using EvoZeus
 
 ## Goal
 
-Turn evidence from real Agent work into one clear judgment and one verifiable next action.
+Lead with one of EvoZeus's two primary outcomes: an approved local AI usage profile or a governed CoEvolve Harness for an independent Skillware Repo. Keep Session review, Lesson capture, and product maintenance available as supporting routes.
 
 ## Entry behavior
 
@@ -23,11 +23,12 @@ Keep the rest of the response in normal conversational form. Do not print intern
 
 ## Route one task
 
-| User intent | Read next |
+| User intent | Next route |
 | --- | --- |
+| Plan or generate an AI usage profile from local Agent history | Run `~/.evozeus/bin/evozeus insights plan --source <provider> --json` first. Show the sources, redaction policy, report destination, and approval boundary. Read history, run Factors, or write the report only after explicit approval, then follow the returned built-in Runtime route. |
+| Attach or inspect a CoEvolve Harness for a Skillware Repo | `../evolve-skillware-repo/SKILL.md` |
 | Review one session, task, output, diff, or execution | `../review-agent-session/SKILL.md` |
 | Record a confirmed Lesson or preserve an improvement | `../capture-evozeus-lesson/SKILL.md` |
-| Attach or inspect evolution for a Skillware Repo | `../evolve-skillware-repo/SKILL.md` |
 | Install, align versions, switch stable/UAT, Doctor, update, rollback | `../maintain-evozeus/SKILL.md` |
 
 If intent is unclear, inspect available context first and ask at most one short question that materially changes the route.

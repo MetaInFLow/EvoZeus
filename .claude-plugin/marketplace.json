@@ -4,13 +4,13 @@
     "name": "MetaInFlow"
   },
   "metadata": {
-    "description": "Install the EvoZeus Agent co-evolution plugin for Claude Code."
+    "description": "Install EvoZeus to build approved AI usage profiles and attach CoEvolve Harnesses to independent Skillware repositories."
   },
   "plugins": [
     {
       "name": "evozeus",
       "source": "./",
-      "description": "Turn real Agent work into verified improvements.",
+      "description": "With explicit approval, turn local Agent history into an AI usage profile and attach a CoEvolve Harness to an independent Skillware repository.",
       "version": "0.4.1"
     }
   ]

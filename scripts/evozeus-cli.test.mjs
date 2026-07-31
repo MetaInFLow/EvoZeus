@@ -104,10 +104,15 @@ describe("evozeus-cli", () => {
   it("describes product features by lifecycle as JSON", () => {
     const result = runCli(["features", "--json"]);
     const report = parseJson(result);
+    const orderedIds = report.data.features.map((feature) => feature.id);
     const features = new Map(report.data.features.map((feature) => [feature.id, feature]));
 
     assert.equal(report.ok, true);
     assert.equal(report.operation, "features.describe");
+    assert.deepEqual(orderedIds.slice(0, 2), ["insights.sessions", "coevolve.target"]);
+    assert.equal(features.get("insights.sessions").product_tier, "primary");
+    assert.equal(features.get("coevolve.target").product_tier, "primary");
+    assert.ok(report.data.features.slice(2).every((feature) => feature.product_tier === "supporting"));
     assert.ok(features.has("review.session"));
     assert.ok(features.has("insights.sessions"));
     assert.ok(features.has("preserve.artifact"));
@@ -115,6 +120,8 @@ describe("evozeus-cli", () => {
     assert.equal(features.get("review.session").command, "evozeus review session --input <path|-> --json");
     assert.equal(features.get("insights.sessions").backend_owner, "EvoZeus");
     assert.equal(features.get("insights.sessions").command, "evozeus insights plan --source codex --json");
+    assert.match(features.get("insights.sessions").user_goal, /AI 使用习惯、优势与盲区、人格画像/);
+    assert.match(features.get("insights.sessions").approval_boundary, /explicit approval/);
     assert.ok(features.get("insights.sessions").related_capabilities.includes("insights.plan"));
     assert.equal(features.get("preserve.artifact").command, "evozeus preserve draft --from-report <path> --json");
     assert.equal(features.get("coevolve.target").backend_owner, "EvoZeus-CoEvolve");
@@ -126,10 +133,14 @@ describe("evozeus-cli", () => {
 
     assert.equal(result.status, 0, result.stderr);
     assert.match(result.stdout, /EvoZeus Features/);
+    assert.ok(
+      result.stdout.indexOf("Build an AI usage profile from approved local Agent history") <
+        result.stdout.indexOf("Review one explicit session")
+    );
+    assert.match(result.stdout, /Build an AI usage profile from approved local Agent history/);
+    assert.match(result.stdout, /Attach a CoEvolve Harness to an independent Skillware repository/);
     assert.match(result.stdout, /Review one explicit session/);
-    assert.match(result.stdout, /Generate session insights report/);
     assert.match(result.stdout, /Preserve a Verdict \/ report as an artifact draft/);
-    assert.match(result.stdout, /Co-evolve an independent Skillware repository/);
   });
 
   it("prints help without crashing", () => {

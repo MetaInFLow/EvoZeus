@@ -41,7 +41,7 @@ Before writing `~/.evozeus/`, creating `agent-identity.json`, or calling the reg
 注册会做三件事：
 1. 在本机 `~/.evozeus/` 保存注册和安装状态，后续 Agent 可以复用同一个入口。
 2. 可选调用 EvoZeus Web 注册接口，只登记 hash、handle、runtime 和安全 metadata。
-3. 安装本地 `evozeus` CLI，用来查看能力、做本地诊断、分析你明确提供的 Session，或规划 Skill / repo 的共进化接入。
+3. 安装本地 `evozeus` CLI，用来查看能力、做本地诊断、经明确批准生成 AI 使用画像，或为独立 Skillware Repo 规划 CoEvolve Harness 接入。
 
 不会上传 raw session、客户资料、token、私有路径、workspace 内容或未公开代码。任何写入、联网注册、活动反馈、扫描、本地报告、GitHub Issue/PR 都会再次请求你的明确批准。
 
@@ -93,9 +93,9 @@ Translate features by user goal, not by implementation name. Use related capabil
 
 | User goal | Feature to present | Related capability | Plain-language description |
 | --- | --- | --- | --- |
-| "我想让 EvoZeus 看这次 Agent 表现" | `review.session` | `session.analyze` | 你提供一段明确的 Session 文本或文件，EvoZeus 在本地生成 Session Verdict Card，指出哪些行为值得保留、修复、提炼成 Skill / Factor，默认不扫描本机历史记录。 |
-| "我想扫描历史会话或按项目看洞察" | `insights.sessions` | `session.scanPlan` plus runtime routing | 安装阶段不会扫描历史会话。只能先生成扫描计划，确认来源、脱敏策略、输出位置和权限后，再进入 runtime routing。 |
-| "我想让某个 Skill / repo 持续进化" | `coevolve.target` | `harness.attachPlan` | EvoZeus 先为目标 Skill、plugin 或 repo 生成接入计划，把真实使用中的问题转成可复盘、可改进、可治理的共进化路径；这一步只做计划，不写目标仓库。 |
+| "我想看自己的 AI 使用习惯、优势与盲区" | `insights.sessions` | `insights.plan` plus runtime routing | EvoZeus 先生成只读扫描计划。只有用户明确批准本机 Agent 历史读取、Factor 执行和报告写入后，才生成 AI 使用习惯、优势与盲区、人格画像（例如 INTJ 倾向）报告；证据不足时明确说明。 |
+| "我想让某个 Skill / Plugin / Repo 持续进化" | `coevolve.target` | `harness.attachPlan` | EvoZeus 先检查目标所在的独立 Git Repo 并生成 CoEvolve Harness 接入计划。目标 Repo 写入和 GitHub 操作需要明确批准。 |
+| "我想让 EvoZeus 看这次 Agent 表现" | `review.session` | `session.analyze` | 你提供一段明确的 Session 文本或文件，EvoZeus 在本地生成 Session Verdict Card，指出哪些行为值得保留、修复、提炼成 Skill / Factor，并让已确认 Lesson 继续进入可追踪路径。 |
 | "我不确定装好了没有" | `activate` / `maintain` | `system.doctor` / `workspace.activate` | EvoZeus 检查本地注册、skeleton、CLI 和必需组件是否可用，并告诉你下一条安全命令。 |
 | "我想更新 EvoZeus" | `maintain` | `system.updatePlan` | EvoZeus 先给出 dry-run 更新计划，列出将刷新哪些本地 skeleton / CLI 文件；实际写入需要单独批准。 |
 | "我想退出或清理" | `uninstall` | `system.uninstallPlan` | EvoZeus 先给出归档或卸载计划，不直接删除；任何破坏性动作都需要单独批准。 |
@@ -114,9 +114,9 @@ EvoZeus 已接入本地 Agent。
 已读取：`<help command>`、`<features command>`、`<capabilities command>`
 
 现在能做：
-1. 复盘 Agent Session：你明确提供 session 文本或文件后，我在本地生成 Session Verdict Card。
-2. 扫描历史 Session 并生成洞察报告：先出扫描计划；读取历史记录、跑 Factor、写报告前再确认。
-3. 接入 Skill / repo 共进化：我先为目标生成 co-evolve 接入计划，不直接改目标仓库。
+1. 生成 AI 使用画像：先给出只读扫描计划；经你明确批准后，再读取本机 Agent 历史、运行 Factor 并写入使用习惯、优势与盲区、人格倾向报告。
+2. 为 Skillware 接入 Harness：先检查指定 Skill / Plugin / Repo 的独立 Git 根目录并生成 CoEvolve 接入计划；目标 Repo 和 GitHub 写入前再确认。
+3. 复盘 Session 并沉淀 Lesson：分析你明确提供的 Session，已确认 Lesson 可继续进入可追踪的改进路径。
 4. 检查本地状态：检查注册、skeleton、CLI 和组件完整性。
 5. 更新或卸载：先输出 dry-run 计划，任何写入或删除前再确认。
 
@@ -127,9 +127,9 @@ EvoZeus 已接入本地 Agent。
 原因：<one sentence tied to the user's current goal>
 
 请选择：
-A. 分析一个我明确提供的 Session
-B. 先生成历史 Session 洞察扫描计划
-C. 为某个 Skill / repo 生成 co-evolve 接入计划
+A. 先生成本机 Agent 历史扫描与 AI 使用画像计划
+B. 为某个独立 Skillware Repo 生成 CoEvolve Harness 接入计划
+C. 分析一个我明确提供的 Session，或继续记录已确认 Lesson
 D. 运行本地健康检查
 E. 查看更新或卸载 dry-run 计划
 F. 暂停在已安装状态

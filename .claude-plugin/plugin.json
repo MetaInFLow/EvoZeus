@@ -1,6 +1,6 @@
 {
   "name": "evozeus",
-  "description": "Review real Agent work, capture lessons, preserve proven improvements, and evolve independent Skillware repositories.",
+  "description": "With explicit approval, turn local Agent history into an AI usage profile and attach a CoEvolve Harness to an independent Skillware repository.",
   "version": "0.4.1",
   "author": {
     "name": "MetaInFlow"
@@ -9,10 +9,11 @@
   "repository": "https://github.com/MetaInFLow/EvoZeus",
   "license": "MIT",
   "keywords": [
-    "agent",
+    "ai-usage-profile",
+    "skillware-evolution",
+    "agent-history",
+    "coevolve-harness",
     "session-review",
-    "lessons",
-    "skillware",
-    "continuous-evolution"
+    "lessons"
   ]
 }

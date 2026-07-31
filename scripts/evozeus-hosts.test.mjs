@@ -72,14 +72,25 @@ describe("EvoZeus plugin host alignment", () => {
         evozeusHome,
         "hosts/claude-marketplace/plugins/evozeus/.claude-plugin/plugin.json"
       );
+      const claudeMarketplacePath = join(
+        evozeusHome,
+        "hosts/claude-marketplace/.claude-plugin/marketplace.json"
+      );
       const codexManifest = JSON.parse(readFileSync(codexManifestPath, "utf8"));
       const claudeManifest = JSON.parse(readFileSync(claudeManifestPath, "utf8"));
+      const claudeMarketplace = JSON.parse(readFileSync(claudeMarketplacePath, "utf8"));
       const state = JSON.parse(readFileSync(join(evozeusHome, "hosts/plugin-state.json"), "utf8"));
 
       assert.equal(codexManifest.name, "evozeus");
       assert.equal(codexManifest.interface.displayName, "EvoZeus UAT");
+      assert.match(codexManifest.interface.defaultPrompt[0], /批准前不要读取历史/);
+      assert.match(codexManifest.interface.defaultPrompt[1], /独立 Skillware Repo 接入 CoEvolve Harness/);
       assert.match(codexManifest.version, /-uat\+codex\.uat-/);
       assert.match(claudeManifest.version, /-uat\./);
+      assert.equal(
+        claudeMarketplace.plugins[0].description,
+        "With explicit approval, turn local Agent history into an AI usage profile and attach a CoEvolve Harness to an independent Skillware repository."
+      );
       assert.equal(state.active_channel, "uat");
       assert.equal(state.commit, "b".repeat(40));
       assert.deepEqual(Object.keys(state.hosts), ["codex", "claude"]);
