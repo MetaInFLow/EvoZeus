@@ -14,14 +14,13 @@ import { homedir } from "node:os";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import {
-  activateInstalledChannel,
+  activateInstalledProductChannel,
   applyChannelUpdate,
   channelRecoveryIncomplete,
   DEFAULT_MANIFEST_SOURCES,
   prepareChannelUpdate,
   readActiveChannel,
   readChannelState,
-  refreshChannelBootstrap,
   rollbackChannel
 } from "./evozeus-channels.mjs";
 
@@ -198,9 +197,7 @@ function restorePreviousProductAndPlugin({
         rollbackChannel(home, currentChannel);
         recovery.product = "rolled_back";
       } else if (currentActive?.channel && currentActive.channel !== currentChannel) {
-        activateInstalledChannel(home, currentActive.channel, currentActive.auto_refresh === true);
-        const priorActiveEntry = readChannelState(home).channels[currentActive.channel];
-        refreshChannelBootstrap(home, priorActiveEntry.component_roots.evozeus);
+        activateInstalledProductChannel(home, currentActive.channel, currentActive.auto_refresh === true);
         recovery.product = "reactivated_previous_channel";
       } else {
         throw new Error("the completed product transaction has no verified rollback target");
@@ -212,9 +209,7 @@ function restorePreviousProductAndPlugin({
       currentActive?.channel &&
       currentActive.channel !== currentChannel
     ) {
-      activateInstalledChannel(home, currentActive.channel, currentActive.auto_refresh === true);
-      const priorActiveEntry = readChannelState(home).channels[currentActive.channel];
-      refreshChannelBootstrap(home, priorActiveEntry.component_roots.evozeus);
+      activateInstalledProductChannel(home, currentActive.channel, currentActive.auto_refresh === true);
       recovery.product = "reactivated_previous_channel";
     }
 

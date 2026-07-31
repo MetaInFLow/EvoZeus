@@ -25,6 +25,7 @@ import Ajv2020 from "ajv/dist/2020.js";
 import {
   ChannelError,
   activateInstalledChannel,
+  activateInstalledProductChannel,
   applyChannelUpdate,
   buildManagedCliShimContent,
   channelRecoveryIncomplete,
@@ -294,6 +295,15 @@ exit 0
   );
   chmodSync(command, 0o755);
   return { bin, counter };
+}
+
+function healthyCodexCommand(root) {
+  const bin = join(root, "healthy-host-bin");
+  const command = join(bin, "codex");
+  mkdirSync(bin, { recursive: true });
+  writeFileSync(command, "#!/bin/sh\nprintf '%s\\n' evozeus\n");
+  chmodSync(command, 0o755);
+  return bin;
 }
 
 async function fixture(callback) {
@@ -944,6 +954,155 @@ describe("channel transactions", () => {
         Object.fromEntries(readdirSync(bootstrapRoot).map((name) => [name, readFileSync(join(bootstrapRoot, name))])),
         bootstrapBefore
       );
+      assert.equal(channelSnapshot(home).health, "healthy");
+    }));
+
+  it("reconciles target Core shims when channel use switches between versions", async () =>
+    fixture(async (root) => {
+      const home = join(root, "home");
+      const stable = stableManifest(join(root, "channel-use-stable"), "v0.4.0", "1");
+      const stableEntry = await applyChannelUpdate({
+        evozeusHome: home,
+        channel: "stable",
+        manifestSource: writeManifest(root, "channel-use-stable.json", stable),
+        fetchImpl: fileFetch,
+        smokeRunner: noSmoke,
+        embeddedSmokeRunner: noSmoke
+      });
+      const binRoot = join(home, "bin");
+      const primaryCli = join(binRoot, "evozeus");
+      const recoveryCli = join(binRoot, "evozeus-repair");
+      mkdirSync(binRoot, { recursive: true });
+      for (const path of [primaryCli, recoveryCli]) {
+        writeFileSync(path, buildManagedCliShimContent());
+        chmodSync(path, 0o755);
+      }
+
+      const components = Object.fromEntries(
+        Object.keys(COMPONENT_PATHS).map((componentId) => [componentId, initComponent(root, componentId)])
+      );
+      const channelsSource = join(components.evozeus.repo, "scripts", "evozeus-channels.mjs");
+      writeFileSync(
+        channelsSource,
+        readFileSync(channelsSource, "utf8").replace("evozeus.managed-cli.v1", "evozeus.managed-cli.v2")
+      );
+      git(components.evozeus.repo, "add", "scripts/evozeus-channels.mjs");
+      git(components.evozeus.repo, "commit", "-m", "target shim v2");
+      components.evozeus.commit = git(components.evozeus.repo, "rev-parse", "HEAD");
+      const uatEntry = await applyChannelUpdate({
+        evozeusHome: home,
+        channel: "uat",
+        manifestSource: writeManifest(root, "channel-use-uat.json", uatManifest(components, "v0.4.1")),
+        smokeRunner: noSmoke,
+        embeddedSmokeRunner: noSmoke
+      });
+      assert.match(readFileSync(primaryCli, "utf8"), /evozeus\.managed-cli\.v2/);
+
+      const commandPath = `${healthyCodexCommand(root)}:${process.env.PATH}`;
+      const uatCli = join(uatEntry.component_roots.evozeus, "scripts", "evozeus-cli.mjs");
+      const stableSwitch = installedCliJson(
+        uatCli,
+        ["channel", "use", "stable", "--host", "codex", "--approve-write", "--json"],
+        { home, path: commandPath }
+      );
+      assert.equal(stableSwitch.data.channel, "stable");
+      assert.match(readFileSync(primaryCli, "utf8"), /evozeus\.managed-cli\.v1/);
+      assert.equal(readFileSync(recoveryCli, "utf8"), readFileSync(primaryCli, "utf8"));
+      assert.equal(channelSnapshot(home).health, "healthy");
+
+      const stableCli = join(stableEntry.component_roots.evozeus, "scripts", "evozeus-cli.mjs");
+      const uatSwitch = installedCliJson(
+        stableCli,
+        ["channel", "use", "uat", "--host", "codex", "--approve-write", "--json"],
+        { home, path: commandPath }
+      );
+      assert.equal(uatSwitch.data.channel, "uat");
+      assert.match(readFileSync(primaryCli, "utf8"), /evozeus\.managed-cli\.v2/);
+      assert.equal(readFileSync(recoveryCli, "utf8"), readFileSync(primaryCli, "utf8"));
+      assert.equal(channelSnapshot(home).health, "healthy");
+
+      const activeBefore = readFileSync(join(home, "active-channel.json"));
+      const bootstrapRoot = join(home, "skeleton", "scripts");
+      const bootstrapBefore = Object.fromEntries(
+        readdirSync(bootstrapRoot).map((name) => [name, readFileSync(join(bootstrapRoot, name))])
+      );
+      const primaryBefore = readFileSync(primaryCli);
+      const recoveryBefore = readFileSync(recoveryCli);
+      let shimWrites = 0;
+      assert.throws(
+        () => activateInstalledProductChannel(home, "stable", false, {
+          shimWrite: (path, bytes) => {
+            shimWrites += 1;
+            if (shimWrites === 2) throw new Error("injected channel-use shim failure");
+            writeFileSync(path, bytes);
+          }
+        }),
+        /injected channel-use shim failure/
+      );
+      assert.equal(shimWrites, 2);
+      assert.deepEqual(readFileSync(join(home, "active-channel.json")), activeBefore);
+      assert.deepEqual(readFileSync(primaryCli), primaryBefore);
+      assert.deepEqual(readFileSync(recoveryCli), recoveryBefore);
+      assert.deepEqual(
+        Object.fromEntries(readdirSync(bootstrapRoot).map((name) => [name, readFileSync(join(bootstrapRoot, name))])),
+        bootstrapBefore
+      );
+      assert.equal(channelSnapshot(home).health, "healthy");
+    }));
+
+  it("uses the verified compatibility shim when rollback Core predates the generator export", async () =>
+    fixture(async (root) => {
+      const home = join(root, "home");
+      const components = Object.fromEntries(
+        Object.keys(COMPONENT_PATHS).map((componentId) => [componentId, initComponent(root, componentId)])
+      );
+      const channelsSource = join(components.evozeus.repo, "scripts", "evozeus-channels.mjs");
+      const currentSource = readFileSync(channelsSource, "utf8");
+      writeFileSync(
+        channelsSource,
+        currentSource.replace(
+          "export function buildManagedCliShimContent()",
+          "function buildManagedCliShimContent()"
+        )
+      );
+      git(components.evozeus.repo, "add", "scripts/evozeus-channels.mjs");
+      git(components.evozeus.repo, "commit", "-m", "legacy channels without shim export");
+      components.evozeus.commit = git(components.evozeus.repo, "rev-parse", "HEAD");
+      const legacyEntry = await applyChannelUpdate({
+        evozeusHome: home,
+        channel: "uat",
+        manifestSource: writeManifest(root, "legacy-shim-uat.json", uatManifest(components, "v0.4.0")),
+        smokeRunner: noSmoke,
+        embeddedSmokeRunner: noSmoke
+      });
+      const binRoot = join(home, "bin");
+      mkdirSync(binRoot, { recursive: true });
+      for (const name of ["evozeus", "evozeus-repair"]) {
+        const path = join(binRoot, name);
+        writeFileSync(path, buildManagedCliShimContent());
+        chmodSync(path, 0o755);
+      }
+
+      writeFileSync(channelsSource, currentSource);
+      git(components.evozeus.repo, "add", "scripts/evozeus-channels.mjs");
+      git(components.evozeus.repo, "commit", "-m", "add managed shim export");
+      components.evozeus.commit = git(components.evozeus.repo, "rev-parse", "HEAD");
+      await applyChannelUpdate({
+        evozeusHome: home,
+        channel: "uat",
+        manifestSource: writeManifest(root, "current-shim-uat.json", uatManifest(components, "v0.4.1")),
+        smokeRunner: noSmoke,
+        embeddedSmokeRunner: noSmoke
+      });
+
+      const rollback = rollbackChannel(home, "uat", {
+        smokeRunner: noSmoke,
+        embeddedSmokeRunner: noSmoke
+      });
+      assert.equal(rollback.status, "rolled_back");
+      assert.equal(readChannelState(home).channels.uat.install_root, legacyEntry.install_root);
+      assert.equal(readFileSync(join(binRoot, "evozeus"), "utf8"), buildManagedCliShimContent());
+      assert.equal(readFileSync(join(binRoot, "evozeus-repair"), "utf8"), buildManagedCliShimContent());
       assert.equal(channelSnapshot(home).health, "healthy");
     }));
 
