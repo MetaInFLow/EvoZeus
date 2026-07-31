@@ -25,16 +25,19 @@ import {
   ChannelError,
   activateInstalledChannel,
   applyChannelUpdate,
+  channelRecoveryIncomplete,
   channelSnapshot,
   prepareChannelUpdate,
   productManifestDigest,
   readActiveChannel,
   readChannelState,
+  refreshChannelBootstrap,
   rollbackChannel,
   resolveInstalledComponentRoot,
   sha256,
   validateProductManifest
 } from "./evozeus-channels.mjs";
+import { alignPluginHosts } from "./evozeus-hosts.mjs";
 
 const COMPONENT_PATHS = {
   evozeus: [
@@ -166,7 +169,9 @@ function createArchive(root, componentId, marker = "stable") {
     writeFileSync(
       path,
       REAL_BOOTSTRAP.has(entry)
-        ? REAL_BOOTSTRAP.get(entry)
+        ? entry.endsWith("evozeus-launcher.mjs")
+          ? `${REAL_BOOTSTRAP.get(entry)}\n// fixture bootstrap: ${marker}\n`
+          : REAL_BOOTSTRAP.get(entry)
         : entry === "contracts/v1/manifest.json"
         ? `${JSON.stringify({ bundle_version: "v1.0.0", runtime_compatibility: { min_inclusive: "0.1.0", max_exclusive: "0.3.0" } })}\n`
         : componentId === "evozeus" && entry.endsWith("evozeus-cli.mjs")
@@ -238,6 +243,48 @@ function writeManifest(root, name, manifest) {
   return path;
 }
 
+function primeCodexPlugin(home, entry) {
+  return alignPluginHosts({
+    evozeusHome: home,
+    sourceRoot: entry.component_roots.evozeus,
+    channel: entry.manifest.channel,
+    productVersion: entry.manifest.product_version,
+    commit: entry.manifest.components.evozeus.commit,
+    hosts: ["codex"],
+    runCommand: () => ({ status: 0, stdout: "", stderr: "" })
+  });
+}
+
+function flakyCodexCommand(root) {
+  const bin = join(root, "fake-host-bin");
+  const counter = join(root, "fake-codex-registration-count");
+  const command = join(bin, "codex");
+  mkdirSync(bin, { recursive: true });
+  writeFileSync(
+    command,
+    `#!/bin/sh
+if [ "\${1:-}" = "plugin" ] && [ "\${2:-}" = "list" ]; then
+  printf '%s\\n' 'evozeus'
+  exit 0
+fi
+count=0
+if [ -f "$EVOZEUS_TEST_HOST_COUNTER" ]; then
+  count=$(cat "$EVOZEUS_TEST_HOST_COUNTER")
+fi
+count=$((count + 1))
+printf '%s\\n' "$count" > "$EVOZEUS_TEST_HOST_COUNTER"
+failures=\${EVOZEUS_TEST_HOST_FAILURES:-1}
+if [ "$count" -le "$failures" ]; then
+  printf '%s\\n' 'injected Plugin registration failure' >&2
+  exit 73
+fi
+exit 0
+`
+  );
+  chmodSync(command, 0o755);
+  return { bin, counter };
+}
+
 async function fixture(callback) {
   const root = realpathSync(mkdtempSync(join(tmpdir(), "evozeus-channels-")));
   try {
@@ -251,7 +298,7 @@ function noSmoke(componentId) {
   return { component: componentId, status: "passed" };
 }
 
-function runInstalledCli(cliPath, args, { home, path }) {
+function runInstalledCli(cliPath, args, { home, path, env = {} }) {
   return spawnSync(process.execPath, [cliPath, ...args], {
     encoding: "utf8",
     env: {
@@ -263,7 +310,8 @@ function runInstalledCli(cliPath, args, { home, path }) {
       EVOZEUS_AUTO_UPDATE_CHILD: "1",
       EVOZEUS_APPROVE_FEEDBACK: "0",
       NODE_ENV: "test",
-      EVOZEUS_PREFLIGHT_TEST_RELEASE_TAG: "v0.4.0"
+      EVOZEUS_PREFLIGHT_TEST_RELEASE_TAG: "v0.4.0",
+      ...env
     }
   });
 }
@@ -275,6 +323,13 @@ function installedCliJson(cliPath, args, options) {
 }
 
 describe("product channel manifest", () => {
+  it("classifies channel rollback failures as incomplete recovery", () => {
+    for (const code of ["UPDATE_ROLLBACK_FAILED", "BOOTSTRAP_ROLLBACK_FAILED", "ROLLBACK_TRANSACTION_FAILED"]) {
+      assert.equal(channelRecoveryIncomplete({ code }), true, code);
+    }
+    assert.equal(channelRecoveryIncomplete({ code: "SMOKE_FAILED" }), false);
+  });
+
   it("accepts strict stable and uat manifests through code and JSON Schema", () =>
     fixture((root) => {
       const components = Object.fromEntries(
@@ -378,6 +433,61 @@ describe("channel transactions", () => {
         "one\n"
       );
       assert.equal(readActiveChannel(home).channel, "uat");
+    }));
+
+  it("restores the active channel bootstrap when an inactive-channel rollback fails", async () =>
+    fixture(async (root) => {
+      const home = join(root, "home");
+      const stableOne = stableManifest(join(root, "inactive-rollback-stable-one"), "v0.4.0", "1");
+      await applyChannelUpdate({
+        evozeusHome: home,
+        channel: "stable",
+        manifestSource: writeManifest(root, "inactive-rollback-stable-one.json", stableOne),
+        fetchImpl: fileFetch,
+        smokeRunner: noSmoke,
+        embeddedSmokeRunner: noSmoke
+      });
+      const stableTwo = stableManifest(join(root, "inactive-rollback-stable-two"), "v0.4.1", "4");
+      await applyChannelUpdate({
+        evozeusHome: home,
+        channel: "stable",
+        manifestSource: writeManifest(root, "inactive-rollback-stable-two.json", stableTwo),
+        fetchImpl: fileFetch,
+        smokeRunner: noSmoke,
+        embeddedSmokeRunner: noSmoke
+      });
+      const components = Object.fromEntries(
+        Object.keys(COMPONENT_PATHS).map((componentId) => [componentId, initComponent(root, componentId)])
+      );
+      await applyChannelUpdate({
+        evozeusHome: home,
+        channel: "uat",
+        manifestSource: writeManifest(root, "inactive-rollback-uat.json", uatManifest(components, "v0.4.1")),
+        smokeRunner: noSmoke,
+        embeddedSmokeRunner: noSmoke
+      });
+      const stateBefore = readFileSync(join(home, "channel-state.json"), "utf8");
+      const stableLink = join(home, "releases", "stable", "current");
+      const stableLinkBefore = readlinkSync(stableLink);
+      const bootstrapPath = join(home, "skeleton", "scripts", "evozeus-launcher.mjs");
+      const bootstrapBefore = readFileSync(bootstrapPath, "utf8");
+      assert.equal(readActiveChannel(home).channel, "uat");
+
+      assert.throws(
+        () => rollbackChannel(home, "stable", {
+          bootstrapCopy: () => {
+            throw new Error("simulated inactive rollback bootstrap failure");
+          }
+        }),
+        /simulated inactive rollback bootstrap failure/
+      );
+
+      assert.equal(readActiveChannel(home).channel, "uat");
+      assert.equal(readFileSync(join(home, "channel-state.json"), "utf8"), stateBefore);
+      assert.equal(readlinkSync(stableLink), stableLinkBefore);
+      assert.equal(readFileSync(bootstrapPath, "utf8"), bootstrapBefore);
+      assert.doesNotMatch(bootstrapBefore, /fixture bootstrap:/);
+      assert.equal(channelSnapshot(home).dispatcher.status, "ready");
     }));
 
   it("keeps the previous UAT active when smoke validation fails", async () =>
@@ -1009,6 +1119,46 @@ describe("channel transactions", () => {
       assert.deepEqual(readdirSync(home).sort(), ["cache"]);
     }));
 
+  it("stops before manifest fetch when a Plugin marketplace root is an external symlink", async () =>
+    fixture(async (root) => {
+      const home = join(root, "home");
+      const hosts = join(home, "hosts");
+      const outsideMarketplace = join(root, "outside-codex-marketplace");
+      mkdirSync(hosts, { recursive: true });
+      mkdirSync(outsideMarketplace);
+      symlinkSync(outsideMarketplace, join(hosts, "codex-marketplace"), "dir");
+      const manifest = stableManifest(join(root, "unsafe-plugin-archives"));
+      const manifestPath = writeManifest(root, "stable-after-unsafe-plugin.json", manifest);
+      let fetchCalls = 0;
+
+      const plan = await prepareChannelUpdate({
+        evozeusHome: home,
+        channel: "stable",
+        manifestSource: "https://example.invalid/evozeus-product-stable.json",
+        fetchImpl: async () => {
+          fetchCalls += 1;
+          throw new Error("unsafe Plugin marketplace must stop before manifest fetch");
+        }
+      });
+
+      assert.equal(plan.decision, "unsafe_stop");
+      assert.ok(plan.current_integrity.issues.includes("write_root:codex_marketplace:unsafe"));
+      assert.ok(plan.current_integrity.issues.includes("write_root:codex_plugin:unsafe"));
+      assert.equal(fetchCalls, 0);
+      await assert.rejects(
+        applyChannelUpdate({
+          evozeusHome: home,
+          channel: "stable",
+          manifestSource: manifestPath,
+          fetchImpl: fileFetch,
+          smokeRunner: noSmoke
+        }),
+        (error) => error.code === "LOCAL_STATE_UNSAFE"
+      );
+      assert.deepEqual(readdirSync(outsideMarketplace), []);
+      assert.deepEqual(readdirSync(hosts), ["codex-marketplace"]);
+    }));
+
   it("routes a broken Stable install through preflight, zero-write plan, approved repair, and healthy Doctor", async () =>
     fixture(async (root) => {
       const home = join(root, "home");
@@ -1377,6 +1527,241 @@ describe("channel transactions", () => {
       assert.match(updated.stderr, /EvoZeus · 发现更新/);
       assert.match(updated.stderr, /EvoZeus · 自动更新中/);
       assert.match(updated.stderr, /EvoZeus · 自动更新完成/);
+    }));
+
+  it("rolls back a cross-version auto-update and Plugin after real host registration fails", async () =>
+    fixture(async (root) => {
+      const home = join(root, "home");
+      const first = stableManifest(join(root, "stable-plugin-rollback-one"), "v0.4.0", "1");
+      const firstPath = writeManifest(root, "stable-plugin-rollback-one.json", first);
+      await applyChannelUpdate({
+        evozeusHome: home,
+        channel: "stable",
+        manifestSource: firstPath,
+        fetchImpl: fileFetch,
+        smokeRunner: noSmoke,
+        embeddedSmokeRunner: noSmoke
+      });
+      const beforeEntry = readChannelState(home).channels.stable;
+      primeCodexPlugin(home, beforeEntry);
+      const currentLink = join(home, "releases", "stable", "current");
+      const bootstrapPath = join(home, "skeleton", "scripts", "evozeus-launcher.mjs");
+      const pluginSkillPath = join(
+        home,
+        "hosts",
+        "codex-marketplace",
+        "plugins",
+        "evozeus",
+        "skills",
+        "using-evozeus",
+        "SKILL.md"
+      );
+      const beforeBootstrap = readFileSync(bootstrapPath, "utf8");
+      const beforePluginSkill = readFileSync(pluginSkillPath, "utf8");
+      const beforeLink = resolve(dirname(currentLink), readlinkSync(currentLink));
+      const beforeDispatcherState = readJsonReport(join(home, "hooks", "state.json"));
+      const fakeCodex = flakyCodexCommand(root);
+      const second = stableManifest(join(root, "stable-plugin-rollback-two"), "v0.4.1", "4");
+      second.components.coevolve.version = "v0.14.0";
+      second.components.coevolve.commit = "5".repeat(40);
+      const secondPath = writeManifest(root, "stable-plugin-rollback-two.json", second);
+
+      const result = spawnSync(process.execPath, [LAUNCHER, "version", "--json"], {
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          PATH: `${fakeCodex.bin}:${process.env.PATH}`,
+          EVOZEUS_HOME: home,
+          EVOZEUS_STABLE_MANIFEST: secondPath,
+          EVOZEUS_HOSTS_AVAILABLE: "codex",
+          EVOZEUS_TEST_HOST_COUNTER: fakeCodex.counter,
+          EVOZEUS_UPDATE_CHECK_INTERVAL_SECONDS: "0"
+        }
+      });
+
+      assert.equal(result.status, 0, result.stderr);
+      const afterEntry = readChannelState(home).channels.stable;
+      const report = readJsonReport(join(home, "state", "stable", "auto-update-last.json"));
+      const pluginState = readJsonReport(join(home, "hosts", "plugin-state.json"));
+      assert.equal(afterEntry.install_root, beforeEntry.install_root);
+      assert.equal(afterEntry.manifest_digest, beforeEntry.manifest_digest);
+      assert.equal(resolve(dirname(currentLink), readlinkSync(currentLink)), beforeLink);
+      assert.equal(readFileSync(bootstrapPath, "utf8"), beforeBootstrap);
+      assert.match(beforeBootstrap, /fixture bootstrap: v0\.4\.0-evozeus/);
+      assert.doesNotMatch(beforeBootstrap, /fixture bootstrap: v0\.4\.1-evozeus/);
+      assert.equal(readFileSync(pluginSkillPath, "utf8"), beforePluginSkill);
+      assert.match(beforePluginSkill, /v0\.4\.0-evozeus/);
+      assert.equal(pluginState.product_version, "v0.4.0");
+      assert.equal(pluginState.commit, beforeEntry.manifest.components.evozeus.commit);
+      assert.equal(readActiveChannel(home).channel, "stable");
+      assert.equal(beforeDispatcherState.installed_version, "v0.13.0");
+      assert.equal(readJsonReport(join(home, "hooks", "state.json")).installed_version, beforeDispatcherState.installed_version);
+      assert.equal(channelSnapshot(home).dispatcher.status, "ready");
+      assert.equal(report.status, "failed_continuing_previous");
+      assert.equal(report.product_version, "v0.4.0");
+      assert.equal(report.recovery.status, "restored_previous");
+      assert.equal(report.recovery.product, "rolled_back");
+      assert.equal(report.recovery.plugin, "realigned_previous");
+      assert.match(report.error.message, /injected Plugin registration failure/);
+      assert.equal(readFileSync(fakeCodex.counter, "utf8").trim(), "3");
+      assert.match(result.stderr, /继续使用Stable v0\.4\.0/);
+    }));
+
+  it("rolls back a same-version auto-repair after real Plugin registration fails", async () =>
+    fixture(async (root) => {
+      const home = join(root, "home");
+      const manifest = stableManifest(join(root, "stable-repair-plugin-rollback"), "v0.4.0", "1");
+      const manifestPath = writeManifest(root, "stable-repair-plugin-rollback.json", manifest);
+      await applyChannelUpdate({
+        evozeusHome: home,
+        channel: "stable",
+        manifestSource: manifestPath,
+        fetchImpl: fileFetch,
+        smokeRunner: noSmoke,
+        embeddedSmokeRunner: noSmoke
+      });
+      const beforeEntry = readChannelState(home).channels.stable;
+      primeCodexPlugin(home, beforeEntry);
+      rmSync(join(beforeEntry.component_roots.evozeus, "SKILL.md"));
+      const pluginStatePath = join(home, "hosts", "plugin-state.json");
+      const mismatchedPluginState = readJsonReport(pluginStatePath);
+      mismatchedPluginState.commit = "f".repeat(40);
+      writeFileSync(pluginStatePath, `${JSON.stringify(mismatchedPluginState, null, 2)}\n`);
+      const currentLink = join(home, "releases", "stable", "current");
+      const beforeLink = resolve(dirname(currentLink), readlinkSync(currentLink));
+      const fakeCodex = flakyCodexCommand(root);
+
+      const result = spawnSync(process.execPath, [LAUNCHER, "version", "--json"], {
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          PATH: `${fakeCodex.bin}:${process.env.PATH}`,
+          EVOZEUS_HOME: home,
+          EVOZEUS_STABLE_MANIFEST: manifestPath,
+          EVOZEUS_HOSTS_AVAILABLE: "codex",
+          EVOZEUS_TEST_HOST_COUNTER: fakeCodex.counter,
+          EVOZEUS_UPDATE_CHECK_INTERVAL_SECONDS: "0"
+        }
+      });
+
+      assert.equal(result.status, 0, result.stderr);
+      const afterEntry = readChannelState(home).channels.stable;
+      const report = readJsonReport(join(home, "state", "stable", "auto-update-last.json"));
+      const restoredPluginState = readJsonReport(pluginStatePath);
+      assert.equal(afterEntry.install_root, beforeEntry.install_root);
+      assert.equal(afterEntry.manifest_digest, beforeEntry.manifest_digest);
+      assert.equal(resolve(dirname(currentLink), readlinkSync(currentLink)), beforeLink);
+      assert.equal(existsSync(join(afterEntry.component_roots.evozeus, "SKILL.md")), false);
+      assert.equal(restoredPluginState.commit, beforeEntry.manifest.components.evozeus.commit);
+      assert.equal(report.status, "failed_continuing_previous");
+      assert.equal(report.recovery.status, "restored_previous");
+      assert.equal(report.recovery.product, "rolled_back");
+      assert.equal(report.recovery.plugin, "realigned_previous");
+      assert.match(report.error.message, /injected Plugin registration failure/);
+      assert.match(result.stderr, /继续使用Stable v0\.4\.0/);
+    }));
+
+  it("reports recovery required when the previous Plugin cannot be re-registered", async () =>
+    fixture(async (root) => {
+      const home = join(root, "home");
+      const first = stableManifest(join(root, "stable-plugin-recovery-one"), "v0.4.0", "1");
+      await applyChannelUpdate({
+        evozeusHome: home,
+        channel: "stable",
+        manifestSource: writeManifest(root, "stable-plugin-recovery-one.json", first),
+        fetchImpl: fileFetch,
+        smokeRunner: noSmoke,
+        embeddedSmokeRunner: noSmoke
+      });
+      const beforeEntry = readChannelState(home).channels.stable;
+      primeCodexPlugin(home, beforeEntry);
+      const bootstrapPath = join(home, "skeleton", "scripts", "evozeus-launcher.mjs");
+      const beforeBootstrap = readFileSync(bootstrapPath, "utf8");
+      const fakeCodex = flakyCodexCommand(root);
+      const second = stableManifest(join(root, "stable-plugin-recovery-two"), "v0.4.1", "4");
+
+      const result = spawnSync(process.execPath, [LAUNCHER, "version", "--json"], {
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          PATH: `${fakeCodex.bin}:${process.env.PATH}`,
+          EVOZEUS_HOME: home,
+          EVOZEUS_STABLE_MANIFEST: writeManifest(root, "stable-plugin-recovery-two.json", second),
+          EVOZEUS_HOSTS_AVAILABLE: "codex",
+          EVOZEUS_TEST_HOST_COUNTER: fakeCodex.counter,
+          EVOZEUS_TEST_HOST_FAILURES: "99",
+          EVOZEUS_UPDATE_CHECK_INTERVAL_SECONDS: "0"
+        }
+      });
+
+      assert.equal(result.status, 0, result.stderr);
+      const afterEntry = readChannelState(home).channels.stable;
+      const report = readJsonReport(join(home, "state", "stable", "auto-update-last.json"));
+      assert.equal(afterEntry.install_root, beforeEntry.install_root);
+      assert.equal(afterEntry.manifest_digest, beforeEntry.manifest_digest);
+      assert.equal(readFileSync(bootstrapPath, "utf8"), beforeBootstrap);
+      assert.equal(report.status, "failed_recovery_required");
+      assert.equal(report.product_version, "v0.4.0");
+      assert.equal(report.recovery.status, "incomplete");
+      assert.equal(report.recovery.product, "rolled_back");
+      assert.equal(report.recovery.plugin, "pending");
+      assert.match(report.recovery.error.message, /injected Plugin registration failure/);
+      assert.match(result.stderr, /恢复未完成/);
+    }));
+
+  it("reactivates the prior product and Plugin when manual channel activation alignment fails", async () =>
+    fixture(async (root) => {
+      const home = join(root, "home");
+      const stable = stableManifest(join(root, "stable-activation-rollback"), "v0.4.0", "1");
+      await applyChannelUpdate({
+        evozeusHome: home,
+        channel: "stable",
+        manifestSource: writeManifest(root, "stable-activation-rollback.json", stable),
+        fetchImpl: fileFetch,
+        smokeRunner: noSmoke,
+        embeddedSmokeRunner: noSmoke
+      });
+      const components = Object.fromEntries(
+        Object.keys(COMPONENT_PATHS).map((componentId) => [componentId, initComponent(root, componentId)])
+      );
+      const uat = uatManifest(components, "v0.4.1");
+      uat.components.coevolve.version = "v0.14.0";
+      const uatPath = writeManifest(root, "uat-activation-rollback.json", uat);
+      await applyChannelUpdate({
+        evozeusHome: home,
+        channel: "uat",
+        manifestSource: uatPath,
+        smokeRunner: noSmoke,
+        embeddedSmokeRunner: noSmoke
+      });
+      activateInstalledChannel(home, "stable");
+      const stableEntry = readChannelState(home).channels.stable;
+      refreshChannelBootstrap(home, stableEntry.component_roots.evozeus);
+      primeCodexPlugin(home, stableEntry);
+      const bootstrapPath = join(home, "skeleton", "scripts", "evozeus-launcher.mjs");
+      const beforeBootstrap = readFileSync(bootstrapPath, "utf8");
+      const fakeCodex = flakyCodexCommand(root);
+
+      const result = runInstalledCli(
+        join(stableEntry.component_roots.evozeus, "scripts", "evozeus-cli.mjs"),
+        ["align", "--channel", "uat", "--host", "codex", "--manifest", uatPath, "--approve-write", "--json"],
+        {
+          home,
+          path: `${fakeCodex.bin}:${process.env.PATH}`,
+          env: { EVOZEUS_TEST_HOST_COUNTER: fakeCodex.counter }
+        }
+      );
+
+      assert.equal(result.status, 1, result.stderr);
+      const pluginState = readJsonReport(join(home, "hosts", "plugin-state.json"));
+      assert.match(`${result.stdout}\n${result.stderr}`, /PLUGIN_ALIGNMENT_FAILED/);
+      assert.equal(readActiveChannel(home).channel, "stable");
+      assert.equal(readFileSync(bootstrapPath, "utf8"), beforeBootstrap);
+      assert.equal(readJsonReport(join(home, "hooks", "state.json")).installed_version, "v0.13.0");
+      assert.equal(pluginState.active_channel, "stable");
+      assert.equal(pluginState.product_version, "v0.4.0");
+      assert.equal(pluginState.commit, stableEntry.manifest.components.evozeus.commit);
+      assert.equal(readFileSync(fakeCodex.counter, "utf8").trim(), "3");
     }));
 
   it("respects a disabled automatic update policy without changing the active product", async () =>

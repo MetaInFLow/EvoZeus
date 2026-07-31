@@ -28,6 +28,8 @@
 | `legacy_migration_required` | 进入 migration 路径，不调用 fresh installer |
 | `unknown_or_unverifiable` | 停止，补齐本机版本、Doctor 或渠道证据 |
 
+repair/update 切换产品后若 Plugin 对齐失败，恢复必须同时覆盖上一 channel state、current link、dispatcher、skeleton bootstrap 与 Plugin。全部验证通过才可报告 `failed_continuing_previous`；任一恢复无法验证时报告 `failed_recovery_required` 并转人工处理。Plugin host marketplaces、Plugin roots、metadata 父目录与状态/manifest 文件也属于 pre-manifest 路径安全门的直接写点。
+
 ## Step 0 顺序
 
 1. 检查 `EVOZEUS_HOME`，默认目标为 `~/.evozeus`。

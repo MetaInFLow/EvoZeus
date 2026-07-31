@@ -162,7 +162,7 @@ EvoZeus 在正常聊天中给出结果。生命周期事件使用紧凑标记：
 | `🧭 EvoZeus · 发现更新｜Stable v0.4.0 → v0.4.1` | 当前订阅渠道有新版本 | 自动检查发现变化后 |
 | `🛠️ EvoZeus · 自动更新中｜正在对齐Plugin、Runtime、Session Signal与CoEvolve` | 产品级更新事务已开始 | 下载与验证期间 |
 | `✅ EvoZeus · 自动更新完成｜Stable v0.4.1 · 新会话加载Plugin` | 新产品已通过验证并切换 | 自动更新成功后 |
-| `🛡️ EvoZeus · 自动更新失败｜继续使用Stable v0.4.0` | 已保留上一验证版本 | 更新或验证失败后 |
+| `🛡️ EvoZeus · 自动更新失败｜继续使用Stable v0.4.0` / `恢复未完成` | 已验证恢复时继续使用上一版；恢复未完成时需要人工处理 | 更新、Plugin 对齐或恢复失败后 |
 | `🛠️ EvoZeus · 进化中｜example-skill · 修复验收门禁` | 已开始实施获批修改 | 修改授权已取得后 |
 | `🧪 EvoZeus · UAT 就绪｜example-skill · abc1234` | 唯一 UAT 候选已经通过门禁 | 测试和候选更新完成后 |
 | `🚀 EvoZeus · 已发布｜example-skill · v1.2.0` | Stable Release 已真实存在 | 正式发布完成后 |

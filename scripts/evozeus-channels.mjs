@@ -27,6 +27,16 @@ export const DEFAULT_MANIFEST_SOURCES = {
   uat: "https://raw.githubusercontent.com/MetaInFLow/EvoZeus/uat/current/channels/uat.json"
 };
 
+const CHANNEL_RECOVERY_FAILURE_CODES = new Set([
+  "UPDATE_ROLLBACK_FAILED",
+  "BOOTSTRAP_ROLLBACK_FAILED",
+  "ROLLBACK_TRANSACTION_FAILED"
+]);
+
+export function channelRecoveryIncomplete(error) {
+  return CHANNEL_RECOVERY_FAILURE_CODES.has(error?.code);
+}
+
 const COMPONENT_ENV = {
   evozeus: "EVOZEUS_CORE_ROOT",
   coevolve: "EVOZEUS_WRAPPER_ROOT"
@@ -1149,6 +1159,13 @@ function channelTransactionWriteRoots(evozeusHome, channel) {
     ...channelRoots,
     ["skeleton_scripts", join(home, "skeleton", "scripts")],
     ["hooks", join(home, "hooks")],
+    ["plugin_hosts", join(home, "hosts")],
+    ["codex_marketplace", join(home, "hosts", "codex-marketplace")],
+    ["codex_plugin", join(home, "hosts", "codex-marketplace", "plugins", "evozeus")],
+    ["codex_marketplace_metadata", join(home, "hosts", "codex-marketplace", ".agents", "plugins")],
+    ["claude_marketplace", join(home, "hosts", "claude-marketplace")],
+    ["claude_plugin", join(home, "hosts", "claude-marketplace", "plugins", "evozeus")],
+    ["claude_marketplace_metadata", join(home, "hosts", "claude-marketplace", ".claude-plugin")],
     ["channel_runtime_state", join(home, "state", channel)],
     ["channel_migration_backups", join(home, "backups", "channel-migrations")]
   ];
@@ -1165,7 +1182,10 @@ function transactionDestinationIssues(evozeusHome, channel) {
     ["active_channel", join(home, "active-channel.json")],
     ["install_manifest", join(home, "install-manifest.json")],
     ["dispatcher", join(home, "hooks", "evozeus_wrapper_dispatcher.py")],
-    ["dispatcher_state", join(home, "hooks", "state.json")]
+    ["dispatcher_state", join(home, "hooks", "state.json")],
+    ["plugin_state", join(home, "hosts", "plugin-state.json")],
+    ["codex_marketplace_manifest", join(home, "hosts", "codex-marketplace", ".agents", "plugins", "marketplace.json")],
+    ["claude_marketplace_manifest", join(home, "hosts", "claude-marketplace", ".claude-plugin", "marketplace.json")]
   ]) {
     const node = lstatEvidence(path);
     if (node.status === "unknown" || (node.status === "ready" && (node.stats.isSymbolicLink() || !node.stats.isFile()))) {
@@ -1263,6 +1283,12 @@ export function activateInstalledChannel(evozeusHome, channel, autoRefresh = fal
     throw new ChannelError("CHANNEL_NOT_INSTALLED", `${channel} is not installed`);
   }
   const home = resolve(evozeusHome);
+  const destinationIssues = transactionDestinationIssues(home, channel);
+  if (destinationIssues.length > 0) {
+    throw new ChannelError("LOCAL_STATE_UNSAFE", "channel activation write destinations are unsafe", {
+      issues: destinationIssues
+    });
+  }
   const activeBefore = readActiveChannel(home);
   const activePath = join(home, "active-channel.json");
   privateDirectory(join(home, "state", channel));
@@ -1575,10 +1601,16 @@ export async function applyChannelUpdate({
   }
 }
 
-export function rollbackChannel(evozeusHome, channel) {
+export function rollbackChannel(evozeusHome, channel, { bootstrapCopy = cpSync } = {}) {
   const home = resolve(evozeusHome);
   if (!CHANNELS.includes(channel)) {
     throw new ChannelError("INVALID_CHANNEL", "channel must be stable or uat");
+  }
+  const destinationIssues = transactionDestinationIssues(home, channel);
+  if (destinationIssues.length > 0) {
+    throw new ChannelError("LOCAL_STATE_UNSAFE", "channel rollback write destinations are unsafe", {
+      issues: destinationIssues
+    });
   }
   const state = readChannelState(home);
   const current = state.channels[channel];
@@ -1586,9 +1618,27 @@ export function rollbackChannel(evozeusHome, channel) {
   if (!previous?.install_root || !existsSync(previous.install_root)) {
     throw new ChannelError("ROLLBACK_NOT_AVAILABLE", `no verified ${channel} rollback is available`);
   }
+  const previousIssues = validateProductManifest(previous.manifest, channel);
+  const previousSafety = historicalEntrySafety(home, previous);
+  const previousDigestMatches = previousIssues.length === 0
+    && previous.manifest_digest === productManifestDigest(previous.manifest);
+  if (
+    previousIssues.length > 0 ||
+    !previousDigestMatches ||
+    previousSafety.status !== "safe"
+  ) {
+    throw new ChannelError("ROLLBACK_STATE_UNSAFE", `the previous ${channel} rollback is unsafe or unverifiable`, {
+      issues: [
+        ...previousIssues.map((issue) => `previous_manifest:${issue}`),
+        ...(!previousDigestMatches ? ["previous_manifest_digest_mismatch"] : []),
+        ...previousSafety.issues
+      ]
+    });
+  }
   const currentLink = currentLinkFor(home, channel);
   const linkBefore = linkTarget(currentLink);
   const activeBefore = readActiveChannel(home);
+  const activeBeforeEntry = activeBefore?.channel ? state.channels[activeBefore.channel] : null;
   const restored = {
     ...previous,
     previous: { ...current, previous: null },
@@ -1612,6 +1662,7 @@ export function rollbackChannel(evozeusHome, channel) {
       channel,
       activeBefore?.channel === channel && activeBefore.auto_refresh === true
     );
+    refreshChannelBootstrap(home, previous.component_roots.evozeus, { copyImpl: bootstrapCopy });
     return {
       status: "rolled_back",
       channel,
@@ -1621,9 +1672,32 @@ export function rollbackChannel(evozeusHome, channel) {
       active
     };
   } catch (error) {
-    if (linkBefore) replaceSymlink(currentLink, linkBefore);
-    atomicWriteJson(join(home, "channel-state.json"), state);
-    if (activeBefore) atomicWriteJson(join(home, "active-channel.json"), activeBefore);
+    let restorationError = null;
+    try {
+      if (linkBefore) replaceSymlink(currentLink, linkBefore);
+      else rmSync(currentLink, { force: true });
+      atomicWriteJson(join(home, "channel-state.json"), state);
+      if (activeBefore) {
+        activateInstalledChannel(home, activeBefore.channel, activeBefore.auto_refresh === true);
+        atomicWriteJson(join(home, "active-channel.json"), activeBefore);
+      } else {
+        rmSync(join(home, "active-channel.json"), { force: true });
+      }
+      if (activeBeforeEntry?.component_roots?.evozeus) {
+        refreshChannelBootstrap(home, activeBeforeEntry.component_roots.evozeus);
+      } else if (error.code === "BOOTSTRAP_ROLLBACK_FAILED") {
+        throw new Error("the prior bootstrap bytes cannot be verified without an active channel");
+      }
+    } catch (caughtRestorationError) {
+      restorationError = caughtRestorationError;
+    }
+    if (restorationError) {
+      throw new ChannelError("ROLLBACK_TRANSACTION_FAILED", "channel rollback failed and the prior active transaction could not be restored", {
+        rollback_error: error.message,
+        restoration_error: restorationError.message,
+        recovery: current?.install_root ?? null
+      });
+    }
     throw error;
   }
 }

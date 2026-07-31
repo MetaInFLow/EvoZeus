@@ -48,7 +48,7 @@ Use an EvoZeus tag only when EvoZeus itself performs a recognizable lifecycle ac
 | New subscribed version found | `🧭 EvoZeus · 发现更新｜<current channel/version> → <target version>` |
 | Product auto-update running | `🛠️ EvoZeus · 自动更新中｜<managed surfaces>` |
 | Product auto-update completed | `✅ EvoZeus · 自动更新完成｜<channel/version> · <reload guidance>` |
-| Product auto-update failed safely | `🛡️ EvoZeus · 自动更新失败｜<retained version and reason>` |
+| Product auto-update failed | `🛡️ EvoZeus · 自动更新失败｜<retained version and reason>`; use `恢复未完成` when product, bootstrap, or Plugin recovery is unverified |
 | Approved evolution executing | `🛠️ EvoZeus · 进化中｜<Repo> · <approved change>` |
 | Single UAT candidate verified | `🧪 EvoZeus · UAT 就绪｜<Repo> · <candidate Commit>` |
 | Stable Release published | `🚀 EvoZeus · 已发布｜<Repo> · <Release>` |

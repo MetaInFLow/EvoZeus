@@ -174,7 +174,7 @@ EvoZeus shows one compact line only when its lifecycle state changes. Ordinary a
 | `🧭 EvoZeus · 发现更新｜<current → target>` | The selected channel has a new product version |
 | `🛠️ EvoZeus · 自动更新中｜<managed surfaces>` | The product-level update transaction is running |
 | `✅ EvoZeus · 自动更新完成｜<channel/version>` | The verified product update completed |
-| `🛡️ EvoZeus · 自动更新失败｜<retained version>` | The update failed and the previous verified version remains active |
+| `🛡️ EvoZeus · 自动更新失败｜<retained version>` or `恢复未完成` | The previous version remains active only after product, bootstrap, and Plugin recovery pass; otherwise manual recovery is required |
 | `🛠️ EvoZeus · 进化中｜<Repo> · <change>` | An approved evolution change is executing |
 | `🧪 EvoZeus · UAT 就绪｜<Repo> · <Commit>` | The single UAT candidate passed its gates |
 | `🚀 EvoZeus · 已发布｜<Repo> · <Release>` | A Stable Release was published |

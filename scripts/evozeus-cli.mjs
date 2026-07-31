@@ -14,6 +14,7 @@ import {
   prepareChannelUpdate,
   readActiveChannel,
   readChannelState,
+  refreshChannelBootstrap,
   rollbackChannel,
   resolveInstalledComponentRoot
 } from "./evozeus-channels.mjs";
@@ -1655,6 +1656,20 @@ function alignEntryPlugin(options, entry, hosts) {
   });
 }
 
+function verifyEntryPlugin(options, entry, hosts) {
+  const verification = inspectPluginHosts({
+    evozeusHome: workspaceInfo(options).evozeus_root,
+    channel: entry.manifest.channel,
+    productVersion: entry.manifest.product_version,
+    commit: entry.manifest.components.evozeus.commit,
+    availableHosts: hosts
+  });
+  if (!["ready", "ready_after_new_session", "not_applicable"].includes(verification.status)) {
+    throw new Error(`plugin verification failed: ${verification.status}`);
+  }
+  return verification;
+}
+
 function channelUse(options) {
   if (!options.channel || !["stable", "uat"].includes(options.channel)) {
     throw new CliError("INVALID_CHANNEL", "channel use requires stable or uat.", "system.channelUse");
@@ -1678,26 +1693,44 @@ function channelUse(options) {
       { required: true, reason: "Changing the active EvoZeus channel writes ~/.evozeus/active-channel.json." }
     );
   }
-  const activeBefore = readActiveChannel(workspaceInfo(options).evozeus_root);
+  const evozeusHome = workspaceInfo(options).evozeus_root;
+  const activeBefore = readActiveChannel(evozeusHome);
   const entryBefore = activeBefore?.channel ? installedChannelEntry(options, activeBefore.channel) : null;
+  const hosts = requestedPluginHosts(options);
   try {
-    const hosts = requestedPluginHosts(options);
     const active = activateInstalledChannel(
-      workspaceInfo(options).evozeus_root,
+      evozeusHome,
       options.channel,
       options.autoRefresh
     );
     const entry = installedChannelEntry(options, options.channel);
+    refreshChannelBootstrap(evozeusHome, entry.component_roots.evozeus);
     const plugin = alignEntryPlugin(options, entry, hosts);
-    return envelope("system.channelUse", options, { channel: options.channel, active, plugin, writes_now: true });
+    const verification = verifyEntryPlugin(options, entry, hosts);
+    return envelope(
+      "system.channelUse",
+      options,
+      { channel: options.channel, active, plugin, verification, writes_now: true }
+    );
   } catch (error) {
-    if (activeBefore?.channel && activeBefore.channel !== options.channel) {
-      try {
-        activateInstalledChannel(workspaceInfo(options).evozeus_root, activeBefore.channel, activeBefore.auto_refresh);
-        if (entryBefore) alignEntryPlugin(options, entryBefore, requestedPluginHosts(options));
-      } catch {
-        // Keep the original failure; Doctor will expose any remaining mismatch.
+    let recoveryError = null;
+    try {
+      if (!activeBefore?.channel || !entryBefore) {
+        throw new Error("no prior active channel is available for recovery");
       }
+      activateInstalledChannel(evozeusHome, activeBefore.channel, activeBefore.auto_refresh);
+      refreshChannelBootstrap(evozeusHome, entryBefore.component_roots.evozeus);
+      alignEntryPlugin(options, entryBefore, hosts);
+      verifyEntryPlugin(options, entryBefore, hosts);
+    } catch (caughtRecoveryError) {
+      recoveryError = caughtRecoveryError;
+    }
+    if (recoveryError) {
+      throw new CliError(
+        "CHANNEL_USE_RECOVERY_FAILED",
+        `${error.message}. Product or Plugin recovery is incomplete: ${recoveryError.message}`,
+        "system.channelUse"
+      );
     }
     throw channelCliError(error, "system.channelUse");
   }
@@ -1720,26 +1753,47 @@ function channelRollback(options) {
     );
   }
   try {
+    const evozeusHome = workspaceInfo(options).evozeus_root;
+    const activeBefore = readActiveChannel(evozeusHome);
+    const entryBefore = activeBefore?.channel ? installedChannelEntry(options, activeBefore.channel) : null;
     const hosts = requestedPluginHosts(options);
-    const rollback = rollbackChannel(workspaceInfo(options).evozeus_root, options.channel);
+    const rollback = rollbackChannel(evozeusHome, options.channel);
     try {
       const entry = installedChannelEntry(options, options.channel);
+      const plugin = alignEntryPlugin(options, entry, hosts);
+      const verification = verifyEntryPlugin(options, entry, hosts);
       return envelope(
         "system.channelRollback",
         options,
-        { rollback, plugin: alignEntryPlugin(options, entry, hosts) }
+        { rollback, plugin, verification }
       );
     } catch (pluginError) {
-      rollbackChannel(workspaceInfo(options).evozeus_root, options.channel);
-      const restored = installedChannelEntry(options, options.channel);
+      let recoveryError = null;
       try {
-        alignEntryPlugin(options, restored, hosts);
-      } catch {
-        // Keep the original plugin failure; Doctor will expose any remaining mismatch.
+        rollbackChannel(evozeusHome, options.channel);
+        if (!activeBefore?.channel || !entryBefore) {
+          throw new Error("no prior active channel is available for recovery");
+        }
+        if (activeBefore.channel !== options.channel) {
+          activateInstalledChannel(evozeusHome, activeBefore.channel, activeBefore.auto_refresh);
+          refreshChannelBootstrap(evozeusHome, entryBefore.component_roots.evozeus);
+        }
+        alignEntryPlugin(options, entryBefore, hosts);
+        verifyEntryPlugin(options, entryBefore, hosts);
+      } catch (caughtRecoveryError) {
+        recoveryError = caughtRecoveryError;
+      }
+      if (recoveryError) {
+        throw new CliError(
+          "CHANNEL_ROLLBACK_RECOVERY_FAILED",
+          `${pluginError.message}. Product or Plugin recovery is incomplete: ${recoveryError.message}`,
+          "system.channelRollback"
+        );
       }
       throw pluginError;
     }
   } catch (error) {
+    if (error instanceof CliError) throw error;
     throw channelCliError(error, "system.channelRollback");
   }
 }
@@ -1799,31 +1853,36 @@ async function alignProduct(options) {
     const entry = installedChannelEntry(options, channel);
     try {
       const plugin = alignEntryPlugin(options, entry, hosts);
-      const verification = inspectPluginHosts({
-        evozeusHome: workspaceInfo(options).evozeus_root,
-        channel,
-        productVersion: entry.manifest.product_version,
-        commit: entry.manifest.components.evozeus.commit,
-        availableHosts: hosts
-      });
+      const verification = verifyEntryPlugin(options, entry, hosts);
       return envelope("system.align", options, { channel, update, plugin, verification, writes_now: true });
     } catch (pluginError) {
-      if (update.rollback) {
-        rollbackChannel(workspaceInfo(options).evozeus_root, channel);
-      } else if (activeBefore?.channel && activeBefore.channel !== channel) {
-        activateInstalledChannel(
-          workspaceInfo(options).evozeus_root,
-          activeBefore.channel,
-          activeBefore.auto_refresh
-        );
-      }
-      if (entryBefore) {
-        try {
-          const restored = installedChannelEntry(options, activeBefore.channel);
-          alignEntryPlugin(options, restored || entryBefore, hosts);
-        } catch {
-          // Keep the original failure; Doctor will report any residual host mismatch.
+      const evozeusHome = workspaceInfo(options).evozeus_root;
+      let recoveryError = null;
+      try {
+        if (update.rollback) {
+          rollbackChannel(evozeusHome, channel);
         }
+        if (activeBefore?.channel && activeBefore.channel !== channel) {
+          activateInstalledChannel(evozeusHome, activeBefore.channel, activeBefore.auto_refresh);
+          const restoredActiveEntry = installedChannelEntry(options, activeBefore.channel);
+          refreshChannelBootstrap(evozeusHome, restoredActiveEntry.component_roots.evozeus);
+        } else if (update.writes_now && !update.rollback) {
+          throw new Error("the completed product transaction has no verified rollback target");
+        }
+        if (entryBefore) {
+          const restored = installedChannelEntry(options, activeBefore.channel) || entryBefore;
+          alignEntryPlugin(options, restored, hosts);
+          verifyEntryPlugin(options, restored, hosts);
+        }
+      } catch (error) {
+        recoveryError = error;
+      }
+      if (recoveryError) {
+        throw new CliError(
+          "PLUGIN_ALIGNMENT_RECOVERY_FAILED",
+          `${pluginError.message}. Product or Plugin recovery is incomplete: ${recoveryError.message}`,
+          "system.align"
+        );
       }
       throw new CliError(
         "PLUGIN_ALIGNMENT_FAILED",
