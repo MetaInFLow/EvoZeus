@@ -97,7 +97,7 @@
     "evidence_fields": ["source", "checked_at", "number", "state", "is_pull_request", "labels", "title"]
   },
   "resume": {
-    "key_fields": ["profile", "repo", "base_ref", "issue", "actor", "permission_path", "component", "purpose"],
+    "key_fields": ["profile", "repo", "base_ref", "issue", "actor", "permission_path", "purpose.type", "purpose.component", "purpose.summary"],
     "owner_field": "actor",
     "base_match": ["ref", "commit"],
     "stale_after_days": 14,

@@ -367,6 +367,7 @@ export function buildBranchPlan(options, contract, facts, permissionEvidence, is
     issue?.reference ?? options.issue,
     resolvedActor.toLowerCase(),
     resolvedPermission,
+    options.type,
     options.component,
     options.summary
   ]);

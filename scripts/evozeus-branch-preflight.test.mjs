@@ -279,6 +279,16 @@ test("blocks a branch collision without matching resume metadata", (context) => 
   assert(blockerCodes(plan).includes("branch_collision"));
 });
 
+test("binds the resume key to the full purpose including type", (context) => {
+  const fixtures = [createFixture(), createFixture()];
+  context.after(() => fixtures.forEach(({ root }) => rmSync(root, { recursive: true, force: true })));
+  const development = runPlan(fixtures[0]).plan;
+  const bug = runPlan(fixtures[1], { type: "bug" }).plan;
+
+  assert.notEqual(development.branch.target, bug.branch.target);
+  assert.notEqual(development.resume.key, bug.resume.key);
+});
+
 test("blocks stale ownership metadata", (context) => {
   const fixture = fixtureFor(context);
   const initial = runPlan(fixture).plan;

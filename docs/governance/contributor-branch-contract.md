@@ -64,7 +64,7 @@ Branch plan 对 Codex 与 Claude 使用完全相同的输入、判定和输出�
 ## New 与 Resume
 
 - `new`：目标分支不存在，当前 checkout clean 且 HEAD 与 canonical base commit 一致，计划指向新的隔离 worktree。
-- `resume`：调用方提供之前保存的 plan，resume key、owner、base ref/commit 和目标 branch 全部匹配，且 ownership 未过期。
+- `resume`：调用方提供之前保存的 plan，resume key、owner、base ref/commit、完整 purpose（type/component/summary）和目标 branch 全部匹配，且 ownership 未过期。
 - 同名 branch 存在但缺少匹配 plan 时视为 collision。
 - owner、base、resume key 不匹配时继续阻断。仅 ownership 时间窗超期且其余身份完全匹配时，Owner 可在 `--resume-plan` 基础上显式增加 `--reconfirm-owner` 生成 refreshed resume plan；持久化 refreshed ledger 仍需独立的 `--approve-save-plan`。
 
