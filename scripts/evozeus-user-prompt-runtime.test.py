@@ -18,6 +18,13 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 DISPATCHER = ROOT / "scripts" / "evozeus-coevolve-dispatcher.py"
 ATTACHMENT = ROOT / "contracts" / "v1" / "user-prompt-lesson-runtime.json"
+SESSION_SIGNAL_SOURCE_REVISION = "5d6ccce7eb821809e8594ecc3968e26211b31f12"
+SESSION_SIGNAL_UPSTREAM_SHA256 = {
+    "contracts/lesson-candidate-api-v1.json": "94c78343cfdf9177fd731dad4f5d782fa2a36a8bc5085f59734ad7b2bfb166ba",
+    "scripts/evaluate_lesson_candidate.py": "d37956058b6d994b9893e8953877965132079a3bae21754902e3d3dcb4efccc3",
+    "src/evozeus_session_signal_skill/lesson_candidate.py": "3a4bf5aba0dd1b23dba6cf45e2717cd52b9bece48629954fd7b0f223b23c46a2",
+    "tests/test_lesson_candidate.py": "3422923b8879817c159bfb570578e0ecc39acf76026b3fc274737795f7df4845",
+}
 spec = importlib.util.spec_from_file_location("evozeus_user_prompt_runtime", DISPATCHER)
 assert spec and spec.loader
 runtime = importlib.util.module_from_spec(spec)
@@ -109,7 +116,8 @@ class UserPromptLessonRuntimeTest(unittest.TestCase):
                 "runtime_api": runtime.USER_PROMPT_RUNTIME_API,
                 "component": {
                     "repository": "MetaInFLow/EvoZeus-session-signal-skill",
-                    "version": "v0.1.1",
+                    "source_revision": SESSION_SIGNAL_SOURCE_REVISION,
+                    "version": "v0.1.2",
                     "api": "evozeus.session-signal.lesson-candidate.v1",
                     "entrypoint": "src/evozeus_session_signal_skill/lesson_candidate.py",
                     "files": [
@@ -152,7 +160,7 @@ class UserPromptLessonRuntimeTest(unittest.TestCase):
             },
             "embedded": {
                 "session_signal": {
-                    "version": "v0.1.1",
+                    "version": "v0.1.2",
                     "path": "packs/session-signal",
                     "required_paths": required_component_paths,
                 }
@@ -218,7 +226,15 @@ class UserPromptLessonRuntimeTest(unittest.TestCase):
             hashlib.sha256(ATTACHMENT.read_bytes()).hexdigest(),
             runtime.SESSION_SIGNAL_ATTACHMENT_SHA256,
         )
-        self.assertEqual(attachment["component"]["version"], "v0.1.1")
+        self.assertEqual(
+            attachment["component"]["source_revision"],
+            SESSION_SIGNAL_SOURCE_REVISION,
+        )
+        self.assertEqual(
+            runtime.SESSION_SIGNAL_SOURCE_REVISION,
+            SESSION_SIGNAL_SOURCE_REVISION,
+        )
+        self.assertEqual(attachment["component"]["version"], "v0.1.2")
         self.assertEqual(
             attachment["component"]["entrypoint"],
             "src/evozeus_session_signal_skill/lesson_candidate.py",
@@ -257,6 +273,26 @@ class UserPromptLessonRuntimeTest(unittest.TestCase):
                 entry["path"] for entry in attachment["component"]["files"]
             }.issubset(embedded["required_paths"])
         )
+
+        upstream_root = ROOT / "packs" / "session-signal"
+        for relative_path, expected_sha256 in SESSION_SIGNAL_UPSTREAM_SHA256.items():
+            self.assertEqual(
+                hashlib.sha256((upstream_root / relative_path).read_bytes()).hexdigest(),
+                expected_sha256,
+                relative_path,
+            )
+        attachment_files = {
+            entry["path"]: entry["sha256"]
+            for entry in attachment["component"]["files"]
+        }
+        for relative_path in (
+            "scripts/evaluate_lesson_candidate.py",
+            "src/evozeus_session_signal_skill/lesson_candidate.py",
+        ):
+            self.assertEqual(
+                attachment_files[relative_path],
+                SESSION_SIGNAL_UPSTREAM_SHA256[relative_path],
+            )
 
     def test_custom_product_home_uses_fixed_user_project_registry(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -364,6 +400,7 @@ class UserPromptLessonRuntimeTest(unittest.TestCase):
         for failure in (
             "manifest_digest",
             "version",
+            "source_revision",
             "damaged",
             "self_blessed",
             "symlink",
@@ -378,6 +415,18 @@ class UserPromptLessonRuntimeTest(unittest.TestCase):
                 elif failure == "version":
                     entry["manifest"]["embedded"]["session_signal"]["version"] = "v0.1.0"
                     entry["manifest_digest"] = runtime._product_manifest_digest(entry["manifest"])
+                elif failure == "source_revision":
+                    attachment = json.loads(
+                        fixture["contract"].read_text(encoding="utf-8")
+                    )
+                    attachment["component"]["source_revision"] = "0" * 40
+                    fixture["contract"].write_text(
+                        json.dumps(attachment, ensure_ascii=False, indent=2) + "\n",
+                        encoding="utf-8",
+                    )
+                    fixture["attachment_sha256"] = hashlib.sha256(
+                        fixture["contract"].read_bytes()
+                    ).hexdigest()
                 elif failure == "damaged":
                     fixture["script"].write_text("# damaged\n", encoding="utf-8")
                 elif failure == "self_blessed":

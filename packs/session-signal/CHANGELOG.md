@@ -13,6 +13,7 @@
 
 ### Fixed
 
+- Synchronized the Lesson candidate method and its regression suite byte-for-byte from Session Signal revision `5d6ccce7eb821809e8594ecc3968e26211b31f12`, including choice-question neutralization, Java `Caused by` filtering, present-tense attribution handling and visible-prose-only alias routing.
 - Preserved durable-rule scope across natural comma clauses and generalized reporting-verb attribution to named sources and caller-defined roles.
 - Recognized comma-delimited log milliseconds and stopped inferring unregistered repository basenames as target aliases.
 - Distinguished Chinese report nouns from reporting verbs, accepted contracted durable prohibitions, and filtered RFC 3339 `Z` log timestamps.

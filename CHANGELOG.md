@@ -9,7 +9,8 @@
 ### Fixed
 
 - Bound channel dispatcher reconciliation to the newly installed Core source and byte content, so Core-only updates cannot retain the prior dispatcher.
-- Shipped the digest-pinned Session Signal v0.1.1 entrypoint inside the Core product tree and declared its attachment and source files as channel-required paths.
+- Shipped the digest-pinned Session Signal v0.1.2 entrypoint inside the Core product tree and declared its attachment and source files as channel-required paths.
+- Bound the embedded Lesson method to Session Signal PR #9 revision `5d6ccce7eb821809e8594ecc3968e26211b31f12`; the attachment now records that revision and fixed upstream source/test hashes prevent silent vendor drift.
 - Stopped registered-target discovery as soon as the 257th valid target proves the bounded inventory invalid.
 - Discarded aliases longer than 128 characters and bounded instruction-surface reads to 64 KiB without dropping an otherwise valid registered target.
 

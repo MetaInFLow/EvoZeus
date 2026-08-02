@@ -20,9 +20,10 @@ SCHEMA_VERSION = "evozeus.channel-coevolve-dispatcher.v2"
 AUTO_UPDATE_TIMEOUT_SECONDS = 120
 USER_PROMPT_EVENT = "UserPromptSubmit"
 USER_PROMPT_RUNTIME_API = "evozeus.user-prompt.lesson-runtime.v1"
+SESSION_SIGNAL_SOURCE_REVISION = "5d6ccce7eb821809e8594ecc3968e26211b31f12"
 SESSION_SIGNAL_ATTACHMENT_PATH = Path("contracts/v1/user-prompt-lesson-runtime.json")
 SESSION_SIGNAL_ATTACHMENT_SHA256 = (
-    "9550e2ca6542370357168d57e1b2e23a41d712bdf6932b57e80fa353f46beb5c"
+    "2eb1be7548819d6ec201116a0b334893df6b0995a383e8e64a9d7a5de0178dfe"
 )
 PROJECTS_DIR = Path(".evozeus/.projects")
 MANIFEST_CANDIDATES = (
@@ -170,6 +171,7 @@ def _validated_attachment(
         or attachment.get("runtime_api") != USER_PROMPT_RUNTIME_API
         or not isinstance(component, dict)
         or component.get("repository") != "MetaInFLow/EvoZeus-session-signal-skill"
+        or component.get("source_revision") != SESSION_SIGNAL_SOURCE_REVISION
         or component.get("api") != "evozeus.session-signal.lesson-candidate.v1"
         or not re.fullmatch(r"v\d+\.\d+\.\d+", str(component.get("version") or ""))
         or not isinstance(component.get("entrypoint"), str)

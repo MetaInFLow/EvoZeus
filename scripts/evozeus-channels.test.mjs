@@ -77,7 +77,7 @@ const EMBEDDED = {
     required_paths: ["src/evozeus_runtime/cli/main.py", "pyproject.toml"]
   },
   session_signal: {
-    version: "v0.1.1",
+    version: "v0.1.2",
     path: "packs/session-signal",
     required_paths: [
       "scripts/validate_official_factor_spec.py",

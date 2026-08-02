@@ -54,7 +54,7 @@
       ]
     },
     "session_signal": {
-      "version": "v0.1.1",
+      "version": "v0.1.2",
       "path": "packs/session-signal",
       "required_paths": [
         "SKILL.md",

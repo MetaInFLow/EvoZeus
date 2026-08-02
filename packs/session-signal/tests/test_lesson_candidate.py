@@ -67,6 +67,8 @@ from evozeus_session_signal_skill.lesson_candidate import (  # noqa: E402
         "I'm not satisfied; you didn't follow the requirement.",
         "I’m not satisfied; you did not follow the requirement.",
         "From now on, always check the release boundary before tagging.",
+        "From now on in this repo, always run tests.",
+        "For all users in production, show status.",
         "For all users, show status.",
         "For all users, agents must show status.",
         "Always check the release boundary.",
@@ -140,10 +142,14 @@ def test_high_precision_correction_and_durable_rule_detection(prompt: str) -> No
         "This should be fixed?",
         "你漏检了这个要求吗，能补上吗？",
         "是你漏检了回滚要求，还是我理解错了？",
+        "是你的结果不对，还是文档过期了？",
         "Your answer is wrong, or am I misunderstanding it?",
         "Your answer is wrong; or am I misunderstanding it?",
         "是你漏检了回滚要求；还是我理解错了？",
         "Never mind.",
+        "Never saw this before.",
+        "Never used this tool before.",
+        "Never had this problem before.",
         "Every time I run tests, the build is slow.",
         "I always ask users for details.",
         "Your answer is wrong: or am I misunderstanding it?",
@@ -189,6 +195,12 @@ def test_direct_corrections_outside_conditional_scope_still_trigger(prompt: str)
         "A release manager reported you missed the rollback requirement; summarize it.",
         "张三报告答案不对，请总结他的反馈。",
         "Someone said the answer is wrong; summarize their feedback.",
+        "The reviewer says the answer is wrong; summarize that feedback.",
+        "The reviewer writes the answer is wrong; summarize that feedback.",
+        "The reviewer reports the answer is wrong; summarize that feedback.",
+        "The reviewer notes the answer is wrong; summarize that feedback.",
+        "The reviewer states the answer is wrong; summarize that feedback.",
+        "The reviewer claims the answer is wrong; summarize that feedback.",
         "Someone said you missed the rollback requirement; summarize their feedback.",
         "Someone said your answer is wrong. Please summarize that feedback.",
         "Someone said e.g. your answer is wrong; summarize the quoted example.",
@@ -214,6 +226,11 @@ def test_direct_corrections_outside_conditional_scope_still_trigger(prompt: str)
             "请分析这段 traceback。"
         ),
         "AssertionError: your answer is wrong\n请分析这条异常日志。",
+        (
+            "Caused by: java.lang.AssertionError: your answer is wrong\n"
+            "    at com.example.Handler.run(Handler.java:42)\n"
+            "请分析这条异常日志。"
+        ),
         "[ERROR] your answer is wrong\n请分析这条日志。",
         "[2026-07-31 12:00:00] [ERROR] your answer is wrong\n请分析这条日志。",
         "2026-07-31 12:00:00,000 ERROR your answer is wrong\n请分析这条日志。",
@@ -271,6 +288,23 @@ def test_target_selection_uses_only_one_unique_alias(tmp_path: Path) -> None:
         )
         is None
     )
+
+
+@pytest.mark.parametrize(
+    "prompt",
+    [
+        "```text\nAlpha Skill\n```\n这个结果不对。",
+        "> Alpha Skill\n这个结果不对。",
+        '"Alpha Skill" 的结果不对。',
+        "[INFO] Alpha Skill 的结果不对。\n这个结果不对。",
+    ],
+)
+def test_target_selection_ignores_aliases_outside_visible_prose(
+    tmp_path: Path, prompt: str
+) -> None:
+    targets = [_target("MetaInFlow/alpha", tmp_path / "alpha", "Alpha Skill")]
+
+    assert select_lesson_target(cwd=None, prompt=prompt, targets=targets) is None
 
 
 def test_target_selection_leaves_colliding_alias_unassigned(tmp_path: Path) -> None:
