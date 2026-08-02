@@ -1083,7 +1083,10 @@ describe("channel transactions", () => {
         chmodSync(path, 0o755);
       }
 
-      writeFileSync(channelsSource, currentSource);
+      writeFileSync(
+        channelsSource,
+        currentSource.replace("evozeus.managed-cli.v1", "evozeus.managed-cli.v2")
+      );
       git(components.evozeus.repo, "add", "scripts/evozeus-channels.mjs");
       git(components.evozeus.repo, "commit", "-m", "add managed shim export");
       components.evozeus.commit = git(components.evozeus.repo, "rev-parse", "HEAD");
@@ -1094,6 +1097,7 @@ describe("channel transactions", () => {
         smokeRunner: noSmoke,
         embeddedSmokeRunner: noSmoke
       });
+      assert.match(readFileSync(join(binRoot, "evozeus"), "utf8"), /evozeus\.managed-cli\.v2/);
 
       const rollback = rollbackChannel(home, "uat", {
         smokeRunner: noSmoke,
@@ -1103,6 +1107,7 @@ describe("channel transactions", () => {
       assert.equal(readChannelState(home).channels.uat.install_root, legacyEntry.install_root);
       assert.equal(readFileSync(join(binRoot, "evozeus"), "utf8"), buildManagedCliShimContent());
       assert.equal(readFileSync(join(binRoot, "evozeus-repair"), "utf8"), buildManagedCliShimContent());
+      assert.doesNotMatch(readFileSync(join(binRoot, "evozeus"), "utf8"), /evozeus\.managed-cli\.v2/);
       assert.equal(channelSnapshot(home).health, "healthy");
     }));
 
@@ -2239,6 +2244,47 @@ describe("channel transactions", () => {
       assert.equal(readChannelState(home).channels.uat.manifest_digest, after);
       assert.equal(readJsonReport(join(home, "state", "uat", "auto-refresh-last.json")).status, "failed_continuing_previous");
       assert.match(continued.stderr, /EvoZeus · 自动更新失败/);
+    }));
+
+  it("reports unsafe-stop refreshes as recovery-required without claiming continuation", async () =>
+    fixture(async (root) => {
+      const home = join(root, "home");
+      const components = Object.fromEntries(
+        Object.keys(COMPONENT_PATHS).map((componentId) => [componentId, initComponent(root, componentId)])
+      );
+      const manifestPath = writeManifest(root, "uat-unsafe-refresh.json", uatManifest(components));
+      const installed = await applyChannelUpdate({
+        evozeusHome: home,
+        channel: "uat",
+        manifestSource: manifestPath,
+        smokeRunner: noSmoke
+      });
+      const requiredPath = join(installed.component_roots.evozeus, "SKILL.md");
+      const outside = join(root, "outside-skill.md");
+      writeFileSync(outside, "outside\n");
+      rmSync(requiredPath);
+      symlinkSync(outside, requiredPath);
+
+      const result = spawnSync(process.execPath, [LAUNCHER, "version", "--json"], {
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          EVOZEUS_HOME: home,
+          EVOZEUS_UAT_MANIFEST: manifestPath,
+          EVOZEUS_HOSTS_AVAILABLE: "none",
+          EVOZEUS_UPDATE_CHECK_INTERVAL_SECONDS: "0"
+        }
+      });
+
+      assert.equal(result.status, 0, result.stderr);
+      const report = readJsonReport(join(home, "state", "uat", "auto-update-last.json"));
+      assert.equal(report.status, "failed_recovery_required");
+      assert.equal(report.recovery.status, "incomplete");
+      assert.equal(report.recovery.product, "unsafe_state_retained");
+      assert.equal(report.recovery.plugin, "unchanged");
+      assert.equal(report.recovery.error.code, "UNSAFE_STOP");
+      assert.equal(report.error.code, "LOCAL_STATE_UNSAFE");
+      assert.match(result.stderr, /EvoZeus · 自动更新失败/);
     }));
 
   it("automatically updates Stable as one product and records the visible lifecycle", async () =>
