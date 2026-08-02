@@ -340,6 +340,26 @@ class UserPromptLessonRuntimeTest(unittest.TestCase):
             self.assertIsNotNone(oversized_surface_targets)
             self.assertEqual(oversized_surface_targets[0]["aliases"], ["example-skill"])
 
+    def test_target_discovery_rejects_oversized_wrapper_manifest(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            user_home = root / "user-home"
+            target = self._target(user_home, root)
+            manifest = target / ".evozeus-wrapper" / "wrapper.json"
+            manifest.write_text(
+                json.dumps(
+                    {
+                        "canonical_repo": "MetaInFLow/example-skill",
+                        "wrapper_version": "v0.14.0",
+                        "instruction_surface": "SKILL.md",
+                        "padding": "x" * runtime.SESSION_SIGNAL_MAX_WRAPPER_MANIFEST_BYTES,
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            self.assertEqual(runtime.discover_wrapped_targets(user_home), [])
+
     def test_invalid_channel_evidence_and_component_files_fail_open(self):
         for failure in (
             "manifest_digest",

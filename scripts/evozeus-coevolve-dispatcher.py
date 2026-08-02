@@ -38,6 +38,7 @@ SESSION_SIGNAL_MAX_PROMPT_CHARS = 32_000
 SESSION_SIGNAL_MAX_TARGETS = 256
 SESSION_SIGNAL_MAX_ALIAS_CHARS = 128
 SESSION_SIGNAL_MAX_INSTRUCTION_SURFACE_BYTES = 64 * 1024
+SESSION_SIGNAL_MAX_WRAPPER_MANIFEST_BYTES = 64 * 1024
 _ISOLATED_COMPONENT_BOOTSTRAP = (
     "import runpy,sys; namespace=runpy.run_path(sys.argv[1]); "
     "raise SystemExit(namespace['main']())"
@@ -48,10 +49,17 @@ class _ComponentOutputLimitExceeded(Exception):
     pass
 
 
-def _read_json(path: Path) -> dict:
+def _read_json(path: Path, *, max_bytes: int | None = None) -> dict:
     try:
-        value = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
+        if max_bytes is None:
+            value = json.loads(path.read_text(encoding="utf-8"))
+        else:
+            with path.open("rb") as stream:
+                raw = stream.read(max_bytes + 1)
+            if len(raw) > max_bytes:
+                return {}
+            value = json.loads(raw.decode("utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
         return {}
     return value if isinstance(value, dict) else {}
 
@@ -319,7 +327,10 @@ def discover_wrapped_targets(user_home: Path) -> list[dict[str, Any]] | None:
             )
             if manifest_path is None:
                 continue
-            wrapper_manifest = _read_json(manifest_path)
+            wrapper_manifest = _read_json(
+                manifest_path,
+                max_bytes=SESSION_SIGNAL_MAX_WRAPPER_MANIFEST_BYTES,
+            )
             expected_repo = f"{owner_dir.name}/{pointer.name}"
             wrapper_version = wrapper_manifest.get("wrapper_version")
             if (
