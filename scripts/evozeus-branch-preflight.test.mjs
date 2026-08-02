@@ -127,6 +127,7 @@ function runPlan(fixture, overrides = {}) {
   const github = overrides.github;
   const gitRemote = overrides.git_remote;
   const resumePlanPath = overrides.resume_plan;
+  const factTargetBranch = overrides.fact_target_branch;
   const values = {
     profile: "evozeus_core_direct",
     repo: "MetaInFLow/EvoZeus",
@@ -146,6 +147,7 @@ function runPlan(fixture, overrides = {}) {
   delete values.github;
   delete values.git_remote;
   delete values.resume_plan;
+  delete values.fact_target_branch;
 
   const resumePlan = resumePlanPath ? JSON.parse(readFileSync(resumePlanPath, "utf8")) : null;
   values.date = resolvePlanDate(values, resumePlan, "20260801");
@@ -156,7 +158,7 @@ function runPlan(fixture, overrides = {}) {
     && ["READ", "TRIAGE"].includes(evidence.repository.viewer_permission)
     && evidence.repository.fork_allowed;
   const targetRepository = usesFork ? `${resolvedActor}/EvoZeus` : values.repo;
-  const branch = targetBranchFor(values, resolvedActor);
+  const branch = factTargetBranch || targetBranchFor(values, resolvedActor);
   const baseBranch = values.base.replace(/^origin\//, "");
   const baseCommit = git(fixture.repo, "rev-parse", values.base);
   const remoteEvidence = {
@@ -459,6 +461,41 @@ test("recovers the original branch date from a matching resume plan", (context) 
   assert.equal(plan.resume.decision, "resume");
   assert.equal(plan.branch.target, initial.branch.target);
   assert.equal(plan.branch.target.includes("20260801"), false);
+});
+
+test("preserves a legacy hyphenated resume branch across contract refresh", (context) => {
+  const fixture = fixtureFor(context);
+  const initial = runPlan(fixture).plan;
+  const legacyBranch = "codex/dev/20260731-alice-governance-branch-contract";
+  git(fixture.repo, "branch", legacyBranch, "origin/main");
+
+  const resumePath = join(fixture.root, "resume-plan.json");
+  const legacyPlan = structuredClone(initial);
+  legacyPlan.contract.version = "1.3.0";
+  legacyPlan.branch.target = legacyBranch;
+  writeFileSync(resumePath, JSON.stringify(legacyPlan));
+
+  const first = runPlan(fixture, {
+    date: undefined,
+    resume_plan: resumePath,
+    fact_target_branch: legacyBranch
+  }).plan;
+  assert.deepEqual(first.blockers, []);
+  assert.equal(first.contract.version, "1.3.1");
+  assert.equal(first.resume.decision, "resume");
+  assert.equal(first.branch.target, legacyBranch);
+  assert.equal(first.next_write_action, "recreate_resume_worktree_for_existing_branch");
+
+  writeFileSync(resumePath, JSON.stringify(first));
+  const refreshed = runPlan(fixture, {
+    date: undefined,
+    resume_plan: resumePath,
+    fact_target_branch: legacyBranch
+  }).plan;
+  assert.deepEqual(refreshed.blockers, []);
+  assert.equal(refreshed.contract.version, "1.3.1");
+  assert.equal(refreshed.resume.decision, "resume");
+  assert.equal(refreshed.branch.target, legacyBranch);
 });
 
 test("offers an explicit zero-write recovery action for a matching resume branch without a worktree", (context) => {
