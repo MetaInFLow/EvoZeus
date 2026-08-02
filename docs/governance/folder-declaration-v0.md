@@ -25,6 +25,7 @@
 | `assets/` | README and public visual assets |
 | `candidates/` | Candidate lifecycle directories: community, reviewed, core, deprecated |
 | `cases/` | Case library surface |
+| `contracts/` | Versioned machine contracts shared by EvoZeus and compatible consumers |
 | `factors/` | Factor semantic intake and third-party registry surface |
 | `patterns/` | Pattern library surface |
 | `examples/` | Redacted examples for Cases and reports |

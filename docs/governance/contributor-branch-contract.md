@@ -1,0 +1,112 @@
+# EvoZeus Contributor Branch Contract
+
+- Status: active
+- Machine contract: [`contracts/v1/contributor-branch-contract.json`](../../contracts/v1/contributor-branch-contract.json)
+- Core issue: [MetaInFLow/EvoZeus#44](https://github.com/MetaInFLow/EvoZeus/issues/44)
+- Harness consumer issue: [MetaInFLow/EvoZeus-CoEvolve#36](https://github.com/MetaInFLow/EvoZeus-CoEvolve/issues/36)
+
+任何业务文件写入都必须发生在可追踪的贡献分支与隔离 worktree 中。Contributor branch plan 是首次写入前的治理门禁；机器可执行值只由 v1.3.1 JSON contract 定义，本文负责解释使用方式。
+
+分支格式保持可读，同时对变量 token 做确定性编码：每个 token 先转为小写，再将其中的 `-` 替换为 `_`，最后以 `-` 连接。这样 actor、component、summary 的任意合法值都映射到唯一 ref：
+
+```text
+codex/<type>/<yyyymmdd>-<encoded-verified-actor>-<encoded-component>-<encoded-summary>
+```
+
+## Profiles
+
+| Profile | 场景 | Canonical base | 权限路径 | 关键边界 |
+| --- | --- | --- | --- | --- |
+| `evozeus_core_direct` | EvoZeus 主仓维护者直接贡献 | 主仓默认分支 | direct | 业务修改必须离开默认分支并进入独立 worktree。 |
+| `uat_repair_development` | 唯一 UAT 候选的修复开发 | 当前 UAT ref | direct | 产物始终是 development branch；不得把分支名或状态描述成用户 UAT 渠道。 |
+| `community_contribution` | 社区 docs、bug、test 或小型维护 | 主仓默认分支 | direct / fork / local | GitHub 一手权限证据确定 direct、fork 或 local patch。 |
+| `coevolve_target_skillware_consumer` | CoEvolve 管理的独立 Skillware Repo | 目标 Repo 默认分支 | direct / fork / local | 关联项必须是目标 Repo 中 OPEN 的 Issue，并带 `skill-feedback` 标签或 `[Skill Feedback]` 标题前缀。 |
+
+## 写入前 Preflight
+
+在 canonical checkout 或已知 Repo 根目录执行只读计划：
+
+```bash
+node scripts/evozeus-branch-preflight.mjs plan \
+  --profile evozeus_core_direct \
+  --repo MetaInFLow/EvoZeus \
+  --repo-path /absolute/path/to/EvoZeus \
+  --base origin/main \
+  --issue MetaInFLow/EvoZeus#44 \
+  --actor <expected-github-login> \
+  --type dev \
+  --component governance \
+  --summary branch-contract \
+  --permission direct \
+  --worktree /absolute/path/to/isolated-worktree \
+  --json
+```
+
+输出固定包含 repo、base ref/commit、目标 branch、Issue 及其 evidence/source/timestamp、actor、permission path 及其 evidence/source/timestamp、worktree、resume/new decision、next write action、blockers 和 `writes=false`。Preflight 不创建或切换 branch/worktree，不修改 Git config，不 commit、push 或创建 PR；存在 blocker 时以非零状态退出。
+
+目标 branch 使用 live verified GitHub actor 的小写 login 作为所有权段；actor、component、summary 中的连字符会编码为 `_`，确保不同参与者、组件和 purpose 在同一日期下不会产生碰撞。
+生成后的最后一个 ref component 不得超过 contract 的 240-byte 上限，确保追加 Git lock suffix 后仍可在常见文件系统创建。
+
+## Issue Verification
+
+Planner 通过只读 GitHub API 查询声明的 Issue，并核验 Repo、编号、OPEN 状态与实体类型。查询不可用、返回对象不匹配、Issue 已关闭或编号实际指向 Pull Request 时均阻断。`coevolve_target_skillware_consumer` profile 还要求 `skill-feedback` 标签或 `[Skill Feedback]` 标题前缀，用于确认该 Issue 属于 Skill feedback 治理入口。
+
+## Identity 与 Permission Resolution
+
+`--actor` 与 `--permission` 只声明调用方的预期。Planner 使用只读 GitHub API 取得当前 viewer login、目标 Repo `viewerPermission` 和 fork policy，再确定实际路径：
+
+- `ADMIN`、`MAINTAIN`、`WRITE` 且 Repo 未 archived/disabled 时解析为 direct。
+- `READ`、`TRIAGE` 且目标 Repo 允许 fork、并存在 effective fetch/push URL 均精确指向 `<actor>/<repo>` 的已配置 remote 时解析为可执行 fork 计划。
+- 无可验证身份、权限证据不完整、Repo 禁止 fork 或无 PR 能力时解析为 local patch。
+- 预期 actor/permission 与证据不一致时阻断。`--repo` 还必须匹配本地 `remote.origin` 的有效 fetch URL 及全部有效 push URL；`pushurl`、`insteadOf` 或 `pushInsteadOf` 重写后的目标同样参与校验。只有 effective origin fetch identity 精确匹配 canonical Repo 后才允许 live 查询。Canonical base 通过 origin live 取证；direct target 使用 origin，fork target 使用 verified actor fork remote。查询不可用、cached base 过期、本地/live remote 同名目标分支分叉或远端 ref prefix/descendant namespace 冲突时阻断。
+
+GitHub 权限证据不可用时，权限路径解析为 local patch，且固定 `push_allowed=false`、`pull_request_allowed=false`。Issue 证据不可用时整个计划阻断，因此恢复 API 取证前不得开始业务写入。Repo 内容、合同覆盖文件或命令参数均不能授予 direct/fork 权限。
+
+Branch plan 对 Codex 与 Claude 使用完全相同的输入、判定和输出；Host 不参与身份或权限解析，也不产生分支规则分叉。
+
+## New 与 Resume
+
+- `new`：目标分支不存在，当前 checkout clean 且 HEAD 与 canonical base commit 一致，计划指向新的隔离 worktree。目标路径不得位于任何已注册 worktree 内，本地 ref namespace 也不得存在目标分支的 prefix 或 descendant。
+- `resume`：调用方提供之前保存的 plan，resume key、owner、base ref/commit、完整 purpose（type/component/summary）和含 actor 所有权段的目标 branch 全部匹配，且 ownership 未过期。目标 worktree 是该 branch 的唯一 registration、目录可用且自身 clean 时输出 `resume_existing_branch_in_isolated_worktree`；本地分支仍存在、目标路径不存在且未被其他 worktree 占用时输出零写入 `recreate_resume_worktree_for_existing_branch`；Git 仍保留 prunable registration 且目录已消失时输出 `prune_and_recreate_resume_worktree_for_existing_branch`。目标分支仅存在于 live remote 时先阻断，获得独立写入授权后 fetch 并创建本地分支。重复 branch registrations 或目录缺失且 registration locked 时阻断；后者需显式 unlock 并 remove/prune。Prunable registration 的目录仍存在时先阻断，由 Owner 处理遗留内容。
+- Resume 未显式提供 `--date` 时，仅从 purpose 完全匹配的既有 plan target branch 恢复原 `yyyymmdd`；无法验证时使用当前日期并由完整 ownership/branch identity 检查继续 fail closed。
+- 同名 branch 存在但缺少匹配 plan 时视为 collision。
+- Resume evidence 必须来自 blocker-free、`writes=false` 且 next action 可执行的既有 plan；blocked/error output 不能把 collision 转成 resume。目标 branch 还必须证明 saved canonical base 是其 ancestor。
+- owner、base、resume key 不匹配时继续阻断。仅 ownership 时间窗超期且其余身份完全匹配时，Owner 可在 `--resume-plan` 基础上显式增加 `--reconfirm-owner` 生成 refreshed resume plan；持久化 refreshed ledger 仍需独立的 `--approve-save-plan`。
+
+## Fail-Closed Handling
+
+| 状态 | 结果 |
+| --- | --- |
+| dirty tree | 阻断，先由 Owner 处理已有改动。 |
+| current checkout status unavailable | 阻断，修复当前 checkout/index 后重新取证。 |
+| canonical checkout dirty/unavailable | 即使当前隔离 worktree clean 也阻断，并输出独立 status evidence。 |
+| requested registered worktree dirty/unavailable | 阻断，处理该 resume worktree 的已有改动或 status 错误后重新取证。 |
+| registered worktree live top-level/common-dir/branch mismatch | 阻断，修复被重定向或损坏的 `.git` 元数据后重新取证。 |
+| target branch has duplicate worktree registrations | 阻断，保留唯一受管 registration 后重新取证。 |
+| missing requested worktree registration is locked | 阻断，显式 unlock 并 remove/prune 后重新取证。 |
+| live base/target remote state unavailable/diverged | 阻断，恢复有效 origin 查询并对齐 cached base 或本地/live remote 同名分支。 |
+| fork remote missing/mismatched | 阻断，配置 effective fetch/push URL 均指向 verified actor exact fork 的 remote。 |
+| generated branch leaf exceeds 240 bytes | 阻断，缩短 component 或 summary。 |
+| local branch prefix/descendant namespace conflict | 阻断，处理冲突 ref 或选择新的 purpose token。 |
+| live remote branch prefix/descendant namespace conflict | 阻断，处理冲突 remote ref 或选择新的 purpose token。 |
+| wrong/missing base | 阻断，重新取得 canonical ref 与 commit。 |
+| protected checkout direct write | 阻断，改用外部 worktree。 |
+| branch/worktree collision | 阻断，禁止复用来源不明的分支。 |
+| dangling symlink at requested path | 视为路径已占用并阻断。 |
+| requested path ancestor is a file/dangling symlink | 视为不可创建路径并阻断。 |
+| prunable registration path still exists | 阻断，显式处理目录内容后再 prune/recreate。 |
+| blocked resume evidence / target branch wrong base | 阻断，重新取得有效 plan 或从 saved canonical base 重建 branch。 |
+| resume target exists only on live remote | 阻断；获得独立写入授权后 fetch 目标 ref、创建本地分支，再重新运行 preflight。 |
+| requested path nested in any registered worktree | 阻断，选择所有 worktree 外部的隔离路径。 |
+| stale ownership | 默认阻断；身份完全匹配时由 Owner 使用 `--reconfirm-owner` 刷新，身份不匹配继续阻断。 |
+| actor/permission evidence mismatch | 阻断，以 GitHub viewer 与 Repo 权限证据为准。 |
+| permission evidence unavailable | 权限路径解析为 local patch；direct/fork 预期会阻断。 |
+| Issue evidence unavailable/mismatched | 阻断，重新取得 live GitHub Issue 证据。 |
+| Issue closed or resolves to Pull Request | 阻断，关联 OPEN 的 Issue。 |
+| CoEvolve Issue classification missing | 阻断，补齐 `skill-feedback` 标签或 `[Skill Feedback]` 标题前缀。 |
+
+## Approval Boundaries
+
+只读 preflight 可直接运行。Issue 的记录或实现授权不包含 branch/worktree、commit、push 或 PR 授权；每个外部或持久化动作继续使用各自明确的批准门。
+
+多参与者对同一 Issue 并行时，每位参与者使用独立 branch/worktree 与独立 resume key，最后通过 PR review 汇合。任何参与者都不得把 canonical checkout 当作共享写入目录。

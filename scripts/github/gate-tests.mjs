@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 
 import {
   evaluateProofGate,
@@ -153,6 +155,12 @@ function testPrivacyScanFlagsPhoneLikeAddedLines() {
   assert.deepEqual(findings, ["examples/report.md: phone-like number"]);
 }
 
+function testContributorBranchPreflightGoldens() {
+  const testFile = fileURLToPath(new URL("../evozeus-branch-preflight.test.mjs", import.meta.url));
+  const result = spawnSync(process.execPath, ["--test", testFile], { encoding: "utf8", shell: false });
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+}
+
 testProofGateRequiresFilledFields();
 testProofGateAcceptsFilledBehaviorProof();
 testLabelPrefixUpdateRemovesStaleLabels();
@@ -160,5 +168,6 @@ testManagedLabelUpdateIgnoresUnmanagedDesiredLabels();
 testInvalidCandidateIsRejected();
 testPrivacyScanIgnoresIsoDatesInAddedLines();
 testPrivacyScanFlagsPhoneLikeAddedLines();
+testContributorBranchPreflightGoldens();
 
 console.log("GitHub gate tests passed");

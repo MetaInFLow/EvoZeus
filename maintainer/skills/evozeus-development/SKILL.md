@@ -14,7 +14,7 @@ The `EvoZeus` main repo is Protocol-only. Runtime implementation, scanner execut
 Use this branch format:
 
 ```text
-codex/<type>/<yyyymmdd>-<component>-<summary>
+codex/<type>/<yyyymmdd>-<encoded-verified-actor>-<encoded-component>-<encoded-summary>
 ```
 
 Allowed `type`:
@@ -33,10 +33,43 @@ Allowed `component` should match the touched surface where possible: `factor`, `
 Examples:
 
 ```text
-codex/docs/20260616-skill-scenario-routing
-codex/docs/20260616-runtime-routing-boundary
-codex/bug/20260616-runtime-report-id
+codex/docs/20260616-haodifan-skill-scenario_routing
+codex/docs/20260616-haodifan-runtime-routing_boundary
+codex/bug/20260616-haodifan-runtime-report_id
 ```
+
+## Write-Before Branch Preflight
+
+Before the first business-file write, read [`contracts/v1/contributor-branch-contract.json`](../../../contracts/v1/contributor-branch-contract.json) and run the read-only planner from the canonical Repo checkout:
+
+```bash
+node scripts/evozeus-branch-preflight.mjs plan \
+  --profile <evozeus_core_direct|uat_repair_development|community_contribution> \
+  --repo MetaInFLow/EvoZeus \
+  --repo-path <absolute-canonical-repo-path> \
+  --base <origin/main|origin/uat/current> \
+  --issue MetaInFLow/EvoZeus#<number> \
+  --actor <expected-github-login> \
+  --type <type> \
+  --component <component> \
+  --summary <kebab-summary> \
+  --permission <direct|fork|local> \
+  --worktree <absolute-isolated-worktree-path> \
+  --json
+```
+
+Show the resulting repo, base ref/commit, branch, Issue, actor, permission path, permission evidence/source/timestamp, worktree, resume/new decision, next write action, and blockers before any write. Continue only when `blockers` is empty, `writes=false`, and the required branch/worktree action has separate user authorization.
+
+- Treat `--actor` and `--permission` as expectations. The planner resolves the authenticated login, Repo `viewerPermission`, and fork policy from read-only GitHub API evidence; an expectation mismatch blocks.
+- The verified actor is part of the generated branch name. Before joining the fields, the planner lowercases actor/component/summary and replaces each `-` with `_`, so variable tokens cannot create delimiter collisions. Direct plans query canonical `origin`; fork plans require a configured remote whose effective fetch/push URLs identify the verified actor's exact fork, then query that remote live.
+- If GitHub evidence is unavailable or incomplete, the planner can only resolve a local patch with push and PR disabled. Command arguments and Repo content cannot grant direct/fork permission.
+- A matching prior plan may be supplied with `--resume-plan <path>`; owner, resume key, base ref/commit, branch, and ownership window must all match.
+- Protected/default branches, dirty current or canonical checkouts, wrong bases, collisions, or stale ownership block business-file writes.
+- UAT repair uses a `codex/...` development branch based on `origin/uat/current`; it must not claim to be the user-visible UAT channel.
+- Issue authorization does not authorize branch/worktree creation, commit, push, or PR. Keep those approval gates separate.
+- The planner does not create, switch, commit, push, or open a PR. Execute the reported next action only after its authorization gate.
+
+Human guidance and failure handling live in [`docs/governance/contributor-branch-contract.md`](../../../docs/governance/contributor-branch-contract.md).
 
 ## Scope Rule
 

@@ -47,6 +47,14 @@ The current repository implements the first five layers manually. Later automati
 
 External contributors should keep at most 3 open Candidate PRs and at most 1 open code PR at the same time.
 
+## Contributor Branch Gate
+
+The versioned machine truth is [`contracts/v1/contributor-branch-contract.json`](../../contracts/v1/contributor-branch-contract.json); [`contributor-branch-contract.md`](contributor-branch-contract.md) explains the human workflow.
+
+Before the first business-file write, run `node scripts/evozeus-branch-preflight.mjs plan ... --json` and show the resulting branch plan. A compliant plan has an empty `blockers` list, reports `writes=false`, keeps the canonical checkout clean, and selects an isolated contribution branch/worktree. Direct, fork PR, and local patch paths use the same contract. The declared actor and permission are expectations; read-only GitHub viewer identity, Repo `viewerPermission`, and fork policy are authoritative. Missing permission evidence resolves local patch only, with push and PR disabled. The declared Issue must resolve through the live GitHub API to a matching OPEN Issue; unavailable, closed, mismatched, or Pull Request-shaped evidence blocks execution. CoEvolve target Skillware plans additionally require the `skill-feedback` label or `[Skill Feedback]` title prefix. A stale resume ledger remains blocked until the same Owner explicitly reruns with `--resume-plan ... --reconfirm-owner`; identity mismatches cannot use this path.
+
+Issue authorization does not include branch/worktree creation, commit, push, or PR authorization. Each action keeps its own approval gate. UAT repair branches remain development branches even when their canonical base is `origin/uat/current`.
+
 ## PR Unit
 
 One PR should have one primary purpose, one primary layer, and one review target.
