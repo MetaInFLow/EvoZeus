@@ -268,6 +268,25 @@ class UserPromptLessonRuntimeTest(unittest.TestCase):
             self.assertIn("MetaInFLow/example-skill", context)
             self.assertNotIn(str(fixture["target"]), json.dumps(payload))
 
+    def test_root_cwd_does_not_trigger_path_leak_filter(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            fixture = self._fixture(Path(tmp))
+            payload = runtime.evaluate_user_prompt_submit(
+                fixture["product_home"],
+                fixture["user_home"],
+                {
+                    "hook_event_name": "UserPromptSubmit",
+                    "cwd": "/",
+                    "prompt": "candidate",
+                },
+                attachment_sha256=fixture["attachment_sha256"],
+            )
+
+            self.assertIn(
+                "MetaInFLow/example-skill",
+                payload["hookSpecificOutput"]["additionalContext"],
+            )
+
     def test_neutral_prompt_is_silent(self):
         with tempfile.TemporaryDirectory() as tmp:
             fixture = self._fixture(Path(tmp))

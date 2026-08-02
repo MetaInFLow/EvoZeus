@@ -87,6 +87,14 @@ def _contains(parent: Path, child: Path) -> bool:
     return True
 
 
+def _is_filesystem_root(value: str) -> bool:
+    try:
+        path = Path(value).expanduser()
+        return path.is_absolute() and path.resolve(strict=False) == Path(path.anchor)
+    except (OSError, RuntimeError, ValueError):
+        return False
+
+
 def _resolved_directory(value: object) -> Path | None:
     if not isinstance(value, str):
         return None
@@ -541,9 +549,10 @@ def _invoke_lesson_component(
     guidance = response.get("model_guidance")
     target_repo = response.get("target_repo")
     registered_repos = {target["repo"] for target in request["targets"]}
+    request_cwd = str(request.get("cwd") or "")
     private_values = (
         str(request.get("prompt") or ""),
-        str(request.get("cwd") or ""),
+        *([] if _is_filesystem_root(request_cwd) else [request_cwd]),
         str(component["component_root"]),
         str(component["script"]),
         *(target["canonical_path"] for target in request["targets"]),
