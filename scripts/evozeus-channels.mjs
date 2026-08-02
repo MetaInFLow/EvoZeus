@@ -60,11 +60,8 @@ const CHANNEL_BOOTSTRAP_FILES = [
   "evozeus-launcher.mjs"
 ];
 const CHANNEL_DISPATCHER = fileURLToPath(new URL("./evozeus-coevolve-dispatcher.py", import.meta.url));
-const MANAGED_CLI_SHIM_TEMPLATE_VERSION = "evozeus.managed-cli.v1";
-
-export function buildManagedCliShimContent() {
-  return `#!/bin/sh
-# ${MANAGED_CLI_SHIM_TEMPLATE_VERSION}
+const MANAGED_CLI_SHIM_V1 = `#!/bin/sh
+# evozeus.managed-cli.v1
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
 EVOZEUS_HOME="\${EVOZEUS_HOME:-$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)}"
 export EVOZEUS_HOME
@@ -148,6 +145,9 @@ if [ -n "$ACTIVE_LAUNCHER" ]; then
 fi
 exec node "$SCRIPT_DIR/../skeleton/scripts/evozeus-launcher.mjs" "$@"
 `;
+
+export function buildManagedCliShimContent() {
+  return MANAGED_CLI_SHIM_V1;
 }
 
 export class ChannelError extends Error {
@@ -1035,7 +1035,7 @@ function managedCliShimContentForCore(coreRoot) {
     stdio: ["ignore", "pipe", "pipe"]
   });
   if (result.status === 42) {
-    return buildManagedCliShimContent();
+    return MANAGED_CLI_SHIM_V1;
   }
   if (result.status !== 0 || !result.stdout.startsWith("#!/bin/sh\n") || result.stdout.includes("\0")) {
     throw new ChannelError("CLI_SHIM_TEMPLATE_INVALID", "the target Core managed-shim generator is unavailable or invalid", {

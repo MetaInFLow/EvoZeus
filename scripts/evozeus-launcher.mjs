@@ -360,6 +360,17 @@ async function autoUpdateActiveChannel() {
         hosts,
         pluginAlignmentStarted
       });
+    } else if (plan?.decision === "unsafe_stop") {
+      recovery = {
+        attempted: false,
+        status: "incomplete",
+        product: "unsafe_state_retained",
+        plugin: "unchanged",
+        error: {
+          code: "UNSAFE_STOP",
+          message: "automatic refresh stopped because the existing channel state or a managed write destination is unsafe"
+        }
+      };
     } else if (plan?.decision === "repair") {
       recovery = {
         attempted: true,
