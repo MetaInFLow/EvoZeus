@@ -33,9 +33,9 @@ Allowed `component` should match the touched surface where possible: `factor`, `
 Examples:
 
 ```text
-codex/docs/20260616-haodifan-skill-scenario-routing
-codex/docs/20260616-haodifan-runtime-routing-boundary
-codex/bug/20260616-haodifan-runtime-report-id
+codex/docs/20260616-haodifan-skill-scenario_routing
+codex/docs/20260616-haodifan-runtime-routing_boundary
+codex/bug/20260616-haodifan-runtime-report_id
 ```
 
 ## Write-Before Branch Preflight

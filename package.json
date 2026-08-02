@@ -5,7 +5,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "npm run test:plugin && npm run test:plugin-hosts && npm run test:user-visible-events && npm run test:readme-origin && npm run test:harness-boundary && npm run test:release-notes && npm run test:cli && npm run test:install && npm run test:doctor && npm run test:channels && npm run test:github-gates",
+    "test": "npm run test:pr-ready && npm run test:plugin && npm run test:plugin-hosts && npm run test:user-visible-events && npm run test:readme-origin && npm run test:harness-boundary && npm run test:release-notes && npm run test:cli && npm run test:install && npm run test:doctor && npm run test:channels && npm run test:github-gates",
+    "test:pr-ready": "PYTHONDONTWRITEBYTECODE=1 python3 scripts/check_pr_ready_test.py",
     "test:plugin": "node --test scripts/evozeus-plugin.test.mjs",
     "test:plugin-hosts": "node --test scripts/evozeus-hosts.test.mjs",
     "test:user-visible-events": "node --test scripts/user-visible-events.test.mjs",

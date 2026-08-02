@@ -18,8 +18,16 @@ BRANCH_PATTERN = re.compile(
     r"^(?:codex/)?"
     r"(dev|bug|refactor|docs|test|chore)/"
     r"\d{8}-"
+    r"(?:"
+    # v1.3.1 generated refs: encoded actor, component, and summary tokens.
+    r"[a-z0-9_]+-"
+    r"(runtime|factor|verdict_card|doctor|tui|companion|workspace|docs|governance|skill|infra|template)"
+    r"-[a-z0-9_]+"
+    r"|"
+    # Keep existing pre-v1.3.1 PR branches readable while they are reviewed.
     r"(runtime|factor|verdict-card|doctor|tui|companion|workspace|docs|governance|skill|infra|template)"
-    r"-[a-z0-9]+(?:-[a-z0-9]+){0,6}$"
+    r"-[a-z0-9]+(?:-[a-z0-9]+){0,6}"
+    r")$"
 )
 SKILL_NAME_PATTERN = re.compile(r"^[a-z0-9-]+$")
 
@@ -183,7 +191,8 @@ def check_branch(errors: list[str]) -> None:
         return
     if not BRANCH_PATTERN.match(branch):
         error(
-            "branch: expected codex/<type>/<yyyymmdd>-<component>-<summary>; "
+            "branch: expected codex/<type>/<yyyymmdd>-<encoded-actor>-"
+            "<encoded-component>-<encoded-summary>; "
             f"got {branch!r}",
             errors,
         )
