@@ -35,6 +35,18 @@ home_has_entries() {
   return 1
 }
 
+has_install_state_markers() {
+  for marker in \
+    "active-channel.json" \
+    "channel-state.json" \
+    "install-manifest.json" \
+    "registration.json" \
+    "hooks/state.json"; do
+    path_present "${HOME_ROOT}/${marker}" && return 0
+  done
+  return 1
+}
+
 preliminary_state() {
   if [ "${LOCAL_PATH_UNSAFE}" -eq 1 ]; then
     printf '%s' "unknown_or_unverifiable"
@@ -134,7 +146,8 @@ available_kb() {
 [ -n "${HOME_ROOT}" ] || emit_blocked "home" "HOME_UNSET" "HOME and EVOZEUS_HOME are both unset." "Set HOME or EVOZEUS_HOME, then rerun the pre-fetch gate."
 validate_home_path
 
-if home_has_entries; then
+if home_has_entries \
+  && { path_present "${HOME_ROOT}/bin/evozeus" || ! has_install_state_markers; }; then
   emit_blocked "local_state" "EXISTING_INSTALL_REQUIRES_LOCAL_STATE_CHECK" "Existing EvoZeus state must be classified before checker acquisition." "Run the installed CLI version and Doctor checks with automatic refresh disabled; use the state-specific route." "local_state" "step_0_before_environment_or_network"
 fi
 

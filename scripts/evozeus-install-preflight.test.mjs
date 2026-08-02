@@ -213,6 +213,20 @@ describe("install pre-fetch gate", () => {
       assert.equal(report.network.asset_get_count, 0);
     }));
 
+  it("allows the verified checker to classify a legacy state that lost its primary CLI shim", () =>
+    withTempRoot((root) => {
+      const evozeusHome = join(root, ".evozeus");
+      mkdirSync(evozeusHome, { recursive: true });
+      writeFileSync(join(evozeusHome, "install-manifest.json"), "{}\n");
+
+      const report = parsePrefetch(runPrefetch({ path: "", env: { EVOZEUS_HOME: evozeusHome } }));
+
+      assert.equal(report.blockers[0].code, "NODE_MISSING");
+      assert.equal(report.local_state.status, "unknown_or_unverifiable");
+      assert.notEqual(report.blockers[0].code, "EXISTING_INSTALL_REQUIRES_LOCAL_STATE_CHECK");
+      assert.equal(report.network.asset_get_count, 0);
+    }));
+
   it("treats a dangling local CLI symlink as existing unsafe state before checker acquisition", () =>
     withTempRoot((root) => {
       const evozeusHome = join(root, ".evozeus");
