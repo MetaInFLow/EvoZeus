@@ -211,7 +211,11 @@ test("contract exposes the four required profiles", () => {
   assert.equal(contract.worktree.registered_worktree_descendant, "block");
   assert.equal(contract.worktree.dangling_symlink_path, "occupied_and_blocked");
   assert.equal(contract.blocking_handling.current_checkout_status_unavailable, "block");
-  assert.equal(contract.branch_naming.template, "codex/{type}/{yyyymmdd}-{actor}-{component}-{summary}");
+  assert.equal(contract.version, "1.3.1");
+  assert.equal(contract.branch_naming.template,
+    "codex/{type}/{yyyymmdd}-{encoded_actor}-{encoded_component}-{encoded_summary}");
+  assert.equal(contract.branch_naming.token_encoding,
+    "lowercase variable tokens with hyphens replaced by underscores before joining");
   assert.equal(contract.branch_naming.max_leaf_bytes, 240);
   assert.equal(contract.branch_naming.local_ref_namespace_conflicts, "block");
   assert.equal(contract.worktree.requested_registered_worktree_status_evidence, "required");
@@ -243,7 +247,7 @@ test("plans a clean new direct contribution with zero writes", (context) => {
   const expected = ["new", "MetaInFLow/EvoZeus", "origin/main", "MetaInFLow/EvoZeus#44",
     "alice", true, "direct", "github_api", FIXED_NOW, "github_api", true];
   assert.deepEqual(actual, expected);
-  assert.equal(plan.branch.target, "codex/dev/20260731-alice-governance-branch-contract");
+  assert.equal(plan.branch.target, "codex/dev/20260731-alice-governance-branch_contract");
   assert.equal(plan.next_write_action, "create_direct_branch_in_isolated_worktree");
   assert.deepEqual(plan.blockers, []);
 });
@@ -266,10 +270,31 @@ test("binds deterministic target branches to the verified actor", (context) => {
 
   assert.deepEqual(alice.blockers, []);
   assert.deepEqual(bob.blockers, []);
-  assert.equal(alice.branch.target, "codex/dev/20260731-alice-governance-branch-contract");
-  assert.equal(bob.branch.target, "codex/dev/20260731-bob-governance-branch-contract");
+  assert.equal(alice.branch.target, "codex/dev/20260731-alice-governance-branch_contract");
+  assert.equal(bob.branch.target, "codex/dev/20260731-bob-governance-branch_contract");
   assert.notEqual(alice.branch.target, bob.branch.target);
   assert.notEqual(alice.resume.key, bob.resume.key);
+});
+
+test("escapes hyphens in variable branch tokens to prevent collisions", () => {
+  const first = targetBranchFor({
+    type: "dev",
+    date: "20260731",
+    component: "docs",
+    summary: "fix"
+  }, "alice-bob");
+  const second = targetBranchFor({
+    type: "dev",
+    date: "20260731",
+    component: "bob-docs",
+    summary: "fix"
+  }, "alice");
+
+  assert.equal(first, "codex/dev/20260731-alice_bob-docs-fix");
+  assert.equal(second, "codex/dev/20260731-alice-bob_docs-fix");
+  assert.notEqual(first, second);
+  assert.equal(spawnSync("git", ["check-ref-format", "--branch", first]).status, 0);
+  assert.equal(spawnSync("git", ["check-ref-format", "--branch", second]).status, 0);
 });
 
 test("resolves archived or disabled repositories away from direct", (context) => {
@@ -523,7 +548,7 @@ test("blocks a prunable worktree registration while its path remains occupied", 
 
 test("rejects a blocked plan as resume ownership evidence", (context) => {
   const fixture = fixtureFor(context);
-  git(fixture.repo, "branch", "codex/dev/20260731-alice-governance-branch-contract", "origin/main");
+  git(fixture.repo, "branch", "codex/dev/20260731-alice-governance-branch_contract", "origin/main");
   const blocked = runPlan(fixture).plan;
   assert(blockerCodes(blocked).includes("branch_collision"));
   const resumePath = join(fixture.root, "blocked-plan.json");
@@ -705,7 +730,7 @@ test("validates every effective origin push URL after Git rewrites", (context) =
 });
 
 test("uses live origin target state and blocks local divergence or unavailable evidence", (context) => {
-  const target = "codex/dev/20260731-alice-governance-branch-contract";
+  const target = "codex/dev/20260731-alice-governance-branch_contract";
   const liveFixture = createFixture();
   const staleFixture = createFixture();
   const divergedFixture = createFixture();
@@ -744,7 +769,7 @@ test("blocks live remote branch prefix and descendant namespace conflicts", (con
   const descendantFixture = createFixture();
   context.after(() => rmSync(prefixFixture.root, { recursive: true, force: true }));
   context.after(() => rmSync(descendantFixture.root, { recursive: true, force: true }));
-  const target = "codex/dev/20260731-alice-governance-branch-contract";
+  const target = "codex/dev/20260731-alice-governance-branch_contract";
   const prefixCommit = git(prefixFixture.repo, "rev-parse", "HEAD");
   const descendantCommit = git(descendantFixture.repo, "rev-parse", "HEAD");
   const cases = [
@@ -775,7 +800,7 @@ test("blocks a new plan when HEAD is not the requested base commit", (context) =
 
 test("blocks a branch collision without matching resume metadata", (context) => {
   const fixture = fixtureFor(context);
-  git(fixture.repo, "branch", "codex/dev/20260731-alice-governance-branch-contract", "origin/main");
+  git(fixture.repo, "branch", "codex/dev/20260731-alice-governance-branch_contract", "origin/main");
   const { result, plan } = runPlan(fixture);
   assert.equal(result.status, 2);
   assert(blockerCodes(plan).includes("branch_collision"));
@@ -786,7 +811,7 @@ test("blocks local branch prefix and descendant namespace conflicts", (context) 
   const descendantFixture = createFixture();
   context.after(() => rmSync(prefixFixture.root, { recursive: true, force: true }));
   context.after(() => rmSync(descendantFixture.root, { recursive: true, force: true }));
-  const target = "codex/dev/20260731-alice-governance-branch-contract";
+  const target = "codex/dev/20260731-alice-governance-branch_contract";
   git(prefixFixture.repo, "branch", "codex/dev", "origin/main");
   git(descendantFixture.repo, "branch", `${target}/child`, "origin/main");
 

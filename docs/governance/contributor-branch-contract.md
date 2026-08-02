@@ -5,12 +5,12 @@
 - Core issue: [MetaInFLow/EvoZeus#44](https://github.com/MetaInFLow/EvoZeus/issues/44)
 - Harness consumer issue: [MetaInFLow/EvoZeus-CoEvolve#36](https://github.com/MetaInFLow/EvoZeus-CoEvolve/issues/36)
 
-任何业务文件写入都必须发生在可追踪的贡献分支与隔离 worktree 中。Contributor branch plan 是首次写入前的治理门禁；机器可执行值只由 v1.3.0 JSON contract 定义，本文负责解释使用方式。
+任何业务文件写入都必须发生在可追踪的贡献分支与隔离 worktree 中。Contributor branch plan 是首次写入前的治理门禁；机器可执行值只由 v1.3.1 JSON contract 定义，本文负责解释使用方式。
 
-沿用现有分支格式：
+分支格式保持可读，同时对变量 token 做确定性编码：每个 token 先转为小写，再将其中的 `-` 替换为 `_`，最后以 `-` 连接。这样 actor、component、summary 的任意合法值都映射到唯一 ref：
 
 ```text
-codex/<type>/<yyyymmdd>-<verified-actor>-<component>-<summary>
+codex/<type>/<yyyymmdd>-<encoded-verified-actor>-<encoded-component>-<encoded-summary>
 ```
 
 ## Profiles
@@ -44,7 +44,7 @@ node scripts/evozeus-branch-preflight.mjs plan \
 
 输出固定包含 repo、base ref/commit、目标 branch、Issue 及其 evidence/source/timestamp、actor、permission path 及其 evidence/source/timestamp、worktree、resume/new decision、next write action、blockers 和 `writes=false`。Preflight 不创建或切换 branch/worktree，不修改 Git config，不 commit、push 或创建 PR；存在 blocker 时以非零状态退出。
 
-目标 branch 使用 live verified GitHub actor 的小写 login 作为所有权段，确保同一日期和 purpose 下的不同参与者得到不同分支。
+目标 branch 使用 live verified GitHub actor 的小写 login 作为所有权段；actor、component、summary 中的连字符会编码为 `_`，确保不同参与者、组件和 purpose 在同一日期下不会产生碰撞。
 生成后的最后一个 ref component 不得超过 contract 的 240-byte 上限，确保追加 Git lock suffix 后仍可在常见文件系统创建。
 
 ## Issue Verification
