@@ -1,7 +1,7 @@
 {
   "name": "evozeus",
   "description": "With explicit approval, turn local Codex history into an AI usage profile; Codex is the only supported history provider. Also attach a CoEvolve Harness to an independent Skillware repository.",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "author": {
     "name": "MetaInFlow"
   },

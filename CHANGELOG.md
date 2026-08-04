@@ -2,9 +2,17 @@
 
 ## [Unreleased]
 
+## [v0.5.0] - 2026-08-04
+
 ### Added
 
 - Added the Core-owned `evozeus.user-prompt.lesson-runtime.v1` path for normal Chat Lesson candidates, with a product-owned Session Signal attachment contract.
+- Pinned CoEvolve `v0.15.0`, contract bundle `v1.2.0`, and canonical Harness Skill `v1.1.0` as one verified Stable product composition.
+
+### Changed
+
+- Made the canonical Harness Skill the target-Repo governance source for runtime checks, Feedback Issue, Issue-to-PR, maintenance, UAT, Release, and rollback.
+- Kept product alignment and target-Repo Harness migration as separate approved transactions: `evozeus align` updates the installed product, while CoEvolve migration profiles upgrade an individual Harness.
 
 ### Fixed
 
@@ -13,14 +21,17 @@
 - Bound the embedded Lesson method to Session Signal PR #9 revision `5d6ccce7eb821809e8594ecc3968e26211b31f12`; the attachment now records that revision and fixed upstream source/test hashes prevent silent vendor drift.
 - Stopped registered-target discovery as soon as the 257th valid target proves the bounded inventory invalid.
 - Discarded aliases longer than 128 characters and bounded instruction-surface reads to 64 KiB without dropping an otherwise valid registered target.
+- Replaced heading, frontmatter, and regex-authorized Harness rewrites with release-bound migration profiles, exact preimage checks, exact plan-digest approval, and receipt-bound rollback.
 
 ### Security
 
 - Added active-channel digest verification, a trusted-dispatcher pin for the attachment bytes, root containment, non-symlink file checks, bounded registry metadata reads, streaming stdout/stderr limits, isolated component execution, private-output rejection and silent fail-open handling.
+- Updated the locked transitive `fast-uri` dependency from `3.1.4` to `3.1.5` for `GHSA-7p8r-x3mc-p8w7`, published on 2026-08-03 with `3.1.5` as the first patched 3.x version.
 
 ### Verification
 
 - Added isolated custom-product-home, fixed project-registry, bundled-source digest, attachment self-blessing rejection, 257-target early-stop, channel-required-path, damaged/stale/symlinked component, import-shadow, output-limit, timeout, zero-persistence and real companion subprocess regressions.
+- Stable input now requires the v0.15 migration profiles, canonical Harness Skill closure, official upgrade verifier, and Core runtime lifecycle contract to survive product installation intact.
 
 ## [v0.4.1] - 2026-07-31
 

@@ -1,6 +1,6 @@
 {
   "name": "evozeus",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "description": "With explicit approval, turn local Codex history into an AI usage profile and attach a CoEvolve Harness to an independent Skillware repository.",
   "author": {
     "name": "MetaInFlow",

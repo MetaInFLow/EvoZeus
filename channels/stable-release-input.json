@@ -1,7 +1,7 @@
 {
-  "product_version": "v0.4.1",
+  "product_version": "v0.5.0",
   "core": {
-    "archive_url": "https://github.com/MetaInFLow/EvoZeus/releases/download/v0.4.1/evozeus-v0.4.1.tar.gz",
+    "archive_url": "https://github.com/MetaInFLow/EvoZeus/releases/download/v0.5.0/evozeus-v0.5.0.tar.gz",
     "required_paths": [
       "SKILL.md",
       ".codex-plugin/plugin.json",
@@ -25,13 +25,13 @@
   },
   "components": {
     "coevolve": {
-      "version": "v0.14.0",
-      "commit": "c3065c2745a7e3771cb790919d41777f3a9cb8ad",
+      "version": "v0.15.0",
+      "commit": "ddd004dda0e8db16503d1e0b0aafa5a495465f2d",
       "source": {
         "kind": "release_archive",
-        "url": "https://github.com/MetaInFLow/EvoZeus-CoEvolve/releases/download/v0.14.0/evozeus-coevolve-v0.14.0.tar.gz",
-        "ref": "v0.14.0",
-        "sha256": "sha256:5d77c84e715ede627d9b123744d0e2f27a7845088572c769c3cd6126a26c00fa"
+        "url": "https://github.com/MetaInFLow/EvoZeus-CoEvolve/releases/download/v0.15.0/evozeus-coevolve-v0.15.0.tar.gz",
+        "ref": "v0.15.0",
+        "sha256": "sha256:94e52170ce5020fb425d538b28e867065b902bdc91704873a1ad2aaad9b9a694"
       },
       "required_paths": [
         "SKILL.md",
@@ -39,7 +39,19 @@
         "scripts/evozeus_notice.py",
         "templates/global/evozeus_wrapper_dispatcher.py",
         "templates/target/.evozeus_evoinfra/notice-policy.json",
-        "contracts/v1/manifest.json"
+        "contracts/v1/manifest.json",
+        "requirements-commonmark.lock",
+        "scripts/evozeus_harness_legacy_prompt_adapter.py",
+        "scripts/evozeus_official_upgrade_verify.py",
+        "scripts/evozeus_wrapper_preflight.py",
+        "templates/target/.evozeus_evoinfra/skills/using-evozeus-harness/SKILL.md",
+        "contracts/v1/user-prompt-lesson-runtime-lifecycle.json",
+        "contracts/v1/migrations/profiles/current.json",
+        "contracts/v1/migrations/history/harness-skill/current.json",
+        "contracts/v1/migrations/profiles/canonical-v1.0-to-v1.1-v1.json",
+        "contracts/v1/migrations/profiles/legacy-v0.14-three-section-to-canonical-v1.1-v1.json",
+        "contracts/v1/migrations/protocols/official-upgrade-protocol-v1.json",
+        "contracts/v1/migrations/history/harness-skill/v1.1.0/closure.json"
       ]
     }
   },
@@ -68,6 +80,6 @@
   "compatibility": {
     "runtime_min_inclusive": "0.2.0",
     "runtime_max_exclusive": "0.3.0",
-    "coevolve_contract": "v1.0.0"
+    "coevolve_contract": "v1.2.0"
   }
 }
