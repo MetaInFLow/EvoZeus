@@ -1,0 +1,93 @@
+{
+  "schema_version": "evozeus.product-channel.v2",
+  "product_version": "v0.5.1",
+  "channel": "uat",
+  "generated_at": "2026-08-04T10:02:52Z",
+  "components": {
+    "evozeus": {
+      "version": "v0.5.1",
+      "commit": "4f296fc3cded00d2b7f80b0a01f7753b7a5f451e",
+      "source": {
+        "kind": "git",
+        "url": "https://github.com/MetaInFLow/EvoZeus.git",
+        "ref": "uat/current"
+      },
+      "required_paths": [
+        "SKILL.md",
+        ".codex-plugin/plugin.json",
+        ".claude-plugin/plugin.json",
+        ".claude-plugin/marketplace.json",
+        "skills/using-evozeus/SKILL.md",
+        "scripts/evozeus-cli.mjs",
+        "scripts/evozeus-channels.mjs",
+        "scripts/evozeus-hosts.mjs",
+        "scripts/evozeus-install-prefetch.sh",
+        "scripts/evozeus-install-preflight.mjs",
+        "scripts/evozeus-launcher.mjs",
+        "scripts/evozeus-coevolve-dispatcher.py",
+        "contracts/v1/user-prompt-lesson-runtime.json",
+        "docs/reference/user-visible-events.md",
+        "schemas/install-preflight.schema.json",
+        "schemas/product-channel-manifest.schema.json",
+        "packages/runtime/src/evozeus_runtime/cli/main.py",
+        "packs/session-signal/scripts/validate_official_factor_spec.py"
+      ]
+    },
+    "coevolve": {
+      "version": "v0.15.0",
+      "commit": "ddd004dda0e8db16503d1e0b0aafa5a495465f2d",
+      "source": {
+        "kind": "git",
+        "url": "https://github.com/MetaInFLow/EvoZeus-CoEvolve.git",
+        "ref": "v0.15.0"
+      },
+      "required_paths": [
+        "SKILL.md",
+        "scripts/evozeus_wrapper.py",
+        "scripts/evozeus_notice.py",
+        "templates/global/evozeus_wrapper_dispatcher.py",
+        "templates/target/.evozeus_evoinfra/notice-policy.json",
+        "contracts/v1/manifest.json",
+        "requirements-commonmark.lock",
+        "scripts/evozeus_harness_legacy_prompt_adapter.py",
+        "scripts/evozeus_official_upgrade_verify.py",
+        "scripts/evozeus_wrapper_preflight.py",
+        "templates/target/.evozeus_evoinfra/skills/using-evozeus-harness/SKILL.md",
+        "contracts/v1/user-prompt-lesson-runtime-lifecycle.json",
+        "contracts/v1/migrations/profiles/current.json",
+        "contracts/v1/migrations/history/harness-skill/current.json",
+        "contracts/v1/migrations/profiles/canonical-v1.0-to-v1.1-v1.json",
+        "contracts/v1/migrations/profiles/legacy-v0.14-three-section-to-canonical-v1.1-v1.json",
+        "contracts/v1/migrations/protocols/official-upgrade-protocol-v1.json",
+        "contracts/v1/migrations/history/harness-skill/v1.1.0/closure.json"
+      ]
+    }
+  },
+  "embedded": {
+    "runtime": {
+      "version": "v0.2.0",
+      "path": "packages/runtime",
+      "required_paths": [
+        "pyproject.toml",
+        "src/evozeus_runtime/cli/main.py",
+        "src/evozeus_runtime/ledger/paths.py"
+      ]
+    },
+    "session_signal": {
+      "version": "v0.1.2",
+      "path": "packs/session-signal",
+      "required_paths": [
+        "SKILL.md",
+        "scripts/evaluate_lesson_candidate.py",
+        "scripts/validate_official_factor_spec.py",
+        "src/evozeus_session_signal_skill/lesson_candidate.py",
+        "factors/task-completion/spec.json"
+      ]
+    }
+  },
+  "compatibility": {
+    "runtime_min_inclusive": "0.2.0",
+    "runtime_max_exclusive": "0.3.0",
+    "coevolve_contract": "v1.2.0"
+  }
+}
