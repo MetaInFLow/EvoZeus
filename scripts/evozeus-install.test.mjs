@@ -2,22 +2,27 @@ import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import {
   existsSync,
+  lstatSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  realpathSync,
   rmSync,
-  unlinkSync
+  symlinkSync,
+  unlinkSync,
+  writeFileSync
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, it } from "node:test";
+import { productManifestDigest } from "./evozeus-channels.mjs";
 
 const SCRIPT = fileURLToPath(new URL("./evozeus-install.mjs", import.meta.url));
 const SOURCE_ROOT = fileURLToPath(new URL("..", import.meta.url));
 
 function withTempInstall(callback) {
-  const root = mkdtempSync(join(tmpdir(), "evozeus-install-"));
+  const root = realpathSync(mkdtempSync(join(tmpdir(), "evozeus-install-")));
   const workspace = join(root, "workspace");
   const evozeusHome = join(root, "home", ".evozeus");
   try {
@@ -28,9 +33,44 @@ function withTempInstall(callback) {
   }
 }
 
-function runInstall(workspace, evozeusHome, args = []) {
-  return spawnSync(process.execPath, [SCRIPT, "--workspace", workspace, "--evozeus-home", evozeusHome, "--source-root", SOURCE_ROOT, ...args], {
+function preflightReport(evozeusHome, localState = "not_installed", latestRelease = "v0.4.1") {
+  return {
+    ok: true,
+    operation: "system.installPreflight",
+    schema_version: "evozeus.install-preflight.v1",
+    stage: "full",
+    checked_at: new Date().toISOString(),
+    writes: false,
+    status: "ready",
+    target: { channel: "stable", evozeus_home: evozeusHome },
+    network: { head_requests: 1, asset_get_count: 0, payloads_saved: 0, product_assets_downloaded: 0 },
+    local_state: { status: localState, preliminary: false, evidence: [`fixture:${localState}`] },
+    checks: [{
+      id: "github_network",
+      status: "pass",
+      detected: { method: "HEAD", latest_release: latestRelease, payload_saved: false }
+    }],
+    fallbacks: [],
+    blockers: [],
+    remediation: [],
+    next_action: {
+      action: localState === "not_installed" ? "request_fresh_install_approval" : "report_noop",
+      allowed: true,
+      writes_now: false,
+      product_asset_download_now: false,
+      registration_now: false,
+      approval_required: localState === "not_installed"
+    }
+  };
+}
+
+function runInstall(workspace, evozeusHome, args = [], options = {}) {
+  const usePreflight = options.preflight !== false;
+  const releaseTagIndex = args.indexOf("--release-tag");
+  const latestRelease = releaseTagIndex >= 0 ? args[releaseTagIndex + 1] : "v0.4.1";
+  return spawnSync(process.execPath, [SCRIPT, "--workspace", workspace, "--evozeus-home", evozeusHome, "--source-root", SOURCE_ROOT, ...args, ...(usePreflight ? ["--preflight-stdin"] : [])], {
     encoding: "utf8",
+    input: usePreflight ? `${JSON.stringify(options.preflightReport || preflightReport(evozeusHome, "not_installed", latestRelease))}\n` : undefined,
     env: {
       ...process.env,
       EVOZEUS_MACHINE_ID_OVERRIDE: "test-device-for-evozeus-install"
@@ -114,6 +154,7 @@ describe("evozeus-install", () => {
       const updatePolicy = readJson(join(evozeusHome, "update-policy.json"));
 
       assert.equal(report.write_mode, "approved_write");
+      assert.equal(report.preflight.local_state, "not_installed");
       assert.equal(report.registration_status, "created");
       assert.equal(report.evozeus_home, evozeusHome);
       assert.equal(report.workspace_state, "workspace_not_used_for_registration");
@@ -160,7 +201,10 @@ describe("evozeus-install", () => {
       assert.ok(existsSync(join(evozeusHome, "skeleton/packages/runtime/src/evozeus_runtime/cli/main.py")));
       assert.ok(existsSync(join(evozeusHome, "skeleton/packs/session-signal/scripts/validate_official_factor_spec.py")));
       assert.ok(existsSync(join(evozeusHome, "skeleton/scripts/evozeus-cli.mjs")));
+      assert.ok(existsSync(join(evozeusHome, "skeleton/scripts/evozeus-install-prefetch.sh")));
+      assert.ok(existsSync(join(evozeusHome, "skeleton/scripts/evozeus-install-preflight.mjs")));
       assert.ok(existsSync(join(evozeusHome, "bin/evozeus")));
+      assert.ok(existsSync(join(evozeusHome, "bin/evozeus-repair")));
       assert.equal(existsSync(join(workspace, ".evozeus")), false);
       assert.ok(report.files_written.includes(join(evozeusHome, "registration.json")));
       assert.ok(report.files_written.includes(join(evozeusHome, "update-policy.json")));
@@ -169,6 +213,124 @@ describe("evozeus-install", () => {
       assert.match(report.approval_needed, /Ask before session analysis/);
       assert.match(report.next_command, /evozeus align --channel stable --host auto/i);
     }));
+
+  it("rejects approved writes without a ready full preflight", () =>
+    withTempInstall(({ workspace, evozeusHome }) => {
+      const missingDryRun = runInstall(workspace, evozeusHome, [], { preflight: false });
+      assert.notEqual(missingDryRun.status, 0);
+      assert.match(missingDryRun.stderr, /requires a full preflight report/);
+      assert.doesNotMatch(missingDryRun.stdout, /would_reconcile/);
+
+      const missing = runInstall(workspace, evozeusHome, ["--approve-write"], { preflight: false });
+      assert.notEqual(missing.status, 0);
+      assert.match(missing.stderr, /requires a full preflight report/);
+      assert.equal(existsSync(evozeusHome), false);
+
+      const healthy = runInstall(workspace, evozeusHome, ["--approve-write"], {
+        preflightReport: preflightReport(evozeusHome, "healthy_current")
+      });
+      assert.notEqual(healthy.status, 0);
+      assert.match(healthy.stderr, /fresh install is allowed only for not_installed/);
+      assert.equal(existsSync(evozeusHome), false);
+    }));
+
+  it("binds the preflight Stable release tag to approved Release metadata", () =>
+    withTempInstall(({ workspace, evozeusHome }) => {
+      const result = runInstall(workspace, evozeusHome, [
+        "--release-tag", "v0.4.0",
+        "--release-commit", "0123456789abcdef0123456789abcdef01234567",
+        "--release-archive-sha256", "a".repeat(64),
+        "--approve-write"
+      ], {
+        preflightReport: preflightReport(evozeusHome, "not_installed", "v0.4.1")
+      });
+
+      assert.notEqual(result.status, 0);
+      assert.match(result.stderr, /v0\.4\.1 does not match --release-tag v0\.4\.0/);
+      assert.equal(existsSync(evozeusHome), false);
+    }));
+
+  it("rejects replayed, mismatched, preliminary, blocked, or wrong-route preflight reports", () =>
+    withTempInstall(({ workspace, evozeusHome }) => {
+      const cases = [
+        ["target", (report) => { report.target.evozeus_home = `${evozeusHome}-other`; }, /target must match/],
+        ["stale", (report) => { report.checked_at = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(); }, /stale/],
+        ["preliminary", (report) => { report.local_state.preliminary = true; }, /final local-state decision/],
+        ["blocker", (report) => { report.blockers.push({ check_id: "fixture", code: "FIXTURE", message: "blocked" }); }, /empty preflight blocker list/],
+        ["route", (report) => { report.next_action.action = "request_repair_approval"; }, /exact approved preflight next action/],
+        ["download", (report) => { report.network.product_assets_downloaded = 1; }, /before product assets are downloaded/],
+        ["shape", (report) => { delete report.checks; }, /required schema fields/]
+      ];
+
+      for (const [name, mutate, expected] of cases) {
+        const report = preflightReport(evozeusHome);
+        mutate(report);
+        const result = runInstall(workspace, evozeusHome, ["--approve-write"], { preflightReport: report });
+        assert.notEqual(result.status, 0, name);
+        assert.match(result.stderr, expected, name);
+        assert.equal(existsSync(evozeusHome), false, name);
+      }
+    }));
+
+  it("rechecks the target immediately before approved writes and stops when local state changed", () =>
+    withTempInstall(({ workspace, evozeusHome }) => {
+      const report = preflightReport(evozeusHome);
+      const markerPath = join(evozeusHome, "registration.json");
+      const marker = '{"status":"created-by-another-process"}\n';
+      mkdirSync(evozeusHome, { recursive: true });
+      writeFileSync(markerPath, marker);
+
+      const result = runInstall(workspace, evozeusHome, ["--approve-write"], { preflightReport: report });
+
+      assert.notEqual(result.status, 0);
+      assert.match(result.stderr, /local installation state changed after preflight/);
+      assert.equal(readFileSync(markerPath, "utf8"), marker);
+      assert.equal(existsSync(join(evozeusHome, "install-manifest.json")), false);
+      assert.equal(existsSync(join(evozeusHome, "skeleton")), false);
+    }));
+
+  it("rejects a dangling CLI symlink without following it or writing fresh state", () =>
+    withTempInstall(({ root, workspace, evozeusHome }) => {
+      const report = preflightReport(evozeusHome);
+      const cliPath = join(evozeusHome, "bin", "evozeus");
+      mkdirSync(join(evozeusHome, "bin"), { recursive: true });
+      symlinkSync(join(root, "outside-missing-target"), cliPath);
+
+      const result = runInstall(workspace, evozeusHome, ["--approve-write"], { preflightReport: report });
+
+      assert.notEqual(result.status, 0);
+      assert.match(result.stderr, /expected not_installed, found unknown_or_unverifiable/);
+      assert.equal(lstatSync(cliPath).isSymbolicLink(), true);
+      assert.equal(existsSync(join(evozeusHome, "registration.json")), false);
+      assert.equal(existsSync(join(evozeusHome, "install-manifest.json")), false);
+      assert.equal(existsSync(join(evozeusHome, "skeleton")), false);
+    }));
+
+  it("allows fresh writes only when EVOZEUS_HOME is missing or strictly empty", () => {
+    withTempInstall(({ workspace, evozeusHome }) => {
+      mkdirSync(evozeusHome, { recursive: true });
+      const result = parseStdout(runInstall(workspace, evozeusHome, ["--approve-write"]));
+      assert.equal(result.write_mode, "approved_write");
+      assert.equal(result.registration_home_state, "existing_evozeus_home");
+    });
+
+    for (const entry of ["skeleton", "update-policy.json"]) {
+      withTempInstall(({ root, workspace, evozeusHome }) => {
+        const report = preflightReport(evozeusHome);
+        const path = join(evozeusHome, entry);
+        mkdirSync(evozeusHome, { recursive: true });
+        symlinkSync(join(root, `outside-${entry.replaceAll("/", "-")}`), path);
+
+        const result = runInstall(workspace, evozeusHome, ["--approve-write"], { preflightReport: report });
+
+        assert.notEqual(result.status, 0, entry);
+        assert.match(result.stderr, /expected not_installed, found unknown_or_unverifiable/, entry);
+        assert.equal(lstatSync(path).isSymbolicLink(), true, entry);
+        assert.equal(existsSync(join(evozeusHome, "registration.json")), false, entry);
+        assert.equal(existsSync(join(evozeusHome, "install-manifest.json")), false, entry);
+      });
+    }
+  });
 
   it("installs a local CLI shim that can describe features and capabilities", () =>
     withTempInstall(({ workspace, evozeusHome }) => {
@@ -192,36 +354,126 @@ describe("evozeus-install", () => {
       assert.equal(report.operation, "capabilities.describe");
       assert.ok(report.data.capabilities.some((capability) => capability.name === "session.analyze"));
       assert.ok(report.data.capabilities.some((capability) => capability.name === "harness.attachPlan"));
+
+      const updatePolicyPath = join(evozeusHome, "update-policy.json");
+      unlinkSync(updatePolicyPath);
+      const preflightResult = spawnSync(join(evozeusHome, "bin/evozeus"), ["install", "preflight", "--json"], {
+        cwd: workspace,
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          NODE_ENV: "test",
+          EVOZEUS_HOSTS_AVAILABLE: "codex",
+          EVOZEUS_PREFLIGHT_TEST_RELEASE_TAG: "v0.4.1"
+        }
+      });
+      const preflight = parseStdout(preflightResult);
+      assert.equal(preflight.operation, "system.installPreflight");
+      assert.equal(preflight.writes, false);
+      assert.equal(preflight.local_state.status, "legacy_migration_required");
+      assert.equal(existsSync(updatePolicyPath), false);
     }));
 
-  it("reconciles an existing registration without changing the registration id", () =>
+  it("uses the recovery shim and active Core when the primary CLI and bootstrap startup files are missing", () =>
     withTempInstall(({ workspace, evozeusHome }) => {
-      const first = parseStdout(runInstall(workspace, evozeusHome, ["--approve-write"]));
+      parseStdout(runInstall(workspace, evozeusHome, ["--approve-write"]));
+      const installRoot = join(evozeusHome, "releases", "stable", "v0.4.1-test");
+      const coreRoot = join(installRoot, "evozeus");
+      const scriptsRoot = join(coreRoot, "scripts");
+      mkdirSync(scriptsRoot, { recursive: true });
+      writeFileSync(
+        join(scriptsRoot, "evozeus-launcher.mjs"),
+        'console.log(JSON.stringify({ ok: true, operation: "recovery.probe", argv: process.argv.slice(2) }));\n'
+      );
+      writeFileSync(join(scriptsRoot, "evozeus-channels.mjs"), "export {};\n");
+      const activeManifest = { schema_version: "evozeus.product-channel.v2", channel: "stable" };
+      writeFileSync(join(evozeusHome, "active-channel.json"), `${JSON.stringify({
+        schema_version: "evozeus.active-channel.v1",
+        channel: "stable",
+        auto_refresh: false
+      })}\n`);
+      writeFileSync(join(evozeusHome, "channel-state.json"), `${JSON.stringify({
+        schema_version: "evozeus.channel-state.v1",
+        channels: {
+          stable: {
+            manifest: activeManifest,
+            manifest_digest: productManifestDigest(activeManifest),
+            install_root: installRoot,
+            component_roots: { evozeus: coreRoot }
+          },
+          uat: null
+        }
+      })}\n`);
+      rmSync(join(evozeusHome, "skeleton", "scripts", "evozeus-launcher.mjs"));
+      rmSync(join(evozeusHome, "skeleton", "scripts", "evozeus-channels.mjs"));
+      rmSync(join(evozeusHome, "bin", "evozeus"));
+
+      const result = spawnSync(join(evozeusHome, "bin", "evozeus-repair"), ["align", "--channel", "stable"], {
+        cwd: workspace,
+        encoding: "utf8"
+      });
+      const report = parseStdout(result);
+
+      assert.equal(report.operation, "recovery.probe");
+      assert.deepEqual(report.argv, ["align", "--channel", "stable"]);
+
+      const statePath = join(evozeusHome, "channel-state.json");
+      const corruptedState = JSON.parse(readFileSync(statePath, "utf8"));
+      corruptedState.channels.stable.manifest_digest = `sha256:${"0".repeat(64)}`;
+      writeFileSync(statePath, `${JSON.stringify(corruptedState)}\n`);
+      mkdirSync(join(evozeusHome, "skeleton", "scripts"), { recursive: true });
+      writeFileSync(
+        join(evozeusHome, "skeleton", "scripts", "evozeus-launcher.mjs"),
+        'console.log(JSON.stringify({ ok: true, operation: "skeleton.probe" }));\n'
+      );
+
+      const fallback = spawnSync(join(evozeusHome, "bin", "evozeus-repair"), ["features"], {
+        cwd: workspace,
+        encoding: "utf8"
+      });
+      assert.equal(parseStdout(fallback).operation, "skeleton.probe");
+    }));
+
+  it("rejects an existing installation instead of reconciling it through the fresh installer", () =>
+    withTempInstall(({ workspace, evozeusHome }) => {
+      parseStdout(runInstall(workspace, evozeusHome, ["--approve-write"]));
       const firstRegistration = readJson(join(evozeusHome, "registration.json"));
 
-      const second = parseStdout(runInstall(workspace, evozeusHome, ["--approve-write"]));
+      const second = runInstall(workspace, evozeusHome, ["--approve-write"], {
+        preflightReport: preflightReport(evozeusHome, "repair_required")
+      });
       const secondRegistration = readJson(join(evozeusHome, "registration.json"));
 
-      assert.equal(first.registration_status, "created");
-      assert.equal(second.registration_status, "reconciled");
-      assert.equal(second.registration_home_state, "existing_evozeus_home");
-      assert.equal(secondRegistration.registration_id, firstRegistration.registration_id);
-      assert.equal(secondRegistration.runtime_instance_hash, firstRegistration.runtime_instance_hash);
-      assert.equal(secondRegistration.created_at, firstRegistration.created_at);
+      assert.notEqual(second.status, 0);
+      assert.match(second.stderr, /fresh install is allowed only for not_installed/);
+      assert.deepEqual(secondRegistration, firstRegistration);
     }));
 
-  it("repairs missing installed skeleton files", () =>
+  it("does not plan reconciliation for an existing installation in dry-run mode", () =>
+    withTempInstall(({ workspace, evozeusHome }) => {
+      parseStdout(runInstall(workspace, evozeusHome, ["--approve-write"]));
+
+      const result = runInstall(workspace, evozeusHome);
+
+      assert.notEqual(result.status, 0);
+      assert.match(result.stderr, /expected not_installed/);
+      assert.doesNotMatch(result.stdout, /would_reconcile/);
+    }));
+
+  it("preserves a broken installation for the dedicated repair route", () =>
     withTempInstall(({ workspace, evozeusHome }) => {
       parseStdout(runInstall(workspace, evozeusHome, ["--approve-write"]));
       const installedSkill = join(evozeusHome, "skeleton/skills/using-evozeus/SKILL.md");
       unlinkSync(installedSkill);
       assert.equal(existsSync(installedSkill), false);
 
-      const report = parseStdout(runInstall(workspace, evozeusHome, ["--approve-write"]));
+      const result = runInstall(workspace, evozeusHome, ["--approve-write"], {
+        preflightReport: preflightReport(evozeusHome, "repair_required")
+      });
 
-      assert.equal(report.registration_status, "reconciled");
-      assert.equal(existsSync(installedSkill), true);
-      assert.ok(report.files_written.includes(join(evozeusHome, "skeleton/skills")));
+      assert.notEqual(result.status, 0);
+      assert.match(result.stderr, /fresh install is allowed only for not_installed/);
+      assert.equal(existsSync(installedSkill), false);
     }));
 
   it("does not create runtime or report state during install", () =>

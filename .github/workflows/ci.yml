@@ -9,6 +9,30 @@ permissions:
   contents: read
 
 jobs:
+  install-preflight-smoke:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: npm ci
+      - name: Run real read-only Stable preflight
+        shell: bash
+        run: |
+          target="$RUNNER_TEMP/evozeus-preflight-smoke/.evozeus"
+          report="$RUNNER_TEMP/evozeus-install-preflight.json"
+          EVOZEUS_HOSTS_AVAILABLE=codex node scripts/evozeus-install-preflight.mjs --evozeus-home "$target" --channel stable --json > "$report"
+          node -e 'const fs=require("fs"); const report=JSON.parse(fs.readFileSync(process.argv[1],"utf8")); if(!["ready","ready_with_fallbacks"].includes(report.status)||report.writes!==false||report.network.product_assets_downloaded!==0) process.exit(1)' "$report"
+          test ! -e "$target"
+
   product:
     runs-on: ubuntu-latest
     steps:
@@ -27,4 +51,5 @@ jobs:
       - run: node --check scripts/evozeus-cli.mjs
       - run: node --check scripts/evozeus-channels.mjs
       - run: node --check scripts/evozeus-launcher.mjs
+      - run: node --check scripts/evozeus-install-preflight.mjs
       - run: python -m py_compile scripts/evozeus-coevolve-dispatcher.py

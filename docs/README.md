@@ -43,6 +43,7 @@ This repository follows the Engineering Everything document layout.
 | Verdict reference | [reference/verdicts.md](reference/verdicts.md) |
 | Session Verdict Card | [reference/verdict-card.md](reference/verdict-card.md) |
 | Report templates | [reference/report-templates.md](reference/report-templates.md) |
+| Install preflight and local-state routing | [reference/install-preflight.md](reference/install-preflight.md) |
 
 ## Lifecycle Rules
 

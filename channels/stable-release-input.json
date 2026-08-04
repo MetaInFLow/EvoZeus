@@ -11,9 +11,12 @@
       "scripts/evozeus-cli.mjs",
       "scripts/evozeus-channels.mjs",
       "scripts/evozeus-hosts.mjs",
+      "scripts/evozeus-install-prefetch.sh",
+      "scripts/evozeus-install-preflight.mjs",
       "scripts/evozeus-launcher.mjs",
       "scripts/evozeus-coevolve-dispatcher.py",
       "docs/reference/user-visible-events.md",
+      "schemas/install-preflight.schema.json",
       "schemas/product-channel-manifest.schema.json",
       "packages/runtime/src/evozeus_runtime/cli/main.py",
       "packs/session-signal/scripts/validate_official_factor_spec.py"

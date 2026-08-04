@@ -103,10 +103,14 @@ The official website owns the installation and registration journey. Open a comp
 
 The [official Install Skill](https://evozeus-community.vercel.app/skill) will:
 
-1. resolve the latest immutable Stable release and verify its checksum;
-2. explain the local writes and ask for approval before installation or registration;
-3. detect Codex, Claude Code, or both and register the single active `evozeus` plugin;
-4. align Runtime and plugin to one Stable/UAT channel, enable in-channel automatic updates, run Doctor, and request a new chat when the host must reload.
+1. inspect the local CLI, version, Doctor, and key state read-only, then choose exactly one fresh, healthy no-op, update, repair, migration, or stop route;
+2. run the same Stable preflight for a fresh candidate before any product download or `~/.evozeus` write, exposing dependencies, fallbacks, blockers, and remediation;
+3. allow only `not_installed` into fresh install while preserving the current version and rollback evidence for every other route;
+4. explain local writes and network behavior, then ask for approval before installation or registration;
+5. detect Codex, Claude Code, or both, register the single active `evozeus` plugin, and align Runtime and plugin to one channel;
+6. run Doctor after installation, enable in-channel automatic updates, and request a new chat when the host must reload.
+
+Preflight downloads no product, extracts nothing, registers nothing, and writes nothing under `~/.evozeus`. A healthy current installation returns a strict no-op. Preflight decides whether an install route is safe; post-install Doctor verifies product integrity. Preflight v1 accepts Stable only, while UAT remains a separate installed-channel workflow after Stable is healthy.
 
 The website remains the canonical installation handoff, so this README does not duplicate a second set of installer commands. UAT remains a separate, explicit choice after Stable is healthy.
 
@@ -170,7 +174,7 @@ EvoZeus shows one compact line only when its lifecycle state changes. Ordinary a
 | `🧭 EvoZeus · 发现更新｜<current → target>` | The selected channel has a new product version |
 | `🛠️ EvoZeus · 自动更新中｜<managed surfaces>` | The product-level update transaction is running |
 | `✅ EvoZeus · 自动更新完成｜<channel/version>` | The verified product update completed |
-| `🛡️ EvoZeus · 自动更新失败｜<retained version>` | The update failed and the previous verified version remains active |
+| `🛡️ EvoZeus · 自动更新失败｜<retained version>` or `恢复未完成` | The previous version remains active only after product, bootstrap, and Plugin recovery pass; otherwise manual recovery is required |
 | `🛠️ EvoZeus · 进化中｜<Repo> · <change>` | An approved evolution change is executing |
 | `🧪 EvoZeus · UAT 就绪｜<Repo> · <Commit>` | The single UAT candidate passed its gates |
 | `🚀 EvoZeus · 已发布｜<Repo> · <Release>` | A Stable Release was published |

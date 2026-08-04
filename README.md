@@ -91,10 +91,14 @@ EvoZeus 当前优先解决两类高频问题：产品需要尽快进入真实使
 
 [官网 Install Skill](https://evozeus-community.vercel.app/skill) 会：
 
-1. 解析最新不可变 Stable Release，并校验正式安装物；
-2. 说明本地写入和联网行为，在安装与注册前取得批准；
-3. 自动识别 Codex、Claude Code 或两者，并注册唯一的 `evozeus` Plugin；
-4. 同步 Runtime 与 Plugin 到同一 Stable/UAT 渠道，启用渠道内自动更新，完成 Doctor 后提示开启新会话。
+1. 先只读检查本机 CLI、`version`、Doctor 和关键状态，归入 fresh、健康 no-op、更新、修复、迁移或停止六类路径；
+2. fresh candidate 在任何产品下载或 `~/.evozeus` 写入前运行同一份 Stable preflight，明确依赖、fallback、阻塞项和修复建议；
+3. 只有 `not_installed` 可进入 fresh install，其他状态保留现有版本与 rollback 证据并走对应路径；
+4. 说明本地写入和联网行为，在安装与注册前取得批准；
+5. 自动识别 Codex、Claude Code 或两者，注册唯一的 `evozeus` Plugin，并同步 Runtime 与 Plugin 到同一渠道；
+6. 安装后运行 Doctor，启用渠道内自动更新，并在 Host 需要重新加载时提示开启新会话。
+
+Preflight 全程不下载产品、不解压、不注册、不写入 `~/.evozeus`。健康最新版直接返回 no-op；Preflight 与安装后的 Doctor 分别负责“能否安全进入安装路径”和“产品是否完整可用”。第一版 preflight 只接受 Stable，UAT 在 Stable 健康后通过已安装渠道流程单独进入。
 
 官网是唯一公开安装交接入口，README 不复制第二套安装命令。Stable 健康后，用户可以单独选择是否进入唯一 UAT。
 
@@ -158,7 +162,7 @@ EvoZeus 在正常聊天中给出结果。生命周期事件使用紧凑标记：
 | `🧭 EvoZeus · 发现更新｜Stable v0.4.0 → v0.4.1` | 当前订阅渠道有新版本 | 自动检查发现变化后 |
 | `🛠️ EvoZeus · 自动更新中｜正在对齐Plugin、Runtime、Session Signal与CoEvolve` | 产品级更新事务已开始 | 下载与验证期间 |
 | `✅ EvoZeus · 自动更新完成｜Stable v0.4.1 · 新会话加载Plugin` | 新产品已通过验证并切换 | 自动更新成功后 |
-| `🛡️ EvoZeus · 自动更新失败｜继续使用Stable v0.4.0` | 已保留上一验证版本 | 更新或验证失败后 |
+| `🛡️ EvoZeus · 自动更新失败｜继续使用Stable v0.4.0` / `恢复未完成` | 已验证恢复时继续使用上一版；恢复未完成时需要人工处理 | 更新、Plugin 对齐或恢复失败后 |
 | `🛠️ EvoZeus · 进化中｜example-skill · 修复验收门禁` | 已开始实施获批修改 | 修改授权已取得后 |
 | `🧪 EvoZeus · UAT 就绪｜example-skill · abc1234` | 唯一 UAT 候选已经通过门禁 | 测试和候选更新完成后 |
 | `🚀 EvoZeus · 已发布｜example-skill · v1.2.0` | Stable Release 已真实存在 | 正式发布完成后 |

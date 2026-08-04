@@ -22,8 +22,12 @@ Use this skill when the user:
 community /skill
   -> read this skill
   -> read ../../../docs/reference/install-onboarding-conversation.md
-  -> resolve the latest immutable EvoZeus Stable Release assets and checksum
-  -> check ~/.evozeus registration state
+  -> Step 0: inspect the local CLI and state before Release resolution
+  -> run direct version + Doctor and a Stable HEAD when an installed CLI exists
+  -> choose exactly one local state and stop on unknown evidence
+  -> run the read-only pre-fetch gate for a fresh candidate
+  -> fetch and verify the minimal checker, then run the full Stable preflight
+  -> resolve the latest immutable EvoZeus Stable Release assets and checksum only when the state is not_installed
   -> explain registration value, privacy boundaries, and approval choices
   -> ask before identity writes, network registration, source writes, or user-home writes
   -> run installer with verified Release tag, commit, and archive SHA-256
@@ -44,11 +48,50 @@ community /skill
 
 | State | Action |
 | --- | --- |
-| No `~/.evozeus` | Ask before creating user-level registration and install manifest |
-| `~/.evozeus` exists but no registration | Try to restore by hash or ask before creating registration |
-| Registration exists but skeleton is missing | Install or update root `SKILL.md` and protocol skeleton |
-| Registration exists but skills are missing | Install or update `skills/` inventory |
-| Registration, skeleton, and skills exist | Report current state and optional update plan |
+| `not_installed` | Ask before fresh Stable installation; this is the only state accepted by the bootstrap installer |
+| `healthy_current` | Report a strict no-op with zero product download, write, or Plugin registration |
+| `update_available` | Use the installed update / align route and request its approval separately |
+| `repair_required` | Preserve the current root and rollback evidence; dry-run `align`, then rematerialize the same verified manifest in a new root after approval |
+| `legacy_migration_required` | Use the migration route; do not call the fresh installer |
+| `unknown_or_unverifiable` | Stop and identify the missing local version, Doctor, manifest, or channel evidence |
+
+## Mandatory Step 0 and Preflight
+
+Read `../../../docs/reference/install-preflight.md` completely before installation work.
+
+Before any Release resolution or asset GET, inspect `EVOZEUS_HOME` (default `~/.evozeus`), `bin/evozeus`, `active-channel.json`, `channel-state.json`, and legacy install markers.
+
+When `~/.evozeus/bin/evozeus` exists, bypass automatic refresh and activity feedback while collecting direct local evidence:
+
+```bash
+EVOZEUS_AUTO_UPDATE=0 EVOZEUS_AUTO_UPDATE_CHILD=1 ~/.evozeus/bin/evozeus version --json
+EVOZEUS_AUTO_UPDATE=0 EVOZEUS_AUTO_UPDATE_CHILD=1 ~/.evozeus/bin/evozeus doctor --json
+```
+
+Resolve the latest Stable tag with a payload-free HEAD and compare semantic versions. A healthy current result ends here. Missing install or update dependencies do not change that no-op into a repair or install attempt.
+
+For `repair_required`, run the installed channel command without approval first:
+
+```bash
+~/.evozeus/bin/evozeus align --channel <stable|uat> --host auto --manifest <verified-channel-manifest> --json
+```
+
+The plan must report `decision=repair` and `writes_now=false`. After explicit approval, rerun with `--approve-write`. Repair downloads or checks out the same verified component versions into a new isolated root, validates required paths, fixed smoke checks, embedded components, compatibility, current-link binding, and dispatcher state, then atomically switches channel state. Before manifest fetch, the plan rejects symlinked or non-directory write prefixes for channel storage, the UAT Git cache, skeleton scripts, hooks, Plugin host marketplaces, channel runtime state, and migration backups. Bootstrap refresh stages a complete scripts directory, preserves non-bootstrap files, and swaps it atomically. If Plugin alignment fails after a product switch, restore the prior channel state, current link, dispatcher, bootstrap scripts, and Plugin alignment before reporting `failed_continuing_previous`; any unverified recovery reports `failed_recovery_required`. The prior root remains as rollback evidence. Run Doctor after the switch.
+
+`decision=unsafe_stop` is final for that attempt. Invalid persisted JSON/schema, out-of-home roots, unsafe previous roots, and symlinked control/component evidence must stop before manifest fetch or write. Collect trusted local evidence before retrying.
+
+For a fresh candidate, run the public inline pre-fetch gate before any checker or product asset GET. A blocked gate must report zero GETs and zero writes. A passing gate allows only these bootstrap downloads:
+
+- `evozeus-install-preflight.mjs`
+- `evozeus-install-preflight.mjs.sha256`
+
+Call both transfers checker downloads, count them in the full report, and verify the checker SHA-256 before execution. Then run:
+
+```bash
+/bin/sh evozeus-install-preflight.mjs --evozeus-home "${EVOZEUS_HOME:-$HOME/.evozeus}" --channel stable --checker-asset-get-count 2 --json
+```
+
+Preflight v1 supports Stable only. UAT remains available through the installed channel workflow after Stable is healthy. Do not substitute the Stable Release HEAD for the UAT manifest source.
 
 ## Source Material
 
@@ -118,18 +161,19 @@ Do not ask users to copy approval lists, privacy lists, command lists, or capabi
 After the user approves local writes, run the installer from the resolved EvoZeus repo:
 
 ```bash
-node scripts/evozeus-install.mjs --workspace "<target-workspace>" --source-root "<verified-release>/EvoZeus-vX.Y.Z" --release-tag "vX.Y.Z" --release-commit "<40-hex-release-commit>" --release-archive-sha256 "<verified-archive-sha256>" --approve-write
+printf '%s\n' "<fresh-full-preflight-json>" | node scripts/evozeus-install.mjs --workspace "<target-workspace>" --source-root "<verified-release>/EvoZeus-vX.Y.Z" --release-tag "vX.Y.Z" --release-commit "<40-hex-release-commit>" --release-archive-sha256 "<verified-archive-sha256>" --preflight-stdin --approve-write
 ~/.evozeus/bin/evozeus align --channel stable --host auto --manifest "<verified-release>/evozeus-product-stable.json" --approve-write --json
 ```
 
 Without approval, run a dry-run first:
 
 ```bash
-node scripts/evozeus-install.mjs --workspace "<target-workspace>" --source-root "<verified-release>/EvoZeus-vX.Y.Z" --release-tag "vX.Y.Z" --release-commit "<40-hex-release-commit>" --release-archive-sha256 "<verified-archive-sha256>"
-~/.evozeus/bin/evozeus align --channel stable --host auto --manifest "<verified-release>/evozeus-product-stable.json" --json
+printf '%s\n' "<fresh-full-preflight-json>" | node scripts/evozeus-install.mjs --workspace "<target-workspace>" --source-root "<verified-release>/EvoZeus-vX.Y.Z" --release-tag "vX.Y.Z" --release-commit "<40-hex-release-commit>" --release-archive-sha256 "<verified-archive-sha256>" --preflight-stdin
 ```
 
-The dry-run must not write `~/.evozeus/`; it only reports planned files and the approval needed.
+The dry-run must not write `~/.evozeus/`; it only reports planned files and the approval needed. It still requires the same full fresh preflight and must not plan reconciliation for an existing installation.
+
+The approved installer rejects preliminary, stale, blocked, wrong-target, wrong-channel, non-fresh, or wrong-next-action preflight reports. Rerun the full checker when the report is more than one hour old or the target changes.
 
 ## Install Report
 
