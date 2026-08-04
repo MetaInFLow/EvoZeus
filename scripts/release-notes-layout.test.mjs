@@ -32,21 +32,23 @@ test("resolves tag Release Notes from docs/releases", () => {
 
 test("uploads and verifies every Release asset before immutable publication", () => {
   const workflow = readFileSync(join(ROOT, ".github", "workflows", "release.yml"), "utf8");
-  const verifyImmutableSetting = workflow.indexOf("immutable-releases");
   const createDraft = workflow.indexOf("gh release create");
   const uploadAssets = workflow.indexOf("gh release upload");
   const verifyDigest = workflow.indexOf("actual_digest=");
   const publishRelease = workflow.indexOf("gh release edit", uploadAssets);
   const assetBlock = workflow.match(/assets=\(\n([\s\S]*?)\n\s*\)/);
 
-  assert.ok(verifyImmutableSetting >= 0);
-  assert.ok(createDraft > verifyImmutableSetting);
+  assert.match(workflow, /concurrency:\n\s+group: release-\$\{\{ github\.ref \}\}\n\s+cancel-in-progress: false/);
+  assert.ok(createDraft >= 0);
   assert.ok(uploadAssets > createDraft);
   assert.ok(verifyDigest > uploadAssets);
   assert.ok(publishRelease > verifyDigest);
   assert.match(workflow.slice(createDraft, uploadAssets), /--verify-tag --draft/);
   assert.match(workflow.slice(createDraft, uploadAssets), /gh release edit[^\n]+--notes-file/);
-  assert.match(workflow.slice(verifyImmutableSetting, createDraft), /test "\$\{immutable_releases_enabled\}" = "true"/);
+  assert.match(workflow.slice(createDraft, uploadAssets), /elif \[ "\$\{release_state\}" = \$'false\\tfalse' \]; then/);
+  assert.match(workflow.slice(createDraft, uploadAssets), /gh release delete "\$\{GITHUB_REF_NAME\}" --yes\n\s+exit 1/);
+  assert.match(workflow.slice(createDraft, uploadAssets), /test "\$\{release_state\}" = \$'false\\ttrue'/);
+  assert.match(workflow.slice(createDraft, uploadAssets), /publish_required="false"/);
   assert.ok(assetBlock);
   assert.deepEqual(
     assetBlock[1].trim().split("\n").map((line) => line.trim().replace(/^"|"$/g, "")),
@@ -59,9 +61,13 @@ test("uploads and verifies every Release asset before immutable publication", ()
     ],
   );
   assert.match(workflow, /test "\$\{asset_count\}" -eq "\$\{#assets\[@\]\}"/);
+  assert.match(workflow, /steps\.release_draft\.outputs\.publish_required/);
+  assert.equal([...workflow.matchAll(/git ls-remote origin/g)].length, 2);
   assert.match(workflow, /isDraft,isImmutable/);
   assert.match(workflow.slice(publishRelease), /--draft=false --latest/);
-  assert.match(workflow.slice(publishRelease), /false\\ttrue/);
+  assert.match(workflow.slice(publishRelease), /if \[ "\$\{release_state\}" = \$'false\\tfalse' \]/);
+  assert.match(workflow.slice(publishRelease), /gh release delete "\$\{GITHUB_REF_NAME\}" --yes/);
+  assert.match(workflow.slice(publishRelease), /test "\$\{release_state\}" = \$'false\\ttrue'/);
 });
 
 test("keeps current product metadata and Release Notes aligned", () => {
