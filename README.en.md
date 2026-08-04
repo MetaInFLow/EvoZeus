@@ -4,13 +4,14 @@
 </h1>
 
 <p align="center">
-  <strong>Turn real Agent work into verified improvements.</strong>
+  <strong>Build an AI usage profile from approved local Codex history, and attach a governed evolution Harness to independent Skillware.</strong>
 </p>
 
 > Origin: EvoZeus came from a retrospective between [Anthony](https://github.com/HaodiFan) and [Neil](https://github.com/orgs/MetaInFLow/people/Neillan96) after a hackathon that did not go well.
 
 <p align="center">
   <a href="README.md">简体中文</a> ·
+  <a href="#two-primary-capabilities">Primary capabilities</a> ·
   <a href="#use-cases">Use Cases</a> ·
   <a href="#see-evozeus-in-action">Demos</a> ·
   <a href="#install-evozeus">Install</a> ·
@@ -31,11 +32,18 @@
   <img src="assets/evozeus-banner.png" alt="EvoZeus reviews Agent work with evidence" width="100%">
 </p>
 
-EvoZeus reviews what happened in a real Agent task, identifies the lesson that can improve the next run, and routes an approved change into a reusable artifact. It is designed for teams building Skills, plugins, Agent workflows, and other Skillware.
+EvoZeus first helps users understand how they work with AI and helps delivered Skillware absorb real feedback. The current profile route supports local Codex history only. Reading that history, running Factors, and writing reports require explicit approval. Target-repository changes and GitHub actions require separate authorization.
 
 ```text
 Agent work → Evidence → Judgment → Lesson → Verified improvement
 ```
+
+## Two primary capabilities
+
+1. **Build an AI usage profile:** the current release supports local Codex history only. Start with a read-only scan plan. After the user explicitly approves Codex-history access and report writes, generate an evidence-backed view of AI usage habits, strengths, blind spots, and a session-derived personality tendency such as `INTJ tendency`. Thin evidence produces an explicit insufficient-evidence result.
+2. **Continuously evolve Skillware:** inspect the independent Git repository containing a specified Skill, plugin, or path, prepare an attachment plan, and attach the [EvoZeus-CoEvolve](https://github.com/MetaInFLow/EvoZeus-CoEvolve) Harness after approval so real feedback can enter a governed Feedback, Design, PR, UAT, and Release loop.
+
+Single-Session review, Lesson capture, feature discovery, Stable/UAT, Doctor, update, and rollback remain available as supporting capabilities.
 
 ## Use Cases
 
@@ -104,38 +112,40 @@ The website remains the canonical installation handoff, so this README does not 
 
 ## Try a concrete Demo Skill
 
-[Enterprise AI Scenario Map Skill](https://github.com/MetaInFLow/Enterprise-ai-scenario-map-skill) is the concrete business demo for learning how EvoZeus is used around a real Skill. It researches a company, generates 30+ AI opportunities, prioritizes them, and proposes an implementation path.
+[Enterprise AI Scenario Diagnosis Skill](https://github.com/MetaInFLow/diagnose-enterprise-ai-scenarios) is the real business demo for learning how EvoZeus works around a managed Skill. It has a published [Stable `v0.1.0`](https://github.com/MetaInFLow/diagnose-enterprise-ai-scenarios/releases/tag/v0.1.0). Its [Stable `SKILL.md`](https://github.com/MetaInFLow/diagnose-enterprise-ai-scenarios/blob/v0.1.0/SKILL.md) always returns three distinct candidate scenarios, one recommended scenario, and one minimum validation action with a measurable pass condition. The current `main` [Harness manifest](https://github.com/MetaInFLow/diagnose-enterprise-ai-scenarios/blob/main/.evozeus-wrapper/wrapper.json) records EvoZeus-CoEvolve `v0.14.0`, the canonical repository, and `prompt_runtime_check` integration.
 
 ```text
-Use the Enterprise AI Scenario Map Skill to create a standard AI scenario map for a B2B software services company.
+A company provides custom enterprise software. Sales leads arrive through multiple group chats, presales proposals depend on individual experience, and past cases are scattered. Diagnose three AI scenarios to validate first.
 ```
 
 Follow one complete EvoZeus journey:
 
 | Moment | Business action | EvoZeus action |
 | --- | --- | --- |
-| 1. Run | Generate the scenario map with the Demo Skill | Show the EvoZeus product channel and identify the target Skill; include Harness identity when the target repository already has one |
-| 2. Correct | Point out a concrete gap, such as missing evidence or a missing Markdown deliverable | Finish the business correction and summarize one reusable Lesson |
+| 1. Run | Provide the company context, ask for three priority validation scenarios, and select one recommended starting point | Verify the current repository, Harness version, and integration mode, then show the managed-run identity |
+| 2. Correct | Point out that a candidate lacks available inputs, an evidence gap, or a measurable pass condition | Complete the business correction, then summarize one reusable Lesson |
 | 3. Confirm | Decide whether the Lesson should be recorded | Create a Skill Feedback Issue only after confirmation |
-| 4. Evolve | Separately authorize repository changes | Attach or follow the repository Harness, then route the approved change through Design, PR, verification, UAT, and Release |
+| 4. Evolve | Separately authorize repository changes | Use the existing repository Harness to route the approved change through Design, PR, verification, UAT, and Release |
 
 The Demo explains product usage. Installation and registration continue to use the official website `/skill` entry above.
 
 ## Use EvoZeus
 
-After installation, try one of these:
+After installation, start with the two primary capabilities:
 
 ```text
-复盘这次 Agent 执行，找出值得保留、修复或进化的内容。
+First prepare a plan to scan my local Codex history and wait for my explicit approval. Codex is the only supported history provider in the current release. Do not read history before approval. After approval, generate an AI usage profile covering habits, strengths, blind spots, and a session-derived personality tendency such as INTJ tendency.
 ```
 
 ```text
-把这条已确认的 Lesson 保存为可追踪的改进。
+Attach a CoEvolve Harness to the independent Skillware repository I specify. Inspect it and show the plan first; wait for explicit approval before changing the repository or GitHub.
 ```
 
 ```text
-检查 EvoZeus 的 stable/UAT 状态，并告诉我唯一下一步。
+List all EvoZeus features and check the current installation and Stable/UAT health.
 ```
+
+The feature list still provides direct routes for one-Session review, recording a confirmed Lesson, Doctor, update, and rollback.
 
 EvoZeus responds inside the normal conversation. Lifecycle events use a compact marker:
 

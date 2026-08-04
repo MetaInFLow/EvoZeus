@@ -23,6 +23,24 @@ def test_status_command_prints_runtime_status():
     assert "scanner-runner-runtime" in result.stdout
 
 
+def test_session_insights_requires_one_approved_source_path(tmp_path):
+    args = ["session-insights", "--official-repo-root", str(tmp_path / "official")]
+    result = CliRunner().invoke(app, args)
+
+    assert result.exit_code == 2
+
+    validation = CliRunner().invoke(
+        app,
+        args,
+        standalone_mode=False,
+    )
+
+    assert validation.exception is not None
+    assert type(validation.exception).__name__ == "MissingParameter"
+    assert validation.exception.param is not None
+    assert validation.exception.param.name == "source_path"
+
+
 def test_session_insights_command_runs_full_scan_factor_report_pipeline(monkeypatch, tmp_path):
     output_html = tmp_path / "visualizer.html"
     project_html = tmp_path / "project-analysis-zh.html"
@@ -30,6 +48,7 @@ def test_session_insights_command_runs_full_scan_factor_report_pipeline(monkeypa
 
     def fake_run_codex_official_visualization(**kwargs: object) -> SimpleNamespace:
         assert kwargs["workspace_root"] == tmp_path
+        assert kwargs["source_dir"] == tmp_path / "approved-codex-history"
         assert kwargs["official_repo_root"] == tmp_path / "official"
         assert kwargs["force"] is False
         assert kwargs["skip_fresh"] is True
@@ -58,6 +77,8 @@ def test_session_insights_command_runs_full_scan_factor_report_pipeline(monkeypa
             "session-insights",
             "--workspace",
             str(tmp_path),
+            "--source-path",
+            str(tmp_path / "approved-codex-history"),
             "--official-repo-root",
             str(tmp_path / "official"),
             "--project-min-sessions",

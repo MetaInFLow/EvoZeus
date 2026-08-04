@@ -1,6 +1,8 @@
 import json
 from pathlib import Path
 
+import pytest
+
 from evozeus_runtime.ledger.paths import RuntimePaths
 from evozeus_runtime.ledger.repository import LedgerRepository
 from evozeus_runtime.use_cases.generate_project_insights import generate_project_insights, generate_project_insights_site
@@ -44,6 +46,23 @@ def test_scan_sessions_records_message_ids_without_content(tmp_path):
     assert all(event.tool_result_preview == "" for event in events)
 
 
+def test_scan_sessions_rejects_duplicate_embedded_session_ids_before_persistence(tmp_path):
+    source = tmp_path / "approved-codex-history"
+    source.mkdir()
+    fixture = Path("tests/fixtures/codex_sessions/session-minimal.jsonl").read_text(encoding="utf-8")
+    (source / "first.jsonl").write_text(fixture, encoding="utf-8")
+    (source / "second.jsonl").write_text(
+        fixture.replace("请扫描这个 session", "DUPLICATE SOURCE MUST NOT BE COMBINED"),
+        encoding="utf-8",
+    )
+    workspace = tmp_path / "workspace"
+
+    with pytest.raises(ValueError, match="duplicate embedded session ID 'session-minimal'"):
+        scan_sessions(workspace_root=workspace, provider="codex", source_dir=source)
+
+    assert not RuntimePaths.for_workspace(workspace).result_index_db.exists()
+
+
 def test_scan_run_report_flow_writes_local_artifacts(tmp_path):
     scan_result = scan_sessions(
         workspace_root=tmp_path,
@@ -52,6 +71,7 @@ def test_scan_run_report_flow_writes_local_artifacts(tmp_path):
     )
 
     assert scan_result.session_count == 1
+    assert scan_result.session_ids == ("session-minimal",)
     assert scan_result.ledger_path.exists()
 
     run_result = run_factors(

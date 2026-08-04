@@ -171,25 +171,33 @@ const CAPABILITIES = [
     name: "insights.plan",
     domain: "insights",
     summary: "Plan a session insights run through the built-in EvoZeus Runtime without reading raw stores.",
-    input_schema: { type: "object", properties: { source: { type: "string" } } },
+    input_schema: {
+      type: "object",
+      required: ["source_path"],
+      properties: { source: { type: "string" }, source_path: { type: "string" } }
+    },
     output_schema: { type: "object", required: ["insights_plan", "backend"] },
     write_mode: "plan_only",
     risk_level: "medium",
     required_permissions: ["system.read"],
     requires_approval: false,
-    examples: ["evozeus insights plan --source codex --json"]
+    examples: ["evozeus insights plan --source codex --source-path ~/.codex/sessions --json"]
   },
   {
     name: "insights.sessions",
     domain: "insights",
     summary: "Route approved session insights execution to the built-in EvoZeus Runtime.",
-    input_schema: { type: "object", properties: { source: { type: "string" }, project: { type: "string" } } },
+    input_schema: {
+      type: "object",
+      required: ["source_path"],
+      properties: { source: { type: "string" }, source_path: { type: "string" }, project: { type: "string" } }
+    },
     output_schema: { type: "object", required: ["execution", "backend"] },
     write_mode: "plan_only",
     risk_level: "high",
     required_permissions: ["session.scanLocalStore"],
     requires_approval: true,
-    examples: ["evozeus insights sessions --source codex --reuse-factors --html --json"]
+    examples: ["evozeus insights sessions --source codex --source-path ~/.codex/sessions --reuse-factors --html --json"]
   },
   {
     name: "harness.attachPlan",
@@ -283,23 +291,39 @@ const CAPABILITIES = [
 
 const PRODUCT_FEATURES = [
   {
-    id: "activate",
-    title: "Activate workspace",
-    title_zh: "激活并检查本地 EvoZeus 工作区",
-    lifecycle_stage: "activate",
-    user_goal: "确认本地 EvoZeus 是否已安装、注册和可继续使用。",
-    command: "evozeus activate --json",
-    backend_owner: "evozeus",
+    id: "insights.sessions",
+    title: "Build an AI usage profile from approved local Codex history",
+    title_zh: "扫描本机 Codex 历史并生成 AI 使用画像",
+    lifecycle_stage: "interact",
+    product_tier: "primary",
+    user_goal: "当前只支持 Codex；在用户明确批准读取本机 Codex 历史和写入报告后，生成 AI 使用习惯、优势与盲区、人格画像（例如 INTJ 倾向）；证据不足时明确说明。",
+    command: "evozeus insights plan --source codex --source-path <approved-codex-history-path> --json",
+    backend_owner: "EvoZeus",
     status: "available",
-    approval_boundary: "Reads EvoZeus local state only.",
-    related_capabilities: ["workspace.activate"],
-    aliases: []
+    approval_boundary: "The plan supports Codex history only and is read-only. Reading local Codex history, running Factors, writing the report, and opening its HTML require explicit approval; no upload is implied.",
+    related_capabilities: ["insights.plan", "insights.sessions", "session.scanPlan"],
+    aliases: ["evozeus session scan --dry-run --json"]
+  },
+  {
+    id: "coevolve.target",
+    title: "Attach a CoEvolve Harness to an independent Skillware repository",
+    title_zh: "为独立 Skillware Repo 接入 CoEvolve Harness",
+    lifecycle_stage: "coevolve",
+    product_tier: "primary",
+    user_goal: "先检查指定 Skill、Plugin 或路径所在的独立 Git Repo，生成接入计划；经明确批准后接入 feedback、Issue、Design、PR、UAT 和 Release 循环。",
+    command: "evozeus coevolve attach --target <path|url> --json",
+    backend_owner: "EvoZeus-CoEvolve",
+    status: "alias",
+    approval_boundary: "Plan only by default; repo writes and GitHub actions require explicit approval.",
+    related_capabilities: ["harness.attachPlan"],
+    aliases: ["evozeus harness attach --target <path|url> --json"]
   },
   {
     id: "review.session",
     title: "Review one explicit session",
     title_zh: "分析一个用户显式提供的 session",
     lifecycle_stage: "interact",
+    product_tier: "supporting",
     user_goal: "把一次用户提供的 Agent Session 转成 Evidence、Signals、Verdict Card 和 Artifact Route。",
     command: "evozeus review session --input <path|-> --json",
     backend_owner: "evozeus",
@@ -309,23 +333,11 @@ const PRODUCT_FEATURES = [
     aliases: ["evozeus session analyze --input <path|-> --json"]
   },
   {
-    id: "insights.sessions",
-    title: "Generate session insights report",
-    title_zh: "扫描历史 sessions 并生成项目洞察报告",
-    lifecycle_stage: "interact",
-    user_goal: "从历史 session 中发现可复用 insight、重复表达、项目差异和可进化点。",
-    command: "evozeus insights plan --source codex --json",
-    backend_owner: "EvoZeus",
-    status: "available",
-    approval_boundary: "Plan is read-only; raw session scan, factor execution, report write, and HTML open require explicit approval.",
-    related_capabilities: ["insights.plan", "insights.sessions", "session.scanPlan"],
-    aliases: ["evozeus session scan --dry-run --json"]
-  },
-  {
     id: "preserve.artifact",
     title: "Preserve a Verdict / report as an artifact draft",
     title_zh: "把 Verdict 或报告沉淀为 Artifact 草稿",
     lifecycle_stage: "decide",
+    product_tier: "supporting",
     user_goal: "从已有本地报告生成 Case、Factor、Habit 或 Rule 的隐私安全草稿。",
     command: "evozeus preserve draft --from-report <path> --json",
     backend_owner: "evozeus",
@@ -335,23 +347,25 @@ const PRODUCT_FEATURES = [
     aliases: []
   },
   {
-    id: "coevolve.target",
-    title: "Co-evolve an independent Skillware repository",
-    title_zh: "让独立 Skillware Repo 接入协同进化机制",
-    lifecycle_stage: "coevolve",
-    user_goal: "把包含目标 Skill 或 plugin 的独立 Git Repo 接入 feedback、issue、design doc、PR、CHANGELOG、UAT 和 release 循环。",
-    command: "evozeus coevolve attach --target <path|url> --json",
-    backend_owner: "EvoZeus-CoEvolve",
-    status: "alias",
-    approval_boundary: "Plan only by default; repo writes and GitHub actions require explicit approval.",
-    related_capabilities: ["harness.attachPlan"],
-    aliases: ["evozeus harness attach --target <path|url> --json"]
+    id: "activate",
+    title: "Activate workspace",
+    title_zh: "激活并检查本地 EvoZeus 工作区",
+    lifecycle_stage: "activate",
+    product_tier: "supporting",
+    user_goal: "确认本地 EvoZeus 是否已安装、注册和可继续使用。",
+    command: "evozeus activate --json",
+    backend_owner: "evozeus",
+    status: "available",
+    approval_boundary: "Reads EvoZeus local state only.",
+    related_capabilities: ["workspace.activate"],
+    aliases: []
   },
   {
     id: "maintain",
     title: "Maintain EvoZeus",
     title_zh: "诊断、更新和维护 EvoZeus",
     lifecycle_stage: "maintain",
+    product_tier: "supporting",
     user_goal: "检查安装状态、组件状态、更新计划和修复路径。",
     command: "evozeus doctor --json",
     backend_owner: "evozeus",
@@ -365,6 +379,7 @@ const PRODUCT_FEATURES = [
     title: "Uninstall or archive EvoZeus",
     title_zh: "卸载或归档 EvoZeus 本地状态",
     lifecycle_stage: "uninstall",
+    product_tier: "supporting",
     user_goal: "规划停用、删除、归档或保留本地 EvoZeus 状态与报告。",
     command: "evozeus uninstall --dry-run --json",
     backend_owner: "evozeus",
@@ -398,6 +413,7 @@ function parseArgs(argv) {
     input: null,
     target: null,
     source: "codex",
+    sourcePath: null,
     project: null,
     projectMode: "auto",
     fromReport: null,
@@ -441,6 +457,8 @@ function parseArgs(argv) {
       options.target = argv[++index];
     } else if (arg === "--source") {
       options.source = argv[++index];
+    } else if (arg === "--source-path") {
+      options.sourcePath = argv[++index];
     } else if (arg === "--project") {
       options.project = argv[++index];
     } else if (arg === "--project-mode") {
@@ -669,7 +687,7 @@ function componentReadiness(options) {
   };
 }
 
-function infraBackendCommand(options, mode) {
+function infraBackendCommand(options, mode, sourcePath = null) {
   const readiness = componentReadiness(options)["EvoZeus Runtime"];
   const official = componentReadiness(options)["EvoZeus Session Signal"];
   const workspace = workspaceInfo(options).root;
@@ -677,30 +695,18 @@ function infraBackendCommand(options, mode) {
   const runtimeStateRoot = active
     ? join(workspaceInfo(options).evozeus_root, "state", active.channel)
     : null;
-  const args =
-    mode === "project"
-      ? [
-          "project-insights",
-          "--workspace",
-          workspace,
-          "--project",
-          options.project,
-          "--format",
-          "markdown",
-          "--format",
-          "json",
-          "--format",
-          "html",
-          ...(options.projectMode === "keyword" || options.projectMode === "contains" ? ["--contains"] : [])
-        ]
-      : [
-          "session-insights",
-          "--workspace",
-          workspace,
-          "--official-repo-root",
-          official.detected_path,
-          ...(options.force ? ["--force"] : [])
-        ];
+  const args = [
+    "session-insights",
+    "--workspace",
+    workspace,
+    "--source-path",
+    sourcePath,
+    "--official-repo-root",
+    official.detected_path,
+    ...(mode === "project" ? ["--project", options.project] : []),
+    ...(mode === "project" && ["keyword", "contains"].includes(options.projectMode) ? ["--contains"] : []),
+    ...(options.force ? ["--force"] : [])
+  ];
 
   return {
     owner: "EvoZeus",
@@ -1090,17 +1096,41 @@ function scanPlan(options) {
   );
 }
 
+function requireCodexInsightsSource(options, operation) {
+  if (options.source !== "codex") {
+    throw new CliError(
+      "UNSUPPORTED_INSIGHTS_SOURCE",
+      `AI usage profiles currently support Codex history only; received ${options.source}.`,
+      operation
+    );
+  }
+}
+
+function approvedInsightsSourcePath(options, operation) {
+  if (!options.sourcePath) {
+    throw new CliError(
+      "MISSING_INSIGHTS_SOURCE_PATH",
+      "AI usage profiles require --source-path <approved-codex-history-path>.",
+      operation
+    );
+  }
+  return resolve(workspaceInfo(options).root, options.sourcePath);
+}
+
 function insightsPlan(options) {
-  const backend = infraBackendCommand(options, "session");
+  requireCodexInsightsSource(options, "insights.plan");
+  const sourcePath = approvedInsightsSourcePath(options, "insights.plan");
+  const backend = infraBackendCommand(options, "session", sourcePath);
   return envelope("insights.plan", options, {
     insights_plan: {
       source: options.source || "codex",
+      source_path: sourcePath,
       reads_raw_store_now: false,
       writes_report_now: false,
       runs_factor_now: false,
       opens_browser_now: false,
       required_before_execution: [
-        "specific source path or approved provider",
+        "specific approved Codex history source path",
         "redaction policy",
         "factor reuse policy",
         "artifact write destination",
@@ -1120,8 +1150,10 @@ function insightsPlan(options) {
 
 function insightsSessions(options) {
   const isProject = Boolean(options.project);
-  const backend = infraBackendCommand(options, isProject ? "project" : "session");
   const operation = isProject ? "insights.projectSessions" : "insights.sessions";
+  requireCodexInsightsSource(options, operation);
+  const sourcePath = approvedInsightsSourcePath(options, operation);
+  const backend = infraBackendCommand(options, isProject ? "project" : "session", sourcePath);
 
   return envelope(
     operation,
@@ -1135,6 +1167,7 @@ function insightsSessions(options) {
         : null,
       execution: {
         source: options.source || "codex",
+        source_path: sourcePath,
         runs_backend_now: false,
         reads_raw_store_now: false,
         writes_now: false,
@@ -1900,8 +1933,8 @@ Commands:
   capabilities --json
   activate --json
   review session --input <path|-> --json
-  insights plan --source codex --json
-  insights sessions --source codex --reuse-factors --html --json
+  insights plan --source codex --source-path <approved-path> --json
+  insights sessions --source codex --source-path <approved-path> --reuse-factors --html --json
   insights open --latest --json
   preserve draft --from-report <path> --json
   session analyze --input <path|-> --json
@@ -1926,6 +1959,7 @@ Global options:
   --auto-refresh
   --host auto|all|codex|claude
   --target-visibility public|private
+  --source-path <approved-codex-history-path>
 `);
 }
 

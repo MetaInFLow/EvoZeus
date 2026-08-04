@@ -61,6 +61,12 @@ def main() -> int:
         help="Workspace root for .evozeus state.",
     )
     parser.add_argument(
+        "--source-path",
+        required=True,
+        type=Path,
+        help="The single local Codex history path approved for this run.",
+    )
+    parser.add_argument(
         "--official-repo-root",
         default=_main_repo_root() / "packs" / "session-signal",
         type=Path,
@@ -101,6 +107,7 @@ def main() -> int:
 
     result = run_codex_official_visualization(
         workspace_root=args.workspace,
+        source_dir=args.source_path.expanduser().resolve(),
         official_repo_root=args.official_repo_root,
         force=args.force,
         skip_fresh=not args.no_skip_fresh,

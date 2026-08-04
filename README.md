@@ -4,7 +4,7 @@
 </h1>
 
 <p align="center">
-  <strong>把真实 Agent 工作转化为经过验证的持续改进。</strong>
+  <strong>经明确批准生成 AI 使用画像，为独立 Skillware Repo 接入持续进化 Harness。</strong>
 </p>
 
 > Origin：宙斯的概念诞生于一次不太成功的黑客松之后，[Anthony](https://github.com/HaodiFan) 和 [Neil](https://github.com/orgs/MetaInFLow/people/Neillan96) 两个人的一次复盘。
@@ -12,6 +12,7 @@
 <p align="center">
   <strong>简体中文</strong> ·
   <a href="README.en.md">English</a> ·
+  <a href="#两项主功能">主功能</a> ·
   <a href="#适用场景">适用场景</a> ·
   <a href="#观看演示">演示</a> ·
   <a href="#安装-evozeus">安装</a> ·
@@ -31,11 +32,18 @@
   <img src="assets/evozeus-banner.png" alt="EvoZeus 基于证据复盘 Agent 工作" width="100%">
 </p>
 
-EvoZeus 复盘真实 Agent 任务中发生了什么，识别值得改善下一次执行的 Lesson，并把用户确认后的变化转化为可复用、可验证、可发布的改进。它适用于正在构建和交付 Skill、Plugin、Agent Workflow 与其他 Skillware 的团队。
+EvoZeus 优先帮助用户看清自己如何使用 AI，并让已交付的 Skillware 持续吸收真实反馈。当前画像只支持本机 Codex 历史；历史读取、Factor 执行和报告写入都需要明确批准，目标 Repo 修改和 GitHub 操作也需要单独授权。
 
 ```text
 真实使用 → 证据 → 判断 → Lesson → 用户确认 → 修复验证 → 发布
 ```
+
+## 两项主功能
+
+1. **生成 AI 使用画像**：当前只支持本机 Codex 历史，先生成只读扫描计划。用户明确批准 Codex 历史读取与报告写入后，生成 AI 使用习惯、优势与盲区、人格画像（例如 `INTJ 倾向`）报告。画像来自 Session 行为证据，证据不足时会明确说明。
+2. **让 Skillware 持续进化**：检查用户指定的 Skill、Plugin 或路径所在的独立 Git Repo，先生成接入计划，经批准后接入 [EvoZeus-CoEvolve](https://github.com/MetaInFLow/EvoZeus-CoEvolve) Harness，让真实反馈进入 Feedback、Design、PR、UAT 和 Release 闭环。
+
+单次 Session 复盘、Lesson 记录、功能发现、Stable/UAT、Doctor、更新和回滚继续作为支撑能力提供。
 
 ## 适用场景
 
@@ -92,18 +100,18 @@ EvoZeus 当前优先解决两类高频问题：产品需要尽快进入真实使
 
 ## 用真实 Demo Skill 体验
 
-[企业 AI 场景地图 Skill](https://github.com/MetaInFLow/Enterprise-ai-scenario-map-skill) 是理解 EvoZeus 用法的业务 Demo。它会调研企业、生成 30 个以上 AI 场景、完成优先级判断并给出落地路径。
+[企业 AI 场景诊断 Skill](https://github.com/MetaInFLow/diagnose-enterprise-ai-scenarios) 是理解 EvoZeus 用法的真实业务 Demo。它已发布 [Stable `v0.1.0`](https://github.com/MetaInFLow/diagnose-enterprise-ai-scenarios/releases/tag/v0.1.0)；[Stable `SKILL.md`](https://github.com/MetaInFLow/diagnose-enterprise-ai-scenarios/blob/v0.1.0/SKILL.md) 固定输出三个互不重复的候选场景、一个首选场景和一个带量化通过条件的最小验证动作。当前 `main` 的 [Harness manifest](https://github.com/MetaInFLow/diagnose-enterprise-ai-scenarios/blob/main/.evozeus-wrapper/wrapper.json) 记录 EvoZeus-CoEvolve `v0.14.0`、canonical Repo 和 `prompt_runtime_check` 集成方式。
 
 ```text
-使用企业 AI 场景地图 Skill，为一家 B2B 软件服务公司生成标准版 AI 场景地图。
+一家提供企业软件定制服务的公司，销售线索来自多个群聊，售前方案主要依靠个人经验，历史案例分散。请诊断三个适合优先验证的 AI 场景。
 ```
 
 一次完整体验包含四个时刻：
 
 | 时刻 | 业务动作 | EvoZeus 动作 |
 | --- | --- | --- |
-| 1. 运行 | 使用 Demo Skill 生成企业 AI 场景地图 | 展示产品渠道并识别目标 Skill；目标 Repo 已接入 Harness 时同步显示其身份 |
-| 2. 纠正 | 指出证据不足、交付格式缺失等具体问题 | 先完成业务纠正，再总结一条可复用 Lesson |
+| 1. 运行 | 提供企业背景，请 Demo Skill 诊断三个优先验证场景并选出一个首发场景 | 核验当前 Repo、Harness 版本与集成方式，显示受管运行身份 |
+| 2. 纠正 | 指出某个候选场景缺少现有输入、证据缺口或量化通过条件 | 先补全业务诊断，再总结一条可复用 Lesson |
 | 3. 确认 | 决定是否记录 Lesson | 只有用户确认后才创建 Skill Feedback Issue |
 | 4. 进化 | 单独授权修改目标 Repo | 让已批准变化进入 Design、PR、验证、UAT 和 Release |
 
@@ -111,19 +119,21 @@ Demo 解释产品如何使用；安装和注册始终走上方官网 `/skill` �
 
 ## 开始使用
 
-完成安装后，可以直接表达目标：
+完成安装后，先从两项主功能开始：
 
 ```text
-复盘这次 Agent 执行，找出值得保留、修复或进化的内容。
+先为我生成本机 Codex 历史扫描计划并等待明确批准；当前只支持 Codex，批准前不要读取历史。批准后生成 AI 使用习惯、优势与盲区、人格画像（例如 INTJ 倾向）报告。
 ```
 
 ```text
-把这条已确认的 Lesson 保存为可追踪的改进。
+为我指定的独立 Skillware Repo 接入 CoEvolve Harness；先检查并给出计划，修改 Repo 或 GitHub 前等待我的明确批准。
 ```
 
 ```text
-检查 EvoZeus 的 stable/UAT 状态，并告诉我唯一下一步。
+列出 EvoZeus 的全部功能，并检查当前安装和 Stable/UAT 状态。
 ```
+
+功能列表中仍可直接选择单次 Session 复盘、记录已确认 Lesson、Doctor、更新和回滚。
 
 EvoZeus 在正常聊天中给出结果。生命周期事件使用紧凑标记：
 
@@ -140,7 +150,7 @@ EvoZeus 在正常聊天中给出结果。生命周期事件使用紧凑标记：
 | 你看到的标记 | 代表什么 | 什么时候出现 |
 | --- | --- | --- |
 | `🧙 EvoZeus · 已启动｜复盘这次 Agent 执行` | EvoZeus 已被显式调用 | 开始一次 EvoZeus 任务 |
-| `👁️ EvoZeus · 受管运行｜企业场景地图 Skill · UAT` | 当前 Skillware 已进入受管生命周期 | Repo、Harness、渠道身份均已核验 |
+| `👁️ EvoZeus · 受管运行｜企业 AI 场景诊断 Skill · UAT` | 当前 Skillware 已进入受管生命周期 | Repo、Harness、渠道身份均已核验 |
 | `🧙 EvoZeus · 捕捉到一条 Lesson｜证据不足时不能直接报完成。要记录下来吗？` | 发现了值得复用的改进 | 业务结果完成后，记录前先询问 |
 | `📝 EvoZeus · Lesson 已记录｜Feedback Issue #12` | 已按授权保存 Lesson | 本地记录或 Issue 创建成功后 |
 | `🔐 EvoZeus · 等待确认｜创建 Feedback Issue` | 下一动作会写入或影响外部系统 | 需要新的具体授权时 |

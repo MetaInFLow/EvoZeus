@@ -34,10 +34,14 @@ def generate_ai_usage_profile_report(
     formats: list[str],
     output_dir: Path | None = None,
     subject: str = "用户",
+    session_ids: tuple[str, ...] | None = None,
 ) -> GenerateAiUsageProfileReportResult:
     paths = RuntimePaths.for_workspace(workspace_root).ensure()
     ledger = LedgerRepository(paths)
     statuses = ledger.list_session_statuses()
+    if session_ids is not None:
+        allowed_session_ids = set(session_ids)
+        statuses = [status for status in statuses if status.session_id in allowed_session_ids]
     factor_results = [
         result
         for status in statuses
