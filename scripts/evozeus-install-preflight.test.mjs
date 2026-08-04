@@ -631,9 +631,10 @@ describe("local state inspection", () => {
 });
 
 describe("release integration", () => {
-  it("publishes the standalone checker and matching checksum before product installation", () => {
+  it("includes the standalone checker and matching checksum in the verified asset set", () => {
     assert.match(RELEASE_WORKFLOW, /cp scripts\/evozeus-install-preflight\.mjs evozeus-install-preflight\.mjs/);
     assert.match(RELEASE_WORKFLOW, /shasum -a 256 evozeus-install-preflight\.mjs > evozeus-install-preflight\.mjs\.sha256/);
-    assert.match(RELEASE_WORKFLOW, /gh release upload[^\n]+evozeus-install-preflight\.mjs[^\n]+evozeus-install-preflight\.mjs\.sha256/);
+    assert.match(RELEASE_WORKFLOW, /assets=\([\s\S]*evozeus-install-preflight\.mjs[\s\S]*evozeus-install-preflight\.mjs\.sha256[\s\S]*\)/);
+    assert.match(RELEASE_WORKFLOW, /gh release upload "\$\{GITHUB_REF_NAME\}" "\$\{assets\[@\]\}" --clobber/);
   });
 });

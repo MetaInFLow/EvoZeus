@@ -5,7 +5,7 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
-const PRODUCT_VERSION = "0.5.0";
+const PRODUCT_VERSION = "0.5.1";
 const PRODUCT_TAG = `v${PRODUCT_VERSION}`;
 const COEVOLVE_VERSION = "v0.15.0";
 const COEVOLVE_COMMIT = "ddd004dda0e8db16503d1e0b0aafa5a495465f2d";
@@ -30,7 +30,41 @@ test("resolves tag Release Notes from docs/releases", () => {
   assert.match(workflow, /test -s "\$\{RELEASE_NOTES_DIR\}\/\$\{GITHUB_REF_NAME\}\.md"/);
 });
 
-test("keeps v0.5.0 product metadata and Release Notes aligned", () => {
+test("uploads and verifies every Release asset before immutable publication", () => {
+  const workflow = readFileSync(join(ROOT, ".github", "workflows", "release.yml"), "utf8");
+  const verifyImmutableSetting = workflow.indexOf("immutable-releases");
+  const createDraft = workflow.indexOf("gh release create");
+  const uploadAssets = workflow.indexOf("gh release upload");
+  const verifyDigest = workflow.indexOf("actual_digest=");
+  const publishRelease = workflow.indexOf("gh release edit", uploadAssets);
+  const assetBlock = workflow.match(/assets=\(\n([\s\S]*?)\n\s*\)/);
+
+  assert.ok(verifyImmutableSetting >= 0);
+  assert.ok(createDraft > verifyImmutableSetting);
+  assert.ok(uploadAssets > createDraft);
+  assert.ok(verifyDigest > uploadAssets);
+  assert.ok(publishRelease > verifyDigest);
+  assert.match(workflow.slice(createDraft, uploadAssets), /--verify-tag --draft/);
+  assert.match(workflow.slice(createDraft, uploadAssets), /gh release edit[^\n]+--notes-file/);
+  assert.match(workflow.slice(verifyImmutableSetting, createDraft), /test "\$\{immutable_releases_enabled\}" = "true"/);
+  assert.ok(assetBlock);
+  assert.deepEqual(
+    assetBlock[1].trim().split("\n").map((line) => line.trim().replace(/^"|"$/g, "")),
+    [
+      "evozeus-install-preflight.mjs",
+      "evozeus-install-preflight.mjs.sha256",
+      "evozeus-${GITHUB_REF_NAME}.tar.gz",
+      "evozeus-${GITHUB_REF_NAME}.tar.gz.sha256",
+      "evozeus-product-stable.json",
+    ],
+  );
+  assert.match(workflow, /test "\$\{asset_count\}" -eq "\$\{#assets\[@\]\}"/);
+  assert.match(workflow, /isDraft,isImmutable/);
+  assert.match(workflow.slice(publishRelease), /--draft=false --latest/);
+  assert.match(workflow.slice(publishRelease), /false\\ttrue/);
+});
+
+test("keeps current product metadata and Release Notes aligned", () => {
   const stable = readJson("channels/stable-release-input.json");
   const packageJson = readJson("package.json");
   const packageLock = readJson("package-lock.json");

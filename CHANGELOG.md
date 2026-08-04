@@ -2,6 +2,18 @@
 
 ## [Unreleased]
 
+## [v0.5.1] - 2026-08-04
+
+### Fixed
+
+- Replaced publish-then-upload with a fail-closed immutable Release transaction: create or reuse a draft, upload the exact five assets, verify asset count and GitHub SHA-256 digests, then publish and assert immutability.
+- Closed the temporary public asset-completion window in the v0.5.0 release process. The final immutable v0.5.0 Release contains all five verified assets and remains installable.
+
+### Verification
+
+- Release workflow regressions enforce the repository immutable setting, draft creation, upload-before-publish ordering, the exact five-asset set, per-asset digest verification, and final `isImmutable=true` state.
+- The v0.5.1 candidate must repeat the single-UAT install, Doctor, correction/neutral/ambiguous Hook checks, zero-persistence check, and archive-to-tag tree identity audit before Stable completion.
+
 ## [v0.5.0] - 2026-08-04
 
 ### Added
