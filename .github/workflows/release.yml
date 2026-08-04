@@ -38,9 +38,45 @@ jobs:
           git archive --format=tar.gz --prefix="EvoZeus-${GITHUB_REF_NAME}/" -o "evozeus-${GITHUB_REF_NAME}.tar.gz" "${GITHUB_REF_NAME}"
           shasum -a 256 "evozeus-${GITHUB_REF_NAME}.tar.gz" > "evozeus-${GITHUB_REF_NAME}.tar.gz.sha256"
           node scripts/build-stable-product-manifest.mjs --input channels/stable-release-input.json --core-archive "evozeus-${GITHUB_REF_NAME}.tar.gz" --core-commit "${GITHUB_SHA}" --output evozeus-product-stable.json
-      - name: Create or update GitHub Release
+      - name: Verify immutable Releases are enabled
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1 || gh release create "${GITHUB_REF_NAME}" --title "EvoZeus ${GITHUB_REF_NAME}" --notes-file "${RELEASE_NOTES_DIR}/${GITHUB_REF_NAME}.md"
-          gh release upload "${GITHUB_REF_NAME}" evozeus-install-preflight.mjs evozeus-install-preflight.mjs.sha256 "evozeus-${GITHUB_REF_NAME}.tar.gz" "evozeus-${GITHUB_REF_NAME}.tar.gz.sha256" evozeus-product-stable.json --clobber
+          immutable_releases_enabled="$(gh api "repos/${GITHUB_REPOSITORY}/immutable-releases" --jq '.enabled')"
+          test "${immutable_releases_enabled}" = "true"
+      - name: Create or reuse immutable Release draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          release_state="$(gh release view "${GITHUB_REF_NAME}" --json isDraft,isImmutable --jq '[.isDraft,.isImmutable] | @tsv' 2>/dev/null || true)"
+          if [ -z "${release_state}" ]; then
+            gh release create "${GITHUB_REF_NAME}" --verify-tag --draft --title "EvoZeus ${GITHUB_REF_NAME}" --notes-file "${RELEASE_NOTES_DIR}/${GITHUB_REF_NAME}.md"
+          else
+            test "${release_state}" = $'true\tfalse'
+            gh release edit "${GITHUB_REF_NAME}" --title "EvoZeus ${GITHUB_REF_NAME}" --notes-file "${RELEASE_NOTES_DIR}/${GITHUB_REF_NAME}.md"
+          fi
+      - name: Upload and verify the complete Release asset set
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          assets=(
+            evozeus-install-preflight.mjs
+            evozeus-install-preflight.mjs.sha256
+            "evozeus-${GITHUB_REF_NAME}.tar.gz"
+            "evozeus-${GITHUB_REF_NAME}.tar.gz.sha256"
+            evozeus-product-stable.json
+          )
+          gh release upload "${GITHUB_REF_NAME}" "${assets[@]}" --clobber
+          asset_count="$(gh release view "${GITHUB_REF_NAME}" --json assets --jq '.assets | length')"
+          test "${asset_count}" -eq "${#assets[@]}"
+          for asset in "${assets[@]}"; do
+            expected_digest="sha256:$(shasum -a 256 "${asset}" | awk '{print $1}')"
+            actual_digest="$(gh release view "${GITHUB_REF_NAME}" --json assets --jq ".assets[] | select(.name == \"${asset}\") | .digest")"
+            test "${actual_digest}" = "${expected_digest}"
+          done
+      - name: Publish and lock the verified immutable Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release edit "${GITHUB_REF_NAME}" --draft=false --latest
+          test "$(gh release view "${GITHUB_REF_NAME}" --json isDraft,isImmutable --jq '[.isDraft,.isImmutable] | @tsv')" = $'false\ttrue'
