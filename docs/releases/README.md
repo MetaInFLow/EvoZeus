@@ -12,6 +12,7 @@ This directory is the repository source for versioned GitHub Release description
 
 ## History
 
+- [v0.5.0](v0.5.0.md)
 - [v0.4.1](v0.4.1.md)
 - [v0.4.0](v0.4.0.md)
 - [v0.3.5](v0.3.5.md)

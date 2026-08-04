@@ -1,6 +1,6 @@
-governance_version: 0.4.1
+governance_version: 0.5.0
 status: active
-updated_at: 2026-07-31
+updated_at: 2026-08-04
 automation:
   mode: dry-run
   auto_approve: false
