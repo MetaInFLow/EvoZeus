@@ -11,7 +11,7 @@
 
 ### Verification
 
-- Release workflow regressions enforce the repository immutable setting, draft creation, upload-before-publish ordering, the exact five-asset set, per-asset digest verification, and final `isImmutable=true` state.
+- Release workflow regressions serialize duplicate tag runs, idempotently re-audit an existing immutable Release, verify remote Tag identity before build and publication, enforce the exact five-asset set and per-asset digests, and require final `isImmutable=true`; a published mutable Release is deleted and the job fails.
 - The v0.5.1 candidate must repeat the single-UAT install, Doctor, correction/neutral/ambiguous Hook checks, zero-persistence check, and archive-to-tag tree identity audit before Stable completion.
 
 ## [v0.5.0] - 2026-08-04

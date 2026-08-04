@@ -7,6 +7,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 env:
   RELEASE_NOTES_DIR: docs/releases
 
@@ -33,28 +37,33 @@ jobs:
       - name: Build Core archive and Stable product manifest
         run: |
           test "$(git describe --tags --exact-match)" = "${GITHUB_REF_NAME}"
+          remote_tag_commit="$(git ls-remote origin "refs/tags/${GITHUB_REF_NAME}^{}" | awk '{print $1}')"
+          test "${remote_tag_commit}" = "${GITHUB_SHA}"
           cp scripts/evozeus-install-preflight.mjs evozeus-install-preflight.mjs
           shasum -a 256 evozeus-install-preflight.mjs > evozeus-install-preflight.mjs.sha256
           git archive --format=tar.gz --prefix="EvoZeus-${GITHUB_REF_NAME}/" -o "evozeus-${GITHUB_REF_NAME}.tar.gz" "${GITHUB_REF_NAME}"
           shasum -a 256 "evozeus-${GITHUB_REF_NAME}.tar.gz" > "evozeus-${GITHUB_REF_NAME}.tar.gz.sha256"
           node scripts/build-stable-product-manifest.mjs --input channels/stable-release-input.json --core-archive "evozeus-${GITHUB_REF_NAME}.tar.gz" --core-commit "${GITHUB_SHA}" --output evozeus-product-stable.json
-      - name: Verify immutable Releases are enabled
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          immutable_releases_enabled="$(gh api "repos/${GITHUB_REPOSITORY}/immutable-releases" --jq '.enabled')"
-          test "${immutable_releases_enabled}" = "true"
       - name: Create or reuse immutable Release draft
+        id: release_draft
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           release_state="$(gh release view "${GITHUB_REF_NAME}" --json isDraft,isImmutable --jq '[.isDraft,.isImmutable] | @tsv' 2>/dev/null || true)"
           if [ -z "${release_state}" ]; then
             gh release create "${GITHUB_REF_NAME}" --verify-tag --draft --title "EvoZeus ${GITHUB_REF_NAME}" --notes-file "${RELEASE_NOTES_DIR}/${GITHUB_REF_NAME}.md"
-          else
-            test "${release_state}" = $'true\tfalse'
+            publish_required="true"
+          elif [ "${release_state}" = $'true\tfalse' ]; then
             gh release edit "${GITHUB_REF_NAME}" --title "EvoZeus ${GITHUB_REF_NAME}" --notes-file "${RELEASE_NOTES_DIR}/${GITHUB_REF_NAME}.md"
+            publish_required="true"
+          elif [ "${release_state}" = $'false\tfalse' ]; then
+            gh release delete "${GITHUB_REF_NAME}" --yes
+            exit 1
+          else
+            test "${release_state}" = $'false\ttrue'
+            publish_required="false"
           fi
+          echo "publish_required=${publish_required}" >> "${GITHUB_OUTPUT}"
       - name: Upload and verify the complete Release asset set
         env:
           GH_TOKEN: ${{ github.token }}
@@ -66,7 +75,9 @@ jobs:
             "evozeus-${GITHUB_REF_NAME}.tar.gz.sha256"
             evozeus-product-stable.json
           )
-          gh release upload "${GITHUB_REF_NAME}" "${assets[@]}" --clobber
+          if [ "${{ steps.release_draft.outputs.publish_required }}" = "true" ]; then
+            gh release upload "${GITHUB_REF_NAME}" "${assets[@]}" --clobber
+          fi
           asset_count="$(gh release view "${GITHUB_REF_NAME}" --json assets --jq '.assets | length')"
           test "${asset_count}" -eq "${#assets[@]}"
           for asset in "${assets[@]}"; do
@@ -75,8 +86,15 @@ jobs:
             test "${actual_digest}" = "${expected_digest}"
           done
       - name: Publish and lock the verified immutable Release
+        if: steps.release_draft.outputs.publish_required == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          remote_tag_commit="$(git ls-remote origin "refs/tags/${GITHUB_REF_NAME}^{}" | awk '{print $1}')"
+          test "${remote_tag_commit}" = "${GITHUB_SHA}"
           gh release edit "${GITHUB_REF_NAME}" --draft=false --latest
-          test "$(gh release view "${GITHUB_REF_NAME}" --json isDraft,isImmutable --jq '[.isDraft,.isImmutable] | @tsv')" = $'false\ttrue'
+          release_state="$(gh release view "${GITHUB_REF_NAME}" --json isDraft,isImmutable --jq '[.isDraft,.isImmutable] | @tsv' 2>/dev/null || true)"
+          if [ "${release_state}" = $'false\tfalse' ]; then
+            gh release delete "${GITHUB_REF_NAME}" --yes
+          fi
+          test "${release_state}" = $'false\ttrue'
