@@ -2,7 +2,25 @@
 
 ## [Unreleased]
 
-No changes yet.
+### Added
+
+- Added the Core-owned `evozeus.user-prompt.lesson-runtime.v1` path for normal Chat Lesson candidates, with a product-owned Session Signal attachment contract.
+
+### Fixed
+
+- Bound channel dispatcher reconciliation to the newly installed Core source and byte content, so Core-only updates cannot retain the prior dispatcher.
+- Shipped the digest-pinned Session Signal v0.1.2 entrypoint inside the Core product tree and declared its attachment and source files as channel-required paths.
+- Bound the embedded Lesson method to Session Signal PR #9 revision `5d6ccce7eb821809e8594ecc3968e26211b31f12`; the attachment now records that revision and fixed upstream source/test hashes prevent silent vendor drift.
+- Stopped registered-target discovery as soon as the 257th valid target proves the bounded inventory invalid.
+- Discarded aliases longer than 128 characters and bounded instruction-surface reads to 64 KiB without dropping an otherwise valid registered target.
+
+### Security
+
+- Added active-channel digest verification, a trusted-dispatcher pin for the attachment bytes, root containment, non-symlink file checks, bounded registry metadata reads, streaming stdout/stderr limits, isolated component execution, private-output rejection and silent fail-open handling.
+
+### Verification
+
+- Added isolated custom-product-home, fixed project-registry, bundled-source digest, attachment self-blessing rejection, 257-target early-stop, channel-required-path, damaged/stale/symlinked component, import-shadow, output-limit, timeout, zero-persistence and real companion subprocess regressions.
 
 ## [v0.4.1] - 2026-07-31
 

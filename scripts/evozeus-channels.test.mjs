@@ -56,12 +56,15 @@ const COMPONENT_PATHS = {
     "scripts/evozeus-install-prefetch.sh",
     "scripts/evozeus-install-preflight.mjs",
     "scripts/evozeus-launcher.mjs",
+    "contracts/v1/user-prompt-lesson-runtime.json",
     "SKILL.md",
     "skills/using-evozeus/SKILL.md",
     "skills/maintain-evozeus/SKILL.md",
     "packages/runtime/src/evozeus_runtime/cli/main.py",
     "packages/runtime/pyproject.toml",
     "packs/session-signal/scripts/validate_official_factor_spec.py",
+    "packs/session-signal/scripts/evaluate_lesson_candidate.py",
+    "packs/session-signal/src/evozeus_session_signal_skill/lesson_candidate.py",
     "packs/session-signal/SKILL.md",
     "packs/session-signal/factors/task-completion/spec.json"
   ],
@@ -74,9 +77,15 @@ const EMBEDDED = {
     required_paths: ["src/evozeus_runtime/cli/main.py", "pyproject.toml"]
   },
   session_signal: {
-    version: "v0.1.0",
+    version: "v0.1.2",
     path: "packs/session-signal",
-    required_paths: ["scripts/validate_official_factor_spec.py", "SKILL.md", "factors/task-completion/spec.json"]
+    required_paths: [
+      "scripts/validate_official_factor_spec.py",
+      "scripts/evaluate_lesson_candidate.py",
+      "src/evozeus_session_signal_skill/lesson_candidate.py",
+      "SKILL.md",
+      "factors/task-completion/spec.json"
+    ]
   }
 };
 const LAUNCHER = fileURLToPath(new URL("./evozeus-launcher.mjs", import.meta.url));
@@ -1327,6 +1336,53 @@ describe("channel transactions", () => {
       assert.equal(channelSnapshot(home).health, "healthy");
     }));
 
+  it("repairs a byte-modified dispatcher that retains its marker and version state", async () =>
+    fixture(async (root) => {
+      const home = join(root, "home");
+      const manifest = stableManifest(join(root, "dispatcher-content-archives"));
+      const manifestPath = writeManifest(root, "stable-dispatcher-content-repair.json", manifest);
+      const installed = await applyChannelUpdate({
+        evozeusHome: home,
+        channel: "stable",
+        manifestSource: manifestPath,
+        fetchImpl: fileFetch,
+        smokeRunner: noSmoke
+      });
+      const dispatcherPath = join(home, "hooks", "evozeus_wrapper_dispatcher.py");
+      writeFileSync(
+        dispatcherPath,
+        `${readFileSync(dispatcherPath, "utf8")}\n# modified but keeps evozeus.channel-coevolve-dispatcher.v2\n`
+      );
+
+      const plan = await prepareChannelUpdate({
+        evozeusHome: home,
+        channel: "stable",
+        manifestSource: manifestPath,
+        fetchImpl: fileFetch
+      });
+
+      assert.equal(plan.decision, "repair");
+      assert.ok(plan.current_integrity.issues.includes("dispatcher:content_mismatch"));
+
+      const repaired = await applyChannelUpdate({
+        evozeusHome: home,
+        channel: "stable",
+        manifestSource: manifestPath,
+        fetchImpl: fileFetch,
+        smokeRunner: noSmoke
+      });
+      const expected = join(
+        repaired.component_roots.evozeus,
+        "scripts",
+        "evozeus-coevolve-dispatcher.py"
+      );
+
+      assert.equal(repaired.status, "repaired");
+      assert.notEqual(repaired.install_root, installed.install_root);
+      assert.equal(readFileSync(dispatcherPath, "utf8"), readFileSync(expected, "utf8"));
+      assert.equal(channelSnapshot(home).health, "healthy");
+    }));
+
   it("repairs a current link that no longer targets the installed entry", async () =>
     fixture(async (root) => {
       const home = join(root, "home");
@@ -1965,12 +2021,67 @@ describe("channel transactions", () => {
 
       const hookState = readJsonReport(join(home, "hooks", "state.json"));
       assert.equal(hookState.wrapper_source, "channel-managed");
-      assert.equal(hookState.source_repository, "MetaInFLow/EvoZeus-CoEvolve");
+      assert.equal(hookState.source_repository, "MetaInFLow/EvoZeus");
+      assert.equal(hookState.runtime_api, "evozeus.user-prompt.lesson-runtime.v1");
       assert.ok(readFileSync(join(home, "hooks", "evozeus_wrapper_dispatcher.py"), "utf8").includes("evozeus.channel-coevolve-dispatcher.v2"));
       assert.ok(result.migration_backup);
       assert.equal(readFileSync(join(result.migration_backup, "hooks", "evozeus_wrapper_dispatcher.py"), "utf8"), "# legacy dispatcher\n");
       assert.equal(channelSnapshot(home).dispatcher.status, "ready");
       assert.equal(channelSnapshot(home).health, "healthy");
+    }));
+
+  it("installs the dispatcher from the newly installed Core when CoEvolve is unchanged", async () =>
+    fixture(async (root) => {
+      const home = join(root, "home");
+      const components = Object.fromEntries(
+        Object.keys(COMPONENT_PATHS).map((componentId) => [componentId, initComponent(root, componentId)])
+      );
+      const source = join(components.evozeus.repo, "scripts", "evozeus-coevolve-dispatcher.py");
+      writeFileSync(source, `${readFileSync(source, "utf8")}\n# installed-core-dispatcher-one\n`);
+      git(components.evozeus.repo, "add", "scripts/evozeus-coevolve-dispatcher.py");
+      git(components.evozeus.repo, "commit", "-m", "fixture dispatcher one");
+      components.evozeus.commit = git(components.evozeus.repo, "rev-parse", "HEAD");
+
+      await applyChannelUpdate({
+        evozeusHome: home,
+        channel: "uat",
+        manifestSource: writeManifest(root, "uat-dispatcher-one.json", uatManifest(components)),
+        smokeRunner: noSmoke
+      });
+      assert.match(
+        readFileSync(join(home, "hooks", "evozeus_wrapper_dispatcher.py"), "utf8"),
+        /installed-core-dispatcher-one/
+      );
+
+      writeFileSync(
+        source,
+        readFileSync(source, "utf8").replace("installed-core-dispatcher-one", "installed-core-dispatcher-two")
+      );
+      git(components.evozeus.repo, "add", "scripts/evozeus-coevolve-dispatcher.py");
+      git(components.evozeus.repo, "commit", "-m", "fixture dispatcher two");
+      components.evozeus.commit = git(components.evozeus.repo, "rev-parse", "HEAD");
+
+      const updated = await applyChannelUpdate({
+        evozeusHome: home,
+        channel: "uat",
+        manifestSource: writeManifest(
+          root,
+          "uat-dispatcher-two.json",
+          uatManifest(components, "v0.4.1")
+        ),
+        smokeRunner: noSmoke
+      });
+      const installed = readFileSync(join(home, "hooks", "evozeus_wrapper_dispatcher.py"), "utf8");
+      const installedSource = readFileSync(
+        join(updated.component_roots.evozeus, "scripts", "evozeus-coevolve-dispatcher.py"),
+        "utf8"
+      );
+
+      assert.equal(installed, installedSource);
+      assert.match(installed, /installed-core-dispatcher-two/);
+      assert.doesNotMatch(installed, /installed-core-dispatcher-one/);
+      assert.equal(updated.active.dispatcher_reconciliation.repaired, true);
+      assert.equal(readJsonReport(join(home, "hooks", "state.json")).core_version, "v0.4.1");
     }));
 
   it("repairs a stale dispatcher when the single UAT candidate is overwritten", async () =>

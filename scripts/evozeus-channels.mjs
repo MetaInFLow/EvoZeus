@@ -741,22 +741,44 @@ function restoreLegacyState(evozeusHome, backup) {
   }
 }
 
-function installChannelDispatcher(evozeusHome, channel, coevolveVersion, backupPath) {
-  if (!existsSync(CHANNEL_DISPATCHER)) {
-    throw new ChannelError("DISPATCHER_SOURCE_MISSING", `channel dispatcher source is missing: ${CHANNEL_DISPATCHER}`);
+function channelDispatcherSource(entry) {
+  const coreRoot = entry?.component_roots?.evozeus;
+  if (typeof coreRoot !== "string" || absoluteDirectorySafety(coreRoot) !== "ready") {
+    throw new ChannelError("DISPATCHER_SOURCE_INVALID", "installed Core root is missing or unsafe");
   }
+  const source = join(coreRoot, "scripts", "evozeus-coevolve-dispatcher.py");
+  if (containedPathSafety(coreRoot, source, "file") !== "ready") {
+    throw new ChannelError("DISPATCHER_SOURCE_MISSING", `installed Core dispatcher is missing or unsafe: ${source}`);
+  }
+  return source;
+}
+
+function installChannelDispatcher(
+  evozeusHome,
+  channel,
+  coevolveVersion,
+  coreVersion,
+  dispatcherSource,
+  backupPath
+) {
   const home = resolve(evozeusHome);
   const target = join(home, "hooks", "evozeus_wrapper_dispatcher.py");
   privateDirectory(dirname(target));
   const temporary = `${target}.${randomUUID()}.tmp`;
-  writeFileSync(temporary, readFileSync(CHANNEL_DISPATCHER), { mode: 0o700 });
+  const sourceBytes = readFileSync(dispatcherSource);
+  const runtimeApi = sourceBytes.includes("evozeus.user-prompt.lesson-runtime.v1")
+    ? "evozeus.user-prompt.lesson-runtime.v1"
+    : null;
+  writeFileSync(temporary, sourceBytes, { mode: 0o700 });
   renameSync(temporary, target);
   chmodSync(target, 0o700);
   atomicWriteJson(join(home, "hooks", "state.json"), {
     schema_version: 2,
     wrapper_source: "channel-managed",
-    source_repository: "MetaInFLow/EvoZeus-CoEvolve",
+    source_repository: "MetaInFLow/EvoZeus",
     installed_version: coevolveVersion,
+    core_version: coreVersion,
+    runtime_api: runtimeApi,
     active_channel_source: "active-channel.json",
     command: `/usr/bin/python3 "${target}"`,
     installation_status: "installed",
@@ -775,9 +797,27 @@ export function reconcileChannelDispatcher(evozeusHome, channel) {
     throw new ChannelError("CHANNEL_NOT_INSTALLED", `${channel} is not installed`);
   }
   const expectedVersion = entry.manifest.components.coevolve.version;
+  const expectedCoreVersion = entry.manifest.components.evozeus.version;
+  const dispatcherSource = channelDispatcherSource(entry);
+  const installedDispatcher = join(home, "hooks", "evozeus_wrapper_dispatcher.py");
+  const installedNode = lstatEvidence(installedDispatcher);
+  const contentMatches = installedNode.status === "ready"
+    && installedNode.stats.isFile()
+    && !installedNode.stats.isSymbolicLink()
+    && readFileSync(installedDispatcher).equals(readFileSync(dispatcherSource));
   const before = dispatcherSnapshot(home);
-  if (before.status === "ready" && before.installed_version === expectedVersion) {
-    return { status: "ready", repaired: false, backup_path: null, expected_version: expectedVersion };
+  if (
+    before.status === "ready"
+    && before.installed_version === expectedVersion
+    && contentMatches
+  ) {
+    return {
+      status: "ready",
+      repaired: false,
+      backup_path: null,
+      expected_version: expectedVersion,
+      expected_core_version: expectedCoreVersion
+    };
   }
 
   const dispatcherPath = join(home, "hooks", "evozeus_wrapper_dispatcher.py");
@@ -786,7 +826,14 @@ export function reconcileChannelDispatcher(evozeusHome, channel) {
   const stateExisted = existsSync(statePath);
   const backupPath = backupLegacyState(home);
   try {
-    installChannelDispatcher(home, channel, expectedVersion, backupPath);
+    installChannelDispatcher(
+      home,
+      channel,
+      expectedVersion,
+      expectedCoreVersion,
+      dispatcherSource,
+      backupPath
+    );
   } catch (error) {
     if (backupPath) restoreLegacyState(home, backupPath);
     if (!dispatcherExisted) rmSync(dispatcherPath, { force: true });
@@ -799,7 +846,8 @@ export function reconcileChannelDispatcher(evozeusHome, channel) {
     backup_path: backupPath ? String(backupPath) : null,
     previous_status: before.status,
     previous_version: before.installed_version ?? null,
-    expected_version: expectedVersion
+    expected_version: expectedVersion,
+    expected_core_version: expectedCoreVersion
   };
 }
 
@@ -1390,6 +1438,19 @@ function installedEntryIntegrity(evozeusHome, entry, manifest, { historical = fa
       if (dispatcher.status !== "ready") issues.push(`dispatcher:${dispatcher.status}`);
       if (dispatcher.installed_version !== manifest.components.coevolve.version) {
         issues.push("dispatcher:version_mismatch");
+      }
+      const dispatcherPath = join(hooksRoot, "evozeus_wrapper_dispatcher.py");
+      const dispatcherSource = coreRoot
+        ? join(coreRoot, "scripts", "evozeus-coevolve-dispatcher.py")
+        : null;
+      if (dispatcherSource && existsSync(dispatcherPath) && existsSync(dispatcherSource)) {
+        try {
+          if (!readFileSync(dispatcherPath).equals(readFileSync(dispatcherSource))) {
+            issues.push("dispatcher:content_mismatch");
+          }
+        } catch {
+          unsafe.push("dispatcher:unreadable");
+        }
       }
     }
   }
