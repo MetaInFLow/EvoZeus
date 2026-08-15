@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+## [v0.5.2] - 2026-08-16
+
+### Changed
+
+- 将默认用户 Skill、维护者 Skill、Runtime/Session Signal Skill 和插件界面统一为中文优先。
+- 保留 CLI 命令、路径、字段名、协议枚举、`Use when` 触发契约和必要英文专有名词，避免改变执行契约。
+
+### Verification
+
+- Skill 结构校验、Node 产品测试、Session Signal 测试和 Runtime 测试全部通过。
+
 ## [v0.5.1] - 2026-08-04
 
 ### Fixed

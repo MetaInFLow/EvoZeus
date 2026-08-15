@@ -7,7 +7,7 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 const PRIMARY_DESCRIPTION =
-  "With explicit approval, turn local Codex history into an AI usage profile and attach a CoEvolve Harness to an independent Skillware repository.";
+  "经明确确认后，将本地 Codex 历史转化为 AI 使用画像，并为独立 Skillware Repo 接入 CoEvolve Harness。";
 const PRIMARY_PROMPTS = [
   "先为我生成本机 Codex 历史扫描计划并等待明确批准；当前只支持 Codex，批准前不要读取历史。批准后生成 AI 使用习惯、优势与盲区、人格画像（例如 INTJ 倾向）报告。",
   "为我指定的独立 Skillware Repo 接入 CoEvolve Harness；先检查并给出计划，修改 Repo 或 GitHub 前等待我的明确批准。",
@@ -25,19 +25,19 @@ test("plugin metadata leads with the two primary outcomes and approval boundary"
 
   assert.equal(codex.description, PRIMARY_DESCRIPTION);
   assert.deepEqual(codex.keywords.slice(0, 2), ["ai-usage-profile", "skillware-evolution"]);
-  assert.equal(codex.interface.shortDescription, "AI usage profiles and Skillware evolution");
-  assert.match(codex.interface.longDescription, /habits, strengths, blind spots/);
-  assert.match(codex.interface.longDescription, /session-derived personality tendency/);
-  assert.match(codex.interface.longDescription, /Codex is the only supported history provider/);
-  assert.match(codex.interface.longDescription, /Session review, Lesson capture, and Stable\/UAT maintenance remain available as supporting tools/);
+  assert.equal(codex.interface.shortDescription, "AI 使用画像与 Skillware 进化");
+  assert.match(codex.interface.longDescription, /习惯、优势、盲区/);
+  assert.match(codex.interface.longDescription, /会话派生人格倾向/);
+  assert.match(codex.interface.longDescription, /当前 Release 只支持 Codex/);
+  assert.match(codex.interface.longDescription, /会话复盘、Lesson 捕捉和 Stable\/UAT 维护作为辅助能力继续提供/);
   assert.deepEqual(codex.interface.defaultPrompt, PRIMARY_PROMPTS);
-  assert.match(claude.description, /local Codex history/);
-  assert.match(claude.description, /only supported history provider/);
+  assert.match(claude.description, /本地 Codex 历史/);
+  assert.match(claude.description, /当前只支持 Codex/);
   assert.deepEqual(claude.keywords, codex.keywords);
-  assert.match(marketplace.plugins[0].description, /local Codex history/);
-  assert.match(marketplace.plugins[0].description, /only supported history provider/);
-  assert.match(marketplace.metadata.description, /AI usage profiles/);
-  assert.match(marketplace.metadata.description, /CoEvolve Harnesses/);
+  assert.match(marketplace.plugins[0].description, /本地 Codex 历史/);
+  assert.match(marketplace.plugins[0].description, /当前只支持 Codex/);
+  assert.match(marketplace.metadata.description, /AI 使用画像/);
+  assert.match(marketplace.metadata.description, /CoEvolve Harness/);
 });
 
 test("installed onboarding and the root plugin route keep primary and supporting features ordered", () => {
@@ -52,9 +52,9 @@ test("installed onboarding and the root plugin route keep primary and supporting
   assert.match(onboarding, /当前只支持 Codex 历史/);
   assert.match(onboarding, /A\. 先生成本机 Codex 历史扫描与 AI 使用画像计划/);
   assert.match(onboarding, /B\. 为某个独立 Skillware Repo 生成 CoEvolve Harness 接入计划/);
-  assert.ok(usingEvoZeus.indexOf("Plan or generate an AI usage profile") < usingEvoZeus.indexOf("Review one session"));
-  assert.match(usingEvoZeus, /Codex is the only supported history provider/);
-  assert.match(usingEvoZeus, /Read Codex history, run Factors, or write the report only after explicit approval/);
+  assert.ok(usingEvoZeus.indexOf("基于本地 Codex 历史规划或生成 AI 使用画像") < usingEvoZeus.indexOf("复盘一次会话"));
+  assert.match(usingEvoZeus, /当前 Release 只支持 Codex/);
+  assert.match(usingEvoZeus, /明确确认前不要读取 Codex 历史、运行 Factor 或写入报告/);
 });
 
 test("install instructions share the local-state-first Stable preflight contract", () => {
@@ -75,10 +75,10 @@ test("install instructions share the local-state-first Stable preflight contract
     assert.match(install, new RegExp(state));
     assert.match(reference, new RegExp(state));
   }
-  assert.ok(install.indexOf("Step 0: inspect the local CLI") < install.indexOf("resolve the latest immutable EvoZeus Stable Release"));
-  assert.match(maintain, /Only `not_installed` may enter fresh install/);
-  assert.match(maintain, /strict zero-download, zero-write, zero-registration no-op/);
-  assert.match(install, /Preflight v1 supports Stable only/);
+  assert.ok(install.indexOf("步骤 0：解析 Release 前检查本地 CLI 和状态") < install.indexOf("仅当状态为 not_installed 时解析最新不可变 EvoZeus Stable Release 资源和 checksum"));
+  assert.match(maintain, /只有 `not_installed` 可以进入全新安装/);
+  assert.match(maintain, /严格的零下载、零写入、零注册 no-op/);
+  assert.match(install, /Preflight v1 只支持 Stable/);
   assert.match(install, /--preflight-stdin --approve-write/);
 });
 

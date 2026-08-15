@@ -4,14 +4,14 @@
     "name": "MetaInFlow"
   },
   "metadata": {
-    "description": "Install EvoZeus to build approved AI usage profiles from local Codex history and attach CoEvolve Harnesses to independent Skillware repositories. Codex is the only supported history provider."
+    "description": "安装 EvoZeus，从本地 Codex 历史构建经确认的 AI 使用画像，并为独立 Skillware Repo 接入 CoEvolve Harness。当前只支持 Codex。"
   },
   "plugins": [
     {
       "name": "evozeus",
       "source": "./",
-      "description": "With explicit approval, turn local Codex history into an AI usage profile; Codex is the only supported history provider. Also attach a CoEvolve Harness to an independent Skillware repository.",
-      "version": "0.5.1"
+      "description": "经明确确认后，将本地 Codex 历史转化为 AI 使用画像；当前只支持 Codex。也可以为独立 Skillware Repo 接入 CoEvolve Harness。",
+      "version": "0.5.2"
     }
   ]
 }

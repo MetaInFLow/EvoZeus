@@ -1,7 +1,7 @@
 {
   "name": "evozeus",
-  "version": "0.5.1",
-  "description": "Build approved AI usage profiles and evolve independent Skillware repositories.",
+  "version": "0.5.2",
+  "description": "构建经确认的 AI 使用画像，并进化独立 Skillware Repo。",
   "private": true,
   "type": "module",
   "scripts": {
