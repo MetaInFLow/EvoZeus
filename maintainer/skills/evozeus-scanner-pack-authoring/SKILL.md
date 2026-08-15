@@ -1,58 +1,58 @@
 ---
 name: evozeus-scanner-pack-authoring
-description: Use when authoring, reviewing, routing, or submitting executable Factor packs, scanner modules, scanner packs, resolvers, or pack permission declarations.
+description: Use when 编写、复核、路由或提交可执行 Factor pack、scanner module、scanner pack、resolver 或 pack 权限声明时使用。
 ---
 
-# EvoZeus Scanner Pack Authoring
+# EvoZeus Scanner Pack 编写
 
-Executable packs and scanner modules are components. They do not belong in the `EvoZeus` main repo; they start in `EvoZeus-factor-lab` and can become official only through release review.
+可执行 pack 和 scanner module 属于组件，不放入 `EvoZeus` 主 Repo；它们从 `EvoZeus-factor-lab` 开始，只有经过 Release 复核才可以成为 official。
 
-## When To Use
+## 使用时机
 
-Use this skill for:
+以下场景使用此 Skill：
 
-- executable Factor pack
+- 可执行 Factor pack
 - scanner module
 - scanner pack
 - resolver script
-- file/session ingestion logic
-- pack permission declaration
-- dependency, sandbox, or supply-chain review
+- 文件/会话摄取逻辑
+- pack 权限声明
+- 依赖、sandbox 或供应链复核
 
-## Route
+## 路由
 
 ```text
 EvoZeus Case / Candidate
-  -> maintainer route
-  -> EvoZeus-factor-lab submission
-  -> evidence + privacy + scanner permission gates
+  -> 维护者路由
+  -> 提交到 EvoZeus-factor-lab
+  -> 证据 + 隐私 + scanner 权限门禁
   -> reviewed / rejected
-  -> optional promotion to EvoZeus-session-signal-skill
+  -> 可选晋级到 EvoZeus-session-signal-skill
 ```
 
-## Required Packet
+## 必要提交包
 
-Every pack or scanner submission should include:
+每个 pack 或 scanner 提交都应包含：
 
-- source Case or Candidate link
-- evidence packet
-- purpose and trigger
-- input files, env vars, commands, and network behavior
-- output files, stdout, report fields, and local state changes
-- dependencies, lockfile, license, checksum, or sandbox note
-- failure modes and rollback path
-- privacy note
+- 来源 Case 或 Candidate 链接
+- 证据包
+- 目的和触发条件
+- 输入文件、env var、命令和网络行为
+- 输出文件、stdout、报告字段和本地状态变更
+- 依赖、lockfile、license、checksum 或 sandbox 说明
+- 失败模式和回滚路径
+- 隐私说明
 
-## Read Next
+## 下一步读取
 
-- `../evozeus-factor-authoring/SKILL.md` for semantic Factor quality.
-- `../evozeus-redaction/SKILL.md` before public evidence.
-- `../../../docs/reference/scanner-pack-protocol.md` for scanner pack contract.
-- `EvoZeus-factor-lab/templates/scanner-submission.md` when working inside the lab repo.
+- 语义 Factor 质量读取 `../evozeus-factor-authoring/SKILL.md`。
+- 公开证据前读取 `../evozeus-redaction/SKILL.md`。
+- scanner pack 契约读取 `../../../docs/reference/scanner-pack-protocol.md`。
+- 在 lab Repo 内工作时读取 `EvoZeus-factor-lab/templates/scanner-submission.md`。
 
-## Boundaries
+## 边界
 
-- Do not put executable scanner or pack code in the main repo.
-- Do not treat lab review as official release.
-- Do not let runtime consume lab moving branch.
-- Do not skip security review for scanner code.
+- 不要把可执行 scanner 或 pack 代码放入主 Repo。
+- 不要将 lab 复核视为 official Release。
+- 不要让 Runtime 消费 lab 的移动分支。
+- 不要跳过 scanner 代码的安全复核。

@@ -1,45 +1,45 @@
 ---
 name: evozeus-reporting
-description: Use when generating, reviewing, or refining EvoZeus Evidence Reports, Session Verdict Cards, Case summaries, or report templates.
+description: Use when 生成、复核或完善 EvoZeus Evidence Report、Session Verdict Card、Case 摘要或报告模板时使用。
 ---
 
-# EvoZeus-Reporting
+# EvoZeus 报告
 
-Reports translate a raw session into reviewable evidence. They should make the next decision easier: preserve, promote, extract, fix, reject, or keep open.
+报告将原始会话转化为可复核证据，帮助下一步更容易作出保存、晋级、提取、修复、拒绝或保持开放的决定。
 
-## Report Types
+## 报告类型
 
-| Report | Use when |
+| 报告 | 使用时机 |
 | --- | --- |
-| Session Verdict Card | Fast review of one session outcome |
-| Evidence Report | Structured evidence for a Case or Candidate |
-| Case Summary | Public or maintainer-facing issue context |
-| Candidate Report | Promotion argument for Skill, Factor, Pattern, Habit, or Environment Rule |
+| Session Verdict Card | 快速复核一次会话结果 |
+| Evidence Report | 为 Case 或 Candidate 提供结构化证据 |
+| Case Summary | 面向公开场景或维护者的 issue 上下文 |
+| Candidate Report | 为 Skill、Factor、Pattern、Habit 或 Environment Rule 提供晋级论证 |
 
-Use `../../../docs/reference/report-templates.md` and `../../../docs/reference/verdict-card.md`.
+使用 `../../../docs/reference/report-templates.md` 和 `../../../docs/reference/verdict-card.md`。
 
-## Report Order
+## 报告顺序
 
-Write reports in this order:
+按以下顺序撰写报告：
 
 ```text
-Context -> Evidence -> Signals -> Proposed Verdict -> Artifact Candidate -> Privacy -> Next Action
+上下文 -> Evidence -> Signals -> 拟议 Verdict -> Artifact Candidate -> 隐私 -> 下一步行动
 ```
 
-## Evidence Rules
+## 证据规则
 
-- Separate observation from inference.
-- Link each proposed Verdict to concrete Evidence.
-- State what was not tested or not observed.
-- Use `Open Case` instead of forcing a conclusion when evidence is thin.
-- Apply `../evozeus-redaction/SKILL.md` before public sharing.
+- 区分观察和推断。
+- 将每个拟议 Verdict 关联到具体 Evidence。
+- 说明哪些内容没有测试或观察到。
+- 证据薄弱时使用 `Open Case`，不要强行下结论。
+- 公开分享前应用 `../evozeus-redaction/SKILL.md`。
 
-## Bad Reports
+## 不合格报告
 
-Reject or revise reports that:
+拒绝或修改具有以下问题的报告：
 
-- score the agent without evidence
-- summarize vibes instead of behavior
-- turn one-off opinion into a Candidate
-- omit privacy status
-- hide uncertainty
+- 没有证据却给 Agent 打分
+- 总结感受而非行为
+- 将一次性观点转化为 Candidate
+- 遗漏隐私状态
+- 隐藏不确定性

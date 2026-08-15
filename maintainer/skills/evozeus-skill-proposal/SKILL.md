@@ -1,43 +1,43 @@
 ---
 name: evozeus-skill-proposal
-description: Use when proposing, changing, promoting, rejecting, or reviewing EvoZeus skills, scenario skills, prompts, or agent-facing instructions.
+description: Use when 提议、修改、晋级、拒绝或复核 EvoZeus Skill、场景 Skill、prompt 或面向 Agent 的指令时使用。
 ---
 
-# EvoZeus-Skill Proposal
+# EvoZeus Skill 提案
 
-Skill changes alter agent behavior. Treat them as governance-risk work, not normal docs polish.
+Skill 变更会改变 Agent 行为，应按治理风险工作处理，不能当作普通文档润色。
 
-## When A Skill Is Justified
+## Skill 的适用条件
 
-Propose a Skill when repeated evidence shows:
+重复证据显示以下情况时，才提议 Skill：
 
-- agents fail the same workflow under pressure
-- the fix requires judgment, not only a script or regex
-- the pattern applies beyond one private session
-- the public instruction can be written without leaking private context
-- success and rejection criteria are clear
+- Agent 在压力下反复失败于同一工作流
+- 修复需要判断，不能只靠脚本或 regex
+- 模式适用于一场私密会话之外的场景
+- 公开指令可以在不泄露私密上下文的情况下编写
+- 成功和拒绝标准清楚
 
-Do not create a Skill for a one-off result, generic advice, or behavior that should be enforced by code.
+一次性结果、泛化建议或应由代码强制的行为，不创建 Skill。
 
-## Proposal Shape
+## 提案结构
 
-Include:
+包含：
 
-- trigger condition
-- failure evidence
-- desired behavior
-- non-goals
-- safety boundary
-- related ontology terms
-- public/private evidence status
-- rollback or deprecation path
+- 触发条件
+- 失败证据
+- 期望行为
+- 非目标
+- 安全边界
+- 相关 ontology 术语
+- 公开/私密证据状态
+- 回滚或 deprecation 路径
 
-Use `../../../.github/PULL_REQUEST_TEMPLATE/skill_instruction_change.md` when opening a PR.
+创建 PR 时使用 `../../../.github/PULL_REQUEST_TEMPLATE/skill_instruction_change.md`。
 
-## Editing Existing Skills
+## 编辑已有 Skill
 
-- Keep root `../../../SKILL.md` as the stable session judgment entry.
-- Put scenario-specific rules under `../`.
-- Keep descriptions as trigger conditions only; do not summarize the whole workflow in frontmatter.
-- Reuse project terms from `../../../docs/governance/terminology-glossary.md`.
-- Run `python3 scripts/check_pr_ready.py --base <base-ref>` from repository root before review.
+- 保持根 `../../../SKILL.md` 为稳定的会话判断入口。
+- 将场景专属规则放在 `../` 下。
+- description 只写触发条件；不要在 frontmatter 中总结整个工作流。
+- 复用 `../../../docs/governance/terminology-glossary.md` 中的项目术语。
+- 复核前从 Repo 根目录运行 `python3 scripts/check_pr_ready.py --base <base-ref>`。

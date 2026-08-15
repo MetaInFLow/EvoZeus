@@ -1,43 +1,43 @@
 ---
 name: evolve-skillware-repo
-description: Use when the user asks to attach, inspect, upgrade, or repair EvoZeus CoEvolve for a Skill, plugin, or Skillware codebase. Enforce that only an independent Git repository root can own a Harness.
+description: Use when 用户要求为 Skill、插件或 Skillware 代码库接入、检查、升级或修复 EvoZeus CoEvolve 时使用。确保只有独立 Git Repo 根目录可以拥有 Harness。
 ---
 
-# Evolve a Skillware Repo
+# 进化 Skillware Repo
 
-## Resolve the governance unit
+## 确定治理单元
 
-1. Resolve the target's Git root.
-2. If the target is a Skill, package, pack, or app inside that Repo, use the Git root as the evolution target.
-3. If no Git root exists, provide a plan and explain that a Harness cannot be attached until the target becomes an independent Repo.
-4. Check for the one allowed root Harness: `.evozeus-wrapper/`.
-5. Treat `.evozeus_evoinfra/` as a migration signal, never as a new installation target.
+1. 确定目标的 Git 根目录。
+2. 如果目标是该 Repo 内的 Skill、package、pack 或 app，将 Git 根目录作为进化目标。
+3. 如果不存在 Git 根目录，提供计划并说明：目标成为独立 Repo 前，无法接入 Harness。
+4. 检查唯一允许的根级 Harness：`.evozeus-wrapper/`。
+5. 将 `.evozeus_evoinfra/` 视为迁移信号，不要将其作为新的安装目标。
 
-## Modes
+## 模式
 
-| Request | Action |
+| 请求 | 动作 |
 | --- | --- |
-| Inspect/status | Read-only diagnosis |
-| Attach | Generate the exact root-level Harness plan; write only with approval |
-| Upgrade | Verify maintainer authority, current/target version, migration and tests |
-| Upgrade all | Inventory registered independent Repos; ordinary users receive a plan, authorized maintainers may create per-Repo PRs |
+| 检查/状态 | 只读诊断 |
+| 接入 | 生成精确的根级 Harness 计划；获得确认后才写入 |
+| 升级 | 验证维护者权限、当前/目标版本、迁移和测试 |
+| 全部升级 | 盘点已注册的独立 Repo；普通用户获得计划，获授权的维护者可以为每个 Repo 创建 PR |
 
-Harness upgrades and pushes require verified target Repo `ADMIN` permission and maintainer policy authorization. UAT changes update the single UAT candidate for that Repo; stable releases use the verified UAT Commit.
+Harness 升级和推送需要已验证的目标 Repo `ADMIN` 权限以及维护者策略授权。UAT 变更只更新该 Repo 的单一 UAT 候选；stable 发布使用已验证的 UAT Commit。
 
-## Output
+## 输出
 
-Use this lifecycle tag for version decisions:
+版本决策使用以下生命周期标签：
 
 ```text
 🧭 EvoZeus · 版本状态｜<repo> · <stable|uat|development> · <current → target>
 ```
 
-After authorized edits start, use `🛠️ EvoZeus · 进化中`. Use `🧪 EvoZeus · UAT 就绪` only after the unique UAT candidate passes its gates, and `🚀 EvoZeus · 已发布` only after the Stable Release exists.
+授权编辑开始后，使用 `🛠️ EvoZeus · 进化中`。只有唯一 UAT 候选通过全部门禁后，才使用 `🧪 EvoZeus · UAT 就绪`；只有 Stable Release 已存在后，才使用 `🚀 EvoZeus · 已发布`。
 
-## Verification target
+## 验证目标
 
-- Target is an independent Git Repo root.
-- No nested Harness exists.
-- Exact current and target versions are known.
-- Upgrade validation passes before PR or UAT promotion.
-- Stable is untouched during UAT repair.
+- 目标是独立 Git Repo 根目录。
+- 不存在嵌套 Harness。
+- 已知当前版本和目标版本的精确值。
+- PR 或 UAT 晋级前，升级验证已通过。
+- 修复 UAT 时 Stable 未被修改。

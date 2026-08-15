@@ -1,36 +1,36 @@
 ---
 name: evozeus-development
-description: Use when developing EvoZeus protocol/governance itself, changing repository files, branch structure, PR templates, docs, scripts, governance, or agent-facing instructions.
+description: Use when 开发 EvoZeus 协议/治理本身，或修改 Repo 文件、分支结构、PR 模板、文档、脚本、治理规则或面向 Agent 的指令时使用。
 ---
 
-# EvoZeus-Development
+# EvoZeus 开发
 
-Development work must keep EvoZeus small, reviewable, and evidence-backed. One PR should have one primary purpose, one primary layer, and one validation story.
+开发工作必须让 EvoZeus 保持小巧、可复核并有证据支撑。一个 PR 应只有一个主要目的、一个主要层级和一条验证链路。
 
-The `EvoZeus` main repo is Protocol-only. Runtime implementation, scanner execution, CLI/TUI, companion, `~/.evozeus` local state, lockfile, SQLite ledger, and report execution belong in `evozeus-runtime`, not this repo. The old main-repo runtime prototype has been removed from this repo; use the runtime repo for implementation work and the main repo only for protocol, governance, registry pointer, or routing changes.
+`EvoZeus` 主 Repo 只负责 Protocol。Runtime 实现、scanner 执行、CLI/TUI、companion、`~/.evozeus` 本地状态、lockfile、SQLite ledger 和报告执行属于 `evozeus-runtime`，不属于本 Repo。旧的主 Repo Runtime 原型已经移除；实现工作使用 Runtime Repo，主 Repo 只处理协议、治理、registry pointer 或路由变更。
 
-## Branch Rule
+## 分支规则
 
-Use this branch format:
+使用以下分支格式：
 
 ```text
 codex/<type>/<yyyymmdd>-<component>-<summary>
 ```
 
-Allowed `type`:
+允许的 `type`：
 
-| Type | Use for |
+| Type | 用途 |
 | --- | --- |
-| `dev` | New protocol-supporting script or product behavior in this repo; runtime implementation belongs in `evozeus-runtime` |
-| `bug` | Defect fix with reproduction or evidence |
-| `refactor` | Behavior-preserving restructuring tied to an issue or maintainer request |
-| `docs` | Documentation, templates, governance text, or skill docs |
-| `test` | Test coverage tied to a behavior, Case, or bug |
-| `chore` | Maintenance that does not change user-visible behavior |
+| `dev` | 本 Repo 中支持协议的新脚本或产品行为；Runtime 实现属于 `evozeus-runtime` |
+| `bug` | 有复现或证据支撑的缺陷修复 |
+| `refactor` | 与 issue 或维护者请求相关且保持行为不变的重构 |
+| `docs` | 文档、模板、治理文本或 Skill 文档 |
+| `test` | 与行为、Case 或缺陷相关的测试覆盖 |
+| `chore` | 不改变用户可见行为的维护工作 |
 
-Allowed `component` should match the touched surface where possible: `factor`, `verdict-card`, `docs`, `governance`, `skill`, `registry`, or `template`. Use `runtime`, `doctor`, `tui`, `companion`, `workspace`, or `infra` only for migration coordination or protocol/trust-policy text; implementation PRs go to `evozeus-runtime`.
+允许的 `component` 应尽量匹配被修改的表面：`factor`、`verdict-card`、`docs`、`governance`、`skill`、`registry` 或 `template`。只有迁移协调或协议/信任策略文本才使用 `runtime`、`doctor`、`tui`、`companion`、`workspace` 或 `infra`；实现 PR 应提交到 `evozeus-runtime`。
 
-Examples:
+示例：
 
 ```text
 codex/docs/20260616-skill-scenario-routing
@@ -38,33 +38,33 @@ codex/docs/20260616-runtime-routing-boundary
 codex/bug/20260616-runtime-report-id
 ```
 
-## Scope Rule
+## 范围规则
 
-Pick one primary layer:
+选择一个主要层级：
 
-| Layer | Typical files |
+| 层级 | 典型文件 |
 | --- | --- |
-| Semantic | `docs/reference/`, terminology, ontology, evidence grading |
-| Execution | Runtime implementation belongs in `evozeus-runtime`; this repo should only contain protocol-supporting scripts or migration notes |
-| Governance | `SKILL.md`, `skills/`, `.github/`, `CONTRIBUTING.md`, `docs/governance/`, PR checks |
+| Semantic | `docs/reference/`、术语、ontology、证据分级 |
+| Execution | Runtime 实现属于 `evozeus-runtime`；本 Repo 只保留支持协议的脚本或迁移说明 |
+| Governance | `SKILL.md`、`skills/`、`.github/`、`CONTRIBUTING.md`、`docs/governance/`、PR 检查 |
 
-Do not mix Candidate content, runtime code, and governance changes in one PR unless it is a maintainer-approved migration and the PR states why a cross-layer change is necessary. New runtime code should be opened against `evozeus-runtime`.
+不要在一个 PR 中混合 Candidate 内容、Runtime 代码和治理变更，除非这是维护者批准的迁移，并且 PR 说明跨层变更的必要性。新的 Runtime 代码应提交到 `evozeus-runtime`。
 
-## Naming Rule
+## 命名规则
 
-- User-facing local scenario skill names must start with `EvoZeus-`; keep frontmatter `name` and folder paths lowercase `evozeus-*` to pass skill validation.
-- Reuse project terms from `../../../docs/governance/terminology-glossary.md` and `../../../docs/reference/ontology.md`.
-- Prefer canonical names such as `Session`, `Evidence`, `Case`, `Verdict`, `Artifact`, `Candidate`, `Factor`, `Pattern`, `Rejected Pattern`, and `Environment Rule`.
-- New variables, filenames, headings, schemas, and CLI flags should make the layer and artifact kind obvious.
-- Do not introduce synonyms for established project terms unless the terminology glossary is updated in the same governance PR.
+- 面向用户的本地场景 Skill 名称必须以 `EvoZeus-` 开头；frontmatter 的 `name` 和文件夹路径保持小写 `evozeus-*`，以通过 Skill 校验。
+- 复用 `../../../docs/governance/terminology-glossary.md` 和 `../../../docs/reference/ontology.md` 中的项目术语。
+- 优先使用 `Session`、`Evidence`、`Case`、`Verdict`、`Artifact`、`Candidate`、`Factor`、`Pattern`、`Rejected Pattern` 和 `Environment Rule` 等规范名称。
+- 新变量、文件名、标题、schema 和 CLI flag 应清楚表达所属层级和 Artifact 类型。
+- 已有项目术语不得引入同义词，除非在同一个治理 PR 中同步更新术语表。
 
-## High-Risk Surfaces
+## 高风险表面
 
-These require explicit evidence and maintainer-level attention:
+以下内容需要明确证据和维护者级别的关注：
 
 - `SKILL.md`
 - `skills/`
-- `.github/` templates or workflows
+- `.github/` 模板或 workflow
 - `scripts/github/`
 - `SECURITY.md`
 - `schemas/`
@@ -73,19 +73,19 @@ These require explicit evidence and maintainer-level attention:
 - `docs/governance/privacy-and-redaction.md`
 - `docs/reference/ontology.md`
 - `docs/reference/evidence-grading.md`
-- future schema, redaction, upload, session ingestion, or candidate extraction code
-- any change that reintroduces runtime implementation into this repo instead of using `evozeus-runtime`
+- 未来的 schema、脱敏、上传、会话摄取或 Candidate 提取代码
+- 任何不使用 `evozeus-runtime`、却把 Runtime 实现重新引入本 Repo 的变更
 
-## Pre-Submit Gate
+## 提交前门禁
 
-Before staging or pushing, run the checks that match the change:
+暂存或推送前，运行与变更匹配的检查：
 
 ```bash
 python3 scripts/check_pr_ready.py --base <base-ref>
 git diff --check
 ```
 
-For this repository, docs and governance-only work should at minimum pass:
+在本 Repo 中，仅涉及文档和治理的工作至少应通过：
 
 ```bash
 python3 -m py_compile scripts/check_pr_ready.py
@@ -93,17 +93,17 @@ python3 scripts/check_pr_ready.py --base <base-ref>
 git diff --check
 ```
 
-If issue templates changed, also parse `.github/ISSUE_TEMPLATE/*.yml` with a YAML parser available in the local environment.
+如果修改了 issue 模板，还要使用本地环境可用的 YAML parser 解析 `.github/ISSUE_TEMPLATE/*.yml`。
 
-## PR Template
+## PR 模板
 
-Use the closest template:
+使用最匹配的模板：
 
-| Work | Template |
+| 工作 | 模板 |
 | --- | --- |
-| Default or mixed docs/governance | `../../../.github/PULL_REQUEST_TEMPLATE.md` |
-| Candidate, Case, Pattern, Factor, or Artifact | `../../../.github/PULL_REQUEST_TEMPLATE/candidate_submission.md` |
-| Protocol-supporting script or behavior in this repo | `../../../.github/PULL_REQUEST_TEMPLATE/code_change.md` |
-| Runtime, CLI, TUI, companion, scanner execution, local state, or report execution | Open PR in `evozeus-runtime` |
-| Ontology, schema, protocol, compatibility | `../../../.github/PULL_REQUEST_TEMPLATE/schema_change.md` |
-| `SKILL.md`, `skills/`, prompts, or agent instructions | `../../../.github/PULL_REQUEST_TEMPLATE/skill_instruction_change.md` |
+| 默认或混合的文档/治理变更 | `../../../.github/PULL_REQUEST_TEMPLATE.md` |
+| Candidate、Case、Pattern、Factor 或 Artifact | `../../../.github/PULL_REQUEST_TEMPLATE/candidate_submission.md` |
+| 本 Repo 中支持协议的脚本或行为 | `../../../.github/PULL_REQUEST_TEMPLATE/code_change.md` |
+| Runtime、CLI、TUI、companion、scanner 执行、本地状态或报告执行 | 在 `evozeus-runtime` 中创建 PR |
+| Ontology、schema、协议或兼容性 | `../../../.github/PULL_REQUEST_TEMPLATE/schema_change.md` |
+| `SKILL.md`、`skills/`、prompt 或 Agent 指令 | `../../../.github/PULL_REQUEST_TEMPLATE/skill_instruction_change.md` |

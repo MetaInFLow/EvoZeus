@@ -1,7 +1,7 @@
 {
   "name": "evozeus",
   "version": "0.5.1",
-  "description": "With explicit approval, turn local Codex history into an AI usage profile and attach a CoEvolve Harness to an independent Skillware repository.",
+  "description": "经明确确认后，将本地 Codex 历史转化为 AI 使用画像，并为独立 Skillware Repo 接入 CoEvolve Harness。",
   "author": {
     "name": "MetaInFlow",
     "url": "https://github.com/MetaInFLow"
@@ -20,10 +20,10 @@
   "skills": "./skills/",
   "interface": {
     "displayName": "EvoZeus",
-    "shortDescription": "AI usage profiles and Skillware evolution",
-    "longDescription": "With explicit approval, analyze local Codex history into an evidence-backed AI usage profile covering habits, strengths, blind spots, and a session-derived personality tendency. Codex is the only supported history provider in the current release. Attach a CoEvolve Harness to an independent Skillware repository so confirmed feedback can enter a governed improvement lifecycle. Session review, Lesson capture, and Stable/UAT maintenance remain available as supporting tools.",
+    "shortDescription": "AI 使用画像与 Skillware 进化",
+    "longDescription": "经明确确认后，分析本地 Codex 历史，生成覆盖习惯、优势、盲区和会话派生人格倾向的证据型 AI 使用画像。当前 Release 只支持 Codex。为独立 Skillware Repo 接入 CoEvolve Harness，让已确认反馈进入受治理的改进生命周期。会话复盘、Lesson 捕捉和 Stable/UAT 维护作为辅助能力继续提供。",
     "developerName": "MetaInFlow",
-    "category": "Developer Tools",
+    "category": "开发工具",
     "capabilities": [
       "Interactive",
       "Read",

@@ -1,49 +1,49 @@
 ---
 name: evozeus-redaction
-description: Use when preparing EvoZeus evidence, reports, logs, screenshots, examples, issues, pull requests, or session excerpts for public sharing.
+description: Use when 准备公开分享的 EvoZeus 证据、报告、日志、截图、示例、issue、pull request 或会话摘录时使用。
 ---
 
-# EvoZeus-Redaction
+# EvoZeus 脱敏
 
-Public EvoZeus artifacts must preserve judgment value while removing private data. Raw sessions are not public contribution material.
+公开的 EvoZeus Artifact 必须保留判断价值，同时移除私密数据。原始会话不能作为公开贡献材料。
 
-## Remove Or Generalize
+## 删除或泛化
 
-Always remove:
+始终删除：
 
-- secrets, tokens, cookies, credentials, private keys
-- customer names, user names, email, phone, address, account IDs
-- private local paths when not needed for the Case
-- unreleased code, proprietary prompts, private configs
-- exact screenshots or logs that expose private work
+- 密钥、token、cookie、凭据、私钥
+- 客户名称、用户名称、邮箱、电话、地址、账户 ID
+- Case 不需要的私有本地路径
+- 未发布代码、专有 prompt、私有配置
+- 暴露私密工作的原始截图或日志
 
-Generalize when the detail is useful but identifying:
+细节有用但可能识别个人或组织时，进行泛化：
 
-| Private detail | Public replacement |
+| 私密细节 | 公开替代内容 |
 | --- | --- |
 | `/Users/alice/company/client-x/project` | `/private/workspace/project` |
-| real customer name | `Customer A` |
-| exact token or key | `[REDACTED_SECRET]` |
-| internal URL | `https://internal.example/redacted` |
+| 真实客户名称 | `Customer A` |
+| 完整 token 或 key | `[REDACTED_SECRET]` |
+| 内部 URL | `https://internal.example/redacted` |
 
-## Keep Judgment Value
+## 保留判断价值
 
-Do not redact so much that evidence becomes meaningless. Keep:
+不要过度脱敏到证据失去意义。保留：
 
-- failure type
-- relevant command shape
-- artifact kind
-- environment class
-- before/after behavior
-- reviewer-facing limitation
+- 失败类型
+- 相关命令形态
+- Artifact 类型
+- 环境类别
+- 修改前后行为
+- 面向 reviewer 的限制
 
-## Public Gate
+## 公开门禁
 
-Before opening an issue, PR, or example, check:
+创建 issue、PR 或示例前，检查：
 
-- Does the artifact contain only the minimum evidence needed?
-- Can a reviewer understand the Case without private context?
-- Does the privacy note state what was removed or generalized?
-- Does the contribution follow `../../../docs/governance/privacy-and-redaction.md`?
+- Artifact 是否只包含必要的最小证据？
+- reviewer 是否无需私密上下文即可理解 Case？
+- 隐私说明是否写明删除或泛化了什么？
+- 贡献是否遵循 `../../../docs/governance/privacy-and-redaction.md`？
 
-If unsure, keep the artifact local and ask for owner review.
+如有疑问，将 Artifact 保留在本地并请求 owner review。
