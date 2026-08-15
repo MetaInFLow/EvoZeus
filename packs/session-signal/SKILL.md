@@ -47,7 +47,7 @@ description: Use when 使用 EvoZeus Session Signal Factor 分析 Codex 或 Agen
 
 从中性状态开始，再应用直接门。诊断项只用于解释或降级。这些标签是既有复核页面的兼容标签；最终 Artifact 路由可以不是 Skill。
 
-对于单轮普通 Chat 的 Lesson 发现，使用只读的 `evozeus.session-signal.lesson-candidate.v1` 方法。Session Signal 负责高精度纠偏/持久规则识别、通过 cwd 包含关系或调用方提供的唯一 alias 选择已注册目标，以及仅由模型提供的指导。Core 负责可信组件发现、目标清单和有边界的执行；没有后续用户确认，不持久化任何候选。
+对于单轮普通 Chat 的 Lesson 发现，使用只读的 `evozeus.session-signal.lesson-candidate.v1` 方法。Core 传入已注册 Skill 写明的 `correction_requirements`；宿主模型依据这份要求对当前轮次进行语义判断。Session Signal 负责通过 cwd 包含关系或调用方提供的唯一 alias 选择已注册目标，并提供有边界的模型指导。Core 负责可信组件发现、目标清单和有边界的执行；没有后续用户确认，不持久化任何候选。
 
 | 标签 | 使用时机 |
 | --- | --- |

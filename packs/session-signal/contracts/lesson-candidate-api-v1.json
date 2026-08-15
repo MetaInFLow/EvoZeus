@@ -18,7 +18,13 @@
       "prompt_chars": 32000,
       "targets": 256,
       "aliases_per_target": 32,
-      "alias_chars": 128
+      "alias_chars": 128,
+      "correction_requirements_chars": 12000
+    },
+    "target": {
+      "required": ["repo", "canonical_path", "aliases"],
+      "optional": ["correction_requirements"],
+      "correction_requirements": "UTF-8 text copied from the registered Skill's feedback audit rule"
     }
   },
   "response": {
@@ -36,5 +42,11 @@
   "side_effects": {
     "persistence": false,
     "network": false
+  },
+  "method": {
+    "candidate_gate": "A written correction_requirements rule must be available; prompt wording is not a deterministic signal.",
+    "semantic_judgment": "The host model applies the Skill-authored rule to the current user turn.",
+    "routing": "cwd containment first, then one unique alias; unresolved targets remain unassigned.",
+    "missing_rule": "candidate=false"
   }
 }

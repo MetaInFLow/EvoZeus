@@ -28,7 +28,7 @@ Direct gates establish the primary judgment. Diagnostics explain, qualify, or do
 
 ## Normal Chat Lesson candidate
 
-The built-in `evozeus.session-signal.lesson-candidate.v1` method evaluates one `UserPromptSubmit` turn for high-precision correction or durable-rule evidence. It selects a target only from cwd containment, the canonical `OWNER/REPO`, or one unique caller-provided alias, and returns bounded model-only guidance without persistence or network access.
+The built-in `evozeus.session-signal.lesson-candidate.v1` method routes each `UserPromptSubmit` turn through the registered Skill's written correction requirements. It selects a target only from cwd containment, the canonical `OWNER/REPO`, or one unique caller-provided alias, and returns bounded model-only guidance without persistence or network access. Prompt wording is not a candidate detector.
 
 Core ships and digest-pins `scripts/evaluate_lesson_candidate.py` and `src/evozeus_session_signal_skill/lesson_candidate.py`. Product-channel discovery, file integrity, target inventory and subprocess limits remain Core responsibilities.
 

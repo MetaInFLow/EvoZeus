@@ -10,12 +10,11 @@ from .factor import (
 from .lesson_candidate import (
     LESSON_CANDIDATE_API,
     evaluate_lesson_candidate,
-    is_lesson_candidate,
     model_guidance,
     select_lesson_target,
 )
 
-__version__ = "0.1.2"
+__version__ = "0.1.0"
 
 __all__ = [
     "OfficialFactor",
@@ -27,7 +26,6 @@ __all__ = [
     "validate_official_factor_spec",
     "LESSON_CANDIDATE_API",
     "evaluate_lesson_candidate",
-    "is_lesson_candidate",
     "model_guidance",
     "select_lesson_target",
     "__version__",

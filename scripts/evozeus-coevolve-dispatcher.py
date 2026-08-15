@@ -20,10 +20,10 @@ SCHEMA_VERSION = "evozeus.channel-coevolve-dispatcher.v2"
 AUTO_UPDATE_TIMEOUT_SECONDS = 120
 USER_PROMPT_EVENT = "UserPromptSubmit"
 USER_PROMPT_RUNTIME_API = "evozeus.user-prompt.lesson-runtime.v1"
-SESSION_SIGNAL_SOURCE_REVISION = "5d6ccce7eb821809e8594ecc3968e26211b31f12"
+SESSION_SIGNAL_SOURCE_REVISION = "6eefc673dfc33c983e4144a688f462c9f28c36a4"
 SESSION_SIGNAL_ATTACHMENT_PATH = Path("contracts/v1/user-prompt-lesson-runtime.json")
 SESSION_SIGNAL_ATTACHMENT_SHA256 = (
-    "2eb1be7548819d6ec201116a0b334893df6b0995a383e8e64a9d7a5de0178dfe"
+    "13ea5c3e221d00c916d75016be32a9ecb5e63dffe249777a194b6f8649fdc858"
 )
 PROJECTS_DIR = Path(".evozeus/.projects")
 MANIFEST_CANDIDATES = (
@@ -40,6 +40,12 @@ SESSION_SIGNAL_MAX_TARGETS = 256
 SESSION_SIGNAL_MAX_ALIAS_CHARS = 128
 SESSION_SIGNAL_MAX_INSTRUCTION_SURFACE_BYTES = 64 * 1024
 SESSION_SIGNAL_MAX_WRAPPER_MANIFEST_BYTES = 64 * 1024
+SESSION_SIGNAL_MAX_CORRECTION_REQUIREMENTS_BYTES = 32 * 1024
+CORRECTION_REQUIREMENTS_CANDIDATES = (
+    Path(".evozeus-wrapper/policies/audit-rule.md"),
+    Path(".evozeus_evoinfra/audit-rule.md"),
+    Path(".evozeus/audit-rule.md"),
+)
 _ISOLATED_COMPONENT_BOOTSTRAP = (
     "import runpy,sys; namespace=runpy.run_path(sys.argv[1]); "
     "raise SystemExit(namespace['main']())"
@@ -301,6 +307,23 @@ def _read_skill_name(path: Path) -> str | None:
     return match.group(1).strip() if match else None
 
 
+def _read_correction_requirements(canonical: Path) -> str | None:
+    for relative_path in CORRECTION_REQUIREMENTS_CANDIDATES:
+        path = _regular_file_under(canonical, relative_path.as_posix())
+        if path is None:
+            continue
+        try:
+            with path.open("rb") as requirements_file:
+                raw = requirements_file.read(SESSION_SIGNAL_MAX_CORRECTION_REQUIREMENTS_BYTES + 1)
+            if len(raw) > SESSION_SIGNAL_MAX_CORRECTION_REQUIREMENTS_BYTES:
+                continue
+            requirements = raw.decode("utf-8").strip()
+        except (OSError, UnicodeDecodeError):
+            continue
+        return requirements or None
+    return None
+
+
 def discover_wrapped_targets(user_home: Path) -> list[dict[str, Any]] | None:
     projects_root = user_home.expanduser().resolve() / PROJECTS_DIR
     targets: list[dict[str, Any]] = []
@@ -356,13 +379,14 @@ def discover_wrapped_targets(user_home: Path) -> list[dict[str, Any]] | None:
                 and len(declared_name) <= SESSION_SIGNAL_MAX_ALIAS_CHARS
             ):
                 aliases.append(declared_name)
-            targets.append(
-                {
-                    "repo": expected_repo,
-                    "canonical_path": str(canonical),
-                    "aliases": list(dict.fromkeys(aliases)),
-                }
-            )
+            target = {
+                "repo": expected_repo,
+                "canonical_path": str(canonical),
+                "aliases": list(dict.fromkeys(aliases)),
+            }
+            if correction_requirements := _read_correction_requirements(canonical):
+                target["correction_requirements"] = correction_requirements
+            targets.append(target)
     return targets
 
 

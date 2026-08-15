@@ -18,12 +18,12 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 DISPATCHER = ROOT / "scripts" / "evozeus-coevolve-dispatcher.py"
 ATTACHMENT = ROOT / "contracts" / "v1" / "user-prompt-lesson-runtime.json"
-SESSION_SIGNAL_SOURCE_REVISION = "5d6ccce7eb821809e8594ecc3968e26211b31f12"
+SESSION_SIGNAL_SOURCE_REVISION = "6eefc673dfc33c983e4144a688f462c9f28c36a4"
 SESSION_SIGNAL_UPSTREAM_SHA256 = {
-    "contracts/lesson-candidate-api-v1.json": "94c78343cfdf9177fd731dad4f5d782fa2a36a8bc5085f59734ad7b2bfb166ba",
+    "contracts/lesson-candidate-api-v1.json": "432ffb22c1012a76086ed914bfd3f6bfb55c408753a2b3a754ce4dcfb4aa1260",
     "scripts/evaluate_lesson_candidate.py": "d37956058b6d994b9893e8953877965132079a3bae21754902e3d3dcb4efccc3",
-    "src/evozeus_session_signal_skill/lesson_candidate.py": "3a4bf5aba0dd1b23dba6cf45e2717cd52b9bece48629954fd7b0f223b23c46a2",
-    "tests/test_lesson_candidate.py": "3422923b8879817c159bfb570578e0ecc39acf76026b3fc274737795f7df4845",
+    "src/evozeus_session_signal_skill/lesson_candidate.py": "3d56fef4572b08165f5671dddba95b556ae113b34b34d2d190fbd08c92cbdd0e",
+    "tests/test_lesson_candidate.py": "578706f92cd9d697bf8870227490e319b160415cbad3f45852dab7ebf5f592f2",
 }
 spec = importlib.util.spec_from_file_location("evozeus_user_prompt_runtime", DISPATCHER)
 assert spec and spec.loader
@@ -49,6 +49,14 @@ class UserPromptLessonRuntimeTest(unittest.TestCase):
         )
         (target / "SKILL.md").write_text(
             f"---\nname: {name}-assistant\n---\n# Test Skill\n",
+            encoding="utf-8",
+        )
+        policy = target / ".evozeus-wrapper" / "policies" / "audit-rule.md"
+        policy.parent.mkdir(parents=True, exist_ok=True)
+        policy.write_text(
+            "# Feedback Audit Rule\n\n"
+            "Capture reusable correction or improvement feedback only after the business correction is complete.\n"
+            "Ask for explicit confirmation before recording. Never persist before confirmation.\n",
             encoding="utf-8",
         )
         pointer = user_home / ".evozeus" / ".projects" / "MetaInFLow" / name
@@ -92,7 +100,7 @@ class UserPromptLessonRuntimeTest(unittest.TestCase):
                         if prompt == "overflow-stderr":
                             sys.stderr.buffer.write(b"x" * (1024 * 1024))
                             return 0
-                        if prompt == "candidate":
+                        if request.get("targets") and request["targets"][0].get("correction_requirements"):
                             target = request["targets"][0]["repo"] if request.get("targets") else None
                             guidance = f"Model-only Lesson guidance for {target or 'unassigned'}."
                             print(json.dumps({
@@ -323,11 +331,56 @@ class UserPromptLessonRuntimeTest(unittest.TestCase):
                 payload["hookSpecificOutput"]["additionalContext"],
             )
 
-    def test_neutral_prompt_is_silent(self):
+    def test_neutral_prompt_still_enters_model_only_skill_rule_check(self):
         with tempfile.TemporaryDirectory() as tmp:
             fixture = self._fixture(Path(tmp))
 
-            self.assertEqual(self._invoke(fixture, "neutral"), {"continue": True})
+            payload = self._invoke(fixture, "neutral")
+            self.assertIn(
+                "Model-only Lesson guidance",
+                payload["hookSpecificOutput"]["additionalContext"],
+            )
+
+    def test_target_discovery_reads_written_correction_requirements(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            user_home = root / "user-home"
+            target = self._target(user_home, root)
+
+            discovered = runtime.discover_wrapped_targets(user_home)
+
+            self.assertIsNotNone(discovered)
+            self.assertEqual(
+                discovered[0]["correction_requirements"],
+                (target / ".evozeus-wrapper/policies/audit-rule.md").read_text(encoding="utf-8").strip(),
+            )
+
+    def test_component_request_contains_written_correction_requirements(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            fixture = self._fixture(Path(tmp))
+            captured: dict[str, object] = {}
+
+            def runner(command, **kwargs):
+                captured["request"] = json.loads(kwargs["input"])
+                response = {
+                    "schema_version": "evozeus.session-signal.lesson-candidate.v1",
+                    "candidate": True,
+                    "target_repo": "MetaInFLow/example-skill",
+                    "model_guidance": "model-only",
+                }
+                return subprocess.CompletedProcess(
+                    command,
+                    0,
+                    json.dumps(response).encode("utf-8"),
+                    b"",
+                )
+
+            payload = self._invoke(fixture, "neutral", runner=runner)
+
+            self.assertIn("hookSpecificOutput", payload)
+            request = captured["request"]
+            self.assertIn("correction_requirements", request["targets"][0])
+            self.assertIn("Capture reusable correction", request["targets"][0]["correction_requirements"])
 
     def test_target_discovery_stops_at_257th_valid_registration(self):
         with tempfile.TemporaryDirectory() as tmp:

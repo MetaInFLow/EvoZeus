@@ -13,7 +13,7 @@ EvoZeus Core 已拥有产品渠道、安装目录、活动渠道状态和本机 
 - 只从经过摘要校验的 active Stable/UAT channel 解析 Session Signal。
 - 从 `~/.evozeus/.projects` 读取 CoEvolve 注册的 canonical Repo 指针。
 - 对 Session Signal 运行固定 version、API、entrypoint 和文件摘要校验。
-- 在 Core 产品树内携带摘要固定的 Session Signal v0.1.2 入口，并以 `source_revision=5d6ccce7eb821809e8594ecc3968e26211b31f12`、文件 SHA-256 和 dispatcher attachment digest 绑定方法来源；attachment 与入口文件进入渠道 required paths。
+- 在 Core 产品树内携带摘要固定的 Session Signal v0.1.2 入口，并以 `source_revision=6eefc673dfc33c983e4144a688f462c9f28c36a4`、文件 SHA-256 和 dispatcher attachment digest 绑定方法来源；attachment 与入口文件进入渠道 required paths。
 - 用短 timeout、流式 bounded stdout/stderr、`shell=false` 和 Python isolated mode 执行方法。
 - 仅返回 model-only guidance；异常、缺失、损坏与超时全部 fail-open。
 
@@ -21,7 +21,7 @@ EvoZeus Core 已拥有产品渠道、安装目录、活动渠道状态和本机 
 
 | 层 | 责任 |
 | --- | --- |
-| Session Signal | correction / durable-rule 判断、目标选择、model guidance API |
+| Session Signal | 消费 Skill 纠偏要求、目标选择、model guidance API |
 | EvoZeus Core | 产品渠道解析、attachment/checksum、target inventory 消费、subprocess transport、隐私与 fail-open |
 | CoEvolve | `UserPromptSubmit` Hook 安装、卸载、诊断和 `~/.evozeus/.projects` 指针生命周期 |
 
@@ -53,7 +53,7 @@ UserPromptSubmit
 ## 验收
 
 - 自定义 `EVOZEUS_HOME` 与固定用户项目注册目录同时成立。
-- correction 可路由到唯一目标；neutral / hypothetical 保持静默。
+- 有 Skill 纠偏要求的每轮输入都进入 model-only 判断；中性或假设性输入由模型依据规则跳过 Lesson Notice。
 - stale version、manifest digest mismatch、damaged/symlinked file、import shadow、输出超限、timeout 和 invalid output 均 fail-open。
 - Core-only channel 更新会刷新 installed dispatcher；更新失败进入既有 channel transaction rollback。
 - 真实 Session Signal companion subprocess smoke 通过，执行前后文件树摘要一致。
@@ -63,6 +63,6 @@ UserPromptSubmit
 
 本变更保持 `Unreleased`。本 PR 不下载组件、不切换渠道、不创建 tag 或 Release。渠道输入已声明 Core attachment contract 与 Session Signal `v0.1.2` 文件；后续 Stable release 由既有发布流程生成并验证产品清单。
 
-依赖固定为 Session Signal PR #9 revision `5d6ccce7eb821809e8594ecc3968e26211b31f12` 与 CoEvolve lifecycle PR #42。Core 内嵌方法源码和对应测试必须保持该 revision 的逐字节副本；固定 hash 回归在无外部 worktree、无网络条件下验证来源证据。
+依赖固定为 Session Signal revision `6eefc673dfc33c983e4144a688f462c9f28c36a4` 与 CoEvolve lifecycle PR #42。Core 内嵌方法源码和对应测试必须保持该 revision 的逐字节副本；固定 hash 回归在无外部 worktree、无网络条件下验证来源证据。
 
 依赖顺序：Core #46 → Core #48 → Core #50。#50 复用 #48 的安装预检、激活与回滚事务。
