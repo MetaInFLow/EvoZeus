@@ -646,7 +646,11 @@ class UserPromptLessonRuntimeTest(unittest.TestCase):
             self.assertIn("MetaInFLow/example-skill", serialized)
             self.assertNotIn("遗漏了验收标准", serialized)
             self.assertNotIn(str(fixture["target"]), serialized)
-            self.assertEqual(hypothetical, {"continue": True})
+            self.assertIn("hookSpecificOutput", hypothetical)
+            self.assertIn(
+                "Skill correction requirements",
+                hypothetical["hookSpecificOutput"]["additionalContext"],
+            )
 
 
 if __name__ == "__main__":
