@@ -3,7 +3,7 @@
   "runtime_api": "evozeus.user-prompt.lesson-runtime.v1",
   "component": {
     "repository": "MetaInFLow/EvoZeus-session-signal-skill",
-    "source_revision": "6eefc673dfc33c983e4144a688f462c9f28c36a4",
+    "source_revision": "d98cb74f6b7bde5774b98db4bdc510b76eb94b4d",
     "version": "v0.1.2",
     "api": "evozeus.session-signal.lesson-candidate.v1",
     "entrypoint": "src/evozeus_session_signal_skill/lesson_candidate.py",

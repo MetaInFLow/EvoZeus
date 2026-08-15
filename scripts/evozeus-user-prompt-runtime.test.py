@@ -18,7 +18,7 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 DISPATCHER = ROOT / "scripts" / "evozeus-coevolve-dispatcher.py"
 ATTACHMENT = ROOT / "contracts" / "v1" / "user-prompt-lesson-runtime.json"
-SESSION_SIGNAL_SOURCE_REVISION = "6eefc673dfc33c983e4144a688f462c9f28c36a4"
+SESSION_SIGNAL_SOURCE_REVISION = "d98cb74f6b7bde5774b98db4bdc510b76eb94b4d"
 SESSION_SIGNAL_UPSTREAM_SHA256 = {
     "contracts/lesson-candidate-api-v1.json": "432ffb22c1012a76086ed914bfd3f6bfb55c408753a2b3a754ce4dcfb4aa1260",
     "scripts/evaluate_lesson_candidate.py": "d37956058b6d994b9893e8953877965132079a3bae21754902e3d3dcb4efccc3",

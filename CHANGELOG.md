@@ -41,7 +41,7 @@
 
 - Bound channel dispatcher reconciliation to the newly installed Core source and byte content, so Core-only updates cannot retain the prior dispatcher.
 - Shipped the digest-pinned Session Signal v0.1.2 entrypoint inside the Core product tree and declared its attachment and source files as channel-required paths.
-- Replaced prompt keyword detection with the registered Skill's written correction requirements; the attachment now binds Session Signal revision `6eefc673dfc33c983e4144a688f462c9f28c36a4` and fixed upstream source/test hashes prevent silent vendor drift.
+- Replaced prompt keyword detection with the registered Skill's written correction requirements; the attachment now binds Session Signal revision `d98cb74f6b7bde5774b98db4bdc510b76eb94b4d` and fixed upstream source/test hashes prevent silent vendor drift.
 - Stopped registered-target discovery as soon as the 257th valid target proves the bounded inventory invalid.
 - Discarded aliases longer than 128 characters and bounded instruction-surface reads to 64 KiB without dropping an otherwise valid registered target.
 - Replaced heading, frontmatter, and regex-authorized Harness rewrites with release-bound migration profiles, exact preimage checks, exact plan-digest approval, and receipt-bound rollback.

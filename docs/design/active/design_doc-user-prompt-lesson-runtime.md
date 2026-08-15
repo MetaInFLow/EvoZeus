@@ -13,7 +13,7 @@ EvoZeus Core 已拥有产品渠道、安装目录、活动渠道状态和本机 
 - 只从经过摘要校验的 active Stable/UAT channel 解析 Session Signal。
 - 从 `~/.evozeus/.projects` 读取 CoEvolve 注册的 canonical Repo 指针。
 - 对 Session Signal 运行固定 version、API、entrypoint 和文件摘要校验。
-- 在 Core 产品树内携带摘要固定的 Session Signal v0.1.2 入口，并以 `source_revision=6eefc673dfc33c983e4144a688f462c9f28c36a4`、文件 SHA-256 和 dispatcher attachment digest 绑定方法来源；attachment 与入口文件进入渠道 required paths。
+- 在 Core 产品树内携带摘要固定的 Session Signal v0.1.2 入口，并以 `source_revision=d98cb74f6b7bde5774b98db4bdc510b76eb94b4d`、文件 SHA-256 和 dispatcher attachment digest 绑定方法来源；attachment 与入口文件进入渠道 required paths。
 - 用短 timeout、流式 bounded stdout/stderr、`shell=false` 和 Python isolated mode 执行方法。
 - 仅返回 model-only guidance；异常、缺失、损坏与超时全部 fail-open。
 
@@ -63,6 +63,6 @@ UserPromptSubmit
 
 本变更保持 `Unreleased`。本 PR 不下载组件、不切换渠道、不创建 tag 或 Release。渠道输入已声明 Core attachment contract 与 Session Signal `v0.1.2` 文件；后续 Stable release 由既有发布流程生成并验证产品清单。
 
-依赖固定为 Session Signal revision `6eefc673dfc33c983e4144a688f462c9f28c36a4` 与 CoEvolve lifecycle PR #42。Core 内嵌方法源码和对应测试必须保持该 revision 的逐字节副本；固定 hash 回归在无外部 worktree、无网络条件下验证来源证据。
+依赖固定为 Session Signal revision `d98cb74f6b7bde5774b98db4bdc510b76eb94b4d` 与 CoEvolve lifecycle PR #42。Core 内嵌方法源码和对应测试必须保持该 revision 的逐字节副本；固定 hash 回归在无外部 worktree、无网络条件下验证来源证据。
 
 依赖顺序：Core #46 → Core #48 → Core #50。#50 复用 #48 的安装预检、激活与回滚事务。
