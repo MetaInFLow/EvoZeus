@@ -142,7 +142,7 @@ Demo 解释产品如何使用；安装和注册始终走上方官网 `/skill` �
 EvoZeus 在正常聊天中给出结果。生命周期事件使用紧凑标记：
 
 ```text
-🧙 EvoZeus · 捕捉到一条 Lesson｜版本检查不应阻断用户的真实任务。要记录下来吗？
+🧙 EvoZeus · 捕捉到一条 Lesson｜版本检查不应阻断用户的真实任务。要先记录为 Issue 吗？
 ```
 
 正常 Lesson 提示不会输出内部 JSON，用户确认前不会写入记录。
@@ -155,7 +155,7 @@ EvoZeus 在正常聊天中给出结果。生命周期事件使用紧凑标记：
 | --- | --- | --- |
 | `🧙 EvoZeus · 已启动｜复盘这次 Agent 执行` | EvoZeus 已被显式调用 | 开始一次 EvoZeus 任务 |
 | `👁️ EvoZeus · 受管运行｜企业 AI 场景诊断 Skill · UAT` | 当前 Skillware 已进入受管生命周期 | Repo、Harness、渠道身份均已核验 |
-| `🧙 EvoZeus · 捕捉到一条 Lesson｜证据不足时不能直接报完成。要记录下来吗？` | 发现了值得复用的改进 | 业务结果完成后，记录前先询问 |
+| `🧙 EvoZeus · 捕捉到一条 Lesson｜证据不足时不能直接报完成。要先记录为 Issue 吗？` | 发现了值得复用的改进 | 捕获后先暂停，记录前先询问 |
 | `📝 EvoZeus · Lesson 已记录｜Feedback Issue #12` | 已按授权保存 Lesson | 本地记录或 Issue 创建成功后 |
 | `🔐 EvoZeus · 等待确认｜创建 Feedback Issue` | 下一动作会写入或影响外部系统 | 需要新的具体授权时 |
 | `🧭 EvoZeus · 版本状态｜Stable v0.4.0 → UAT v0.4.1` | 正在判断安装或渠道变化 | 对齐、升级、切换前 |
@@ -179,7 +179,7 @@ EvoZeus 在正常聊天中给出结果。生命周期事件使用紧凑标记：
 | Claude Code plugin | 内置 `SessionStart` 适配器加载 Lesson 检查合同并检查当前产品渠道；已是最新时保持安静，只在更新状态变化时显示标记 |
 | Codex plugin | 通过用户显式请求或语义匹配选择 EvoZeus；进入 EvoZeus 或 CoEvolve 受管 Skill 时检查版本 |
 
-两种宿主都先完成用户任务，再询问是否记录 Lesson。
+发现可复用知识或纠偏时，两种宿主都先暂停原任务并询问是否记录为 Issue；用户确认后才记录，用户明确要求继续后才恢复原任务。只有结果收敛阶段才发现的候选，才在业务结果之后询问。
 
 ## 工作方式
 

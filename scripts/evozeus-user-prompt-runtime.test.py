@@ -18,12 +18,12 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 DISPATCHER = ROOT / "scripts" / "evozeus-coevolve-dispatcher.py"
 ATTACHMENT = ROOT / "contracts" / "v1" / "user-prompt-lesson-runtime.json"
-SESSION_SIGNAL_SOURCE_REVISION = "d98cb74f6b7bde5774b98db4bdc510b76eb94b4d"
+SESSION_SIGNAL_SOURCE_REVISION = "7df2276d4a6370f2952eab3906aca0fa75374f3b"
 SESSION_SIGNAL_UPSTREAM_SHA256 = {
     "contracts/lesson-candidate-api-v1.json": "432ffb22c1012a76086ed914bfd3f6bfb55c408753a2b3a754ce4dcfb4aa1260",
     "scripts/evaluate_lesson_candidate.py": "d37956058b6d994b9893e8953877965132079a3bae21754902e3d3dcb4efccc3",
-    "src/evozeus_session_signal_skill/lesson_candidate.py": "3d56fef4572b08165f5671dddba95b556ae113b34b34d2d190fbd08c92cbdd0e",
-    "tests/test_lesson_candidate.py": "578706f92cd9d697bf8870227490e319b160415cbad3f45852dab7ebf5f592f2",
+    "src/evozeus_session_signal_skill/lesson_candidate.py": "2fa4ebf072e1b49a6701e618d584b5db60dc65ea628bd207ec91db48aee41154",
+    "tests/test_lesson_candidate.py": "64d919eae65ea5c51d8aaee58ee7ad67e8e5e4e7266f1e5dad5361597607d07a",
 }
 spec = importlib.util.spec_from_file_location("evozeus_user_prompt_runtime", DISPATCHER)
 assert spec and spec.loader
@@ -54,9 +54,8 @@ class UserPromptLessonRuntimeTest(unittest.TestCase):
         policy = target / ".evozeus-wrapper" / "policies" / "audit-rule.md"
         policy.parent.mkdir(parents=True, exist_ok=True)
         policy.write_text(
-            "# Feedback Audit Rule\n\n"
-            "Capture reusable correction or improvement feedback only after the business correction is complete.\n"
-            "Ask for explicit confirmation before recording. Never persist before confirmation.\n",
+            "# 纠偏与知识捕获规则\n\n"
+            "发现可复用纠偏后立即暂停原业务流程，在下一次实质性工具调用前提示 Lesson；先询问是否记录为 Issue。用户确认前不继续任务、不持久化。\n",
             encoding="utf-8",
         )
         pointer = user_home / ".evozeus" / ".projects" / "MetaInFLow" / name
@@ -380,7 +379,7 @@ class UserPromptLessonRuntimeTest(unittest.TestCase):
             self.assertIn("hookSpecificOutput", payload)
             request = captured["request"]
             self.assertIn("correction_requirements", request["targets"][0])
-            self.assertIn("Capture reusable correction", request["targets"][0]["correction_requirements"])
+            self.assertIn("立即暂停原业务流程", request["targets"][0]["correction_requirements"])
 
     def test_target_discovery_stops_at_257th_valid_registration(self):
         with tempfile.TemporaryDirectory() as tmp:

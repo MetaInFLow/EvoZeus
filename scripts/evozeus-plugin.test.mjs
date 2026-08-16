@@ -57,6 +57,23 @@ test("installed onboarding and the root plugin route keep primary and supporting
   assert.match(usingEvoZeus, /明确确认前不要读取 Codex 历史、运行 Factor 或写入报告/);
 });
 
+test("using-evozeus exposes semantic examples for specified activation scenes", () => {
+  const skill = readFileSync(new URL("../skills/using-evozeus/SKILL.md", import.meta.url), "utf8");
+  for (const text of [
+    "## 指定场景激活示例",
+    "生成 AI 使用画像",
+    "接入或检查 Harness",
+    "复盘 Agent 会话",
+    "检查或维护 Stable/UAT",
+    "激活 UAT 候选",
+    "业务运行中出现纠偏",
+    "不是关键词清单",
+    "任何候选 Lesson 都优先于场景路由",
+  ]) {
+    assert.match(skill, new RegExp(text.replace(/[.*+?^${}()|[\\]\\]/g, "\\\\$&")));
+  }
+});
+
 test("install instructions share the local-state-first Stable preflight contract", () => {
   const maintain = readFileSync(new URL("../skills/maintain-evozeus/SKILL.md", import.meta.url), "utf8");
   const install = readFileSync(new URL("../maintainer/skills/evozeus-install-registration/SKILL.md", import.meta.url), "utf8");

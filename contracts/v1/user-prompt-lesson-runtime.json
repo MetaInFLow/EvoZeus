@@ -3,7 +3,7 @@
   "runtime_api": "evozeus.user-prompt.lesson-runtime.v1",
   "component": {
     "repository": "MetaInFLow/EvoZeus-session-signal-skill",
-    "source_revision": "d98cb74f6b7bde5774b98db4bdc510b76eb94b4d",
+    "source_revision": "7df2276d4a6370f2952eab3906aca0fa75374f3b",
     "version": "v0.1.2",
     "api": "evozeus.session-signal.lesson-candidate.v1",
     "entrypoint": "src/evozeus_session_signal_skill/lesson_candidate.py",
@@ -14,7 +14,7 @@
       },
       {
         "path": "src/evozeus_session_signal_skill/lesson_candidate.py",
-        "sha256": "3d56fef4572b08165f5671dddba95b556ae113b34b34d2d190fbd08c92cbdd0e"
+        "sha256": "2fa4ebf072e1b49a6701e618d584b5db60dc65ea628bd207ec91db48aee41154"
       }
     ]
   }

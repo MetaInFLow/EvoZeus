@@ -5,6 +5,10 @@ description: Use when 用户确认应记录一条 EvoZeus Lesson，或要求把�
 
 # 捕捉 EvoZeus Lesson
 
+## 捕获优先门禁
+
+本 Skill 只处理用户已确认的记录动作。发现可复用知识、纠偏或行为缺陷时，先暂停原业务流程并展示“待记录”提示；确认前不得继续原任务、修复问题、创建 Issue 或写入任何持久化位置。记录授权与恢复、修复、代码、PR、发布授权分别处理。
+
 ## 确认记录内容
 
 创建一条简洁且已脱敏的 Lesson，包含：
@@ -19,7 +23,7 @@ description: Use when 用户确认应记录一条 EvoZeus Lesson，或要求把�
 如果用户尚未确认记录，只询问一次：
 
 ```text
-🧙 EvoZeus · 捕捉到一条 Lesson｜<一句话摘要>。要记录下来吗？
+🧙 EvoZeus · 捕捉到一条 Lesson｜<一句话摘要>。要先记录为 Issue 吗？
 ```
 
 ## 路由

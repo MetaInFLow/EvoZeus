@@ -22,10 +22,9 @@ from evozeus_session_signal_skill.lesson_candidate import (  # noqa: E402
 )
 
 
-RULE = """# Feedback Audit Rule
+RULE = """# 纠偏与知识捕获规则
 
-Capture reusable correction or improvement feedback only after the business correction is complete.
-Ask for explicit confirmation before recording. Never persist before confirmation.
+发现可复用纠偏后立即暂停原业务流程，在下一次实质性工具调用前提示 Lesson；先询问是否记录为 Issue。用户确认前不继续任务、不持久化。
 """
 
 
@@ -69,6 +68,10 @@ def test_written_skill_rule_drives_all_prompt_words() -> None:
     assert neutral["target_repo"] == correction["target_repo"] == "MetaInFLow/example-skill"
     assert RULE in neutral["model_guidance"]
     assert "固定关键词" in neutral["model_guidance"]
+    assert "信息对未来运行具有复用价值" in neutral["model_guidance"]
+    assert "立即暂停原业务流程" in neutral["model_guidance"]
+    assert "先记录为 Issue" in neutral["model_guidance"]
+    assert "不要读取业务数据、继续任务或开始修复" in neutral["model_guidance"]
 
 
 def test_missing_written_rule_stays_fail_open() -> None:
