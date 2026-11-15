@@ -7,7 +7,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/session-start.mjs\"",
+            "command": "node -e \"const p=require('path'),u=require('url');import(u.pathToFileURL(p.join(process.env.CLAUDE_PLUGIN_ROOT||process.env.PLUGIN_ROOT,'hooks','session-start.mjs')).href)\"",
             "timeout": 120
           }
         ]
