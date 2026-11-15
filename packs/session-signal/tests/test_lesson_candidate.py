@@ -113,6 +113,8 @@ def test_ambiguous_alias_keeps_target_unassigned_and_requires_shared_rule() -> N
     assert result["candidate"] is True
     assert result["target_repo"] is None
     assert "目标归属未唯一确定" in result["model_guidance"]
+    assert "要提到哪个项目的问题列表？" in result["model_guidance"]
+    assert "不写本地记录" in result["model_guidance"]
 
 
 def test_different_unassigned_rules_do_not_allow_guessing() -> None:

@@ -9,8 +9,8 @@ EvoZeus 使用普通聊天中的一行短标记说明关键生命周期事件。
 | --- | --- | --- |
 | 启动 | `🧙 EvoZeus · 已启动｜<当前任务>` | 用户显式调用 EvoZeus |
 | 受管运行 | `👁️ EvoZeus · 受管运行｜<目标 Skillware> · <stable/uat/development>` | 当前业务任务由已接入 EvoZeus 的独立 Repo 承载 |
-| Lesson 候选 | `🧙 EvoZeus · 捕捉到一条 Lesson｜<脱敏摘要>。要记录下来吗？` | 业务结果完成后发现可复用改进 |
-| Lesson 已记录 | `📝 EvoZeus · Lesson 已记录｜<本地记录或 Issue 链接>` | 用户确认且记录动作成功 |
+| Lesson 候选 | `💡 值得记一下：<一句大白话：这次发现了什么，以后会怎么做>。要提到 <repo 短名> 的问题列表吗？` | 业务结果完成后，且满足其一：用户刚纠正过、以后大概率还会遇到、这次造成了明显返工 |
+| Lesson 已提交 | `📝 已提交：<Issue 链接>` | 用户确认且 GitHub Issue 创建成功；Lesson 不写本地记录 |
 | 等待确认 | `🔐 EvoZeus · 等待确认｜<具体写入或外部动作>` | 下一动作需要新的授权 |
 | 版本状态 | `🧭 EvoZeus · 版本状态｜<当前渠道/版本 → 目标渠道/版本>` | 安装、对齐、切换或升级前 |
 | 发现更新 | `🧭 EvoZeus · 发现更新｜<Stable/UAT> <当前版本> → <目标版本>` | 自动检查发现当前订阅渠道有新候选 |
@@ -28,7 +28,7 @@ EvoZeus 使用普通聊天中的一行短标记说明关键生命周期事件。
 
 1. 每次真实状态变化最多显示一条标记，普通分析和工具调用不显示。
 2. 标记必须与当前动作一致，计划不能写成已完成，UAT 不能写成 Stable。
-3. Lesson 提示永远出现在用户任务结果之后；用户确认前不持久化。
+3. Lesson 提示永远出现在用户任务结果之后；用户确认前不提交。确认后只在问句写明的 Repo 创建一个 GitHub Issue，不写本地记录。大多数任务不提示；拿不准就不提；同一会话最多一次。提示用业务语言，不出现产品名、Lesson、Skill、Harness、Issue、路径、版本号或英文术语。
 4. `受管运行` 只在目标 Repo 已识别且 Harness/Plugin 身份可核验时显示。
 5. Stable、UAT、Development 必须明确区分；用户宿主中只安装一个活动 EvoZeus Plugin。
 6. 不显示 signal id、capture state、内部 schema、私有路径、客户资料或 raw session。

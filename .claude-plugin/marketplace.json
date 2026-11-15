@@ -11,7 +11,7 @@
       "name": "evozeus",
       "source": "./",
       "description": "经明确确认后，将本地 Codex 历史转化为 AI 使用画像；当前只支持 Codex。也可以为独立 Skillware Repo 接入 CoEvolve Harness。",
-      "version": "0.5.2"
+      "version": "0.5.3"
     }
   ]
 }

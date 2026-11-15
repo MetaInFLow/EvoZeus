@@ -12,8 +12,8 @@ test("README and entry Skill expose the complete user-visible EvoZeus event cata
   const markers = [
     "🧙 EvoZeus · 已启动",
     "👁️ EvoZeus · 受管运行",
-    "🧙 EvoZeus · 捕捉到一条 Lesson",
-    "📝 EvoZeus · Lesson 已记录",
+    "💡 值得记一下：",
+    "📝 已提交：",
     "🔐 EvoZeus · 等待确认",
     "🧭 EvoZeus · 版本状态",
     "🧭 EvoZeus · 发现更新",

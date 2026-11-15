@@ -154,7 +154,7 @@ The feature list still provides direct routes for one-Session review, recording 
 EvoZeus responds inside the normal conversation. Lifecycle events use a compact marker:
 
 ```text
-🧙 EvoZeus · 捕捉到一条 Lesson｜版本检查不应阻断用户的真实任务。要记录下来吗？
+💡 值得记一下：版本检查不该挡住正在做的事，以后只提醒、不拦。要提到 EvoZeus 的问题列表吗？
 ```
 
 No raw JSON block is shown for a normal Lesson prompt, and nothing is recorded before confirmation.
@@ -167,8 +167,8 @@ EvoZeus shows one compact line only when its lifecycle state changes. Ordinary a
 | --- | --- |
 | `🧙 EvoZeus · 已启动｜<task>` | EvoZeus was explicitly activated |
 | `👁️ EvoZeus · 受管运行｜<Skillware> · <channel>` | A verified managed Skillware target is running |
-| `🧙 EvoZeus · 捕捉到一条 Lesson｜<summary>。要记录下来吗？` | A reusable Lesson is proposed, not persisted |
-| `📝 EvoZeus · Lesson 已记录｜<record>` | The approved Lesson was persisted |
+| `💡 值得记一下：<summary>。要提到 <repo> 的问题列表吗？` | A reusable Lesson is proposed for that repo's GitHub Issues, nothing is filed yet |
+| `📝 已提交：<Issue link>` | The approved Lesson was filed as a GitHub Issue (no local copy) |
 | `🔐 EvoZeus · 等待确认｜<action>` | A specific write or external action needs approval |
 | `🧭 EvoZeus · 版本状态｜<current → target>` | An install, alignment, or channel decision is pending |
 | `🧭 EvoZeus · 发现更新｜<current → target>` | The selected channel has a new product version |

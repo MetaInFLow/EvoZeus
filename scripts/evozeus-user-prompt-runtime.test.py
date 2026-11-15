@@ -22,8 +22,8 @@ SESSION_SIGNAL_SOURCE_REVISION = "d98cb74f6b7bde5774b98db4bdc510b76eb94b4d"
 SESSION_SIGNAL_UPSTREAM_SHA256 = {
     "contracts/lesson-candidate-api-v1.json": "432ffb22c1012a76086ed914bfd3f6bfb55c408753a2b3a754ce4dcfb4aa1260",
     "scripts/evaluate_lesson_candidate.py": "d37956058b6d994b9893e8953877965132079a3bae21754902e3d3dcb4efccc3",
-    "src/evozeus_session_signal_skill/lesson_candidate.py": "3d56fef4572b08165f5671dddba95b556ae113b34b34d2d190fbd08c92cbdd0e",
-    "tests/test_lesson_candidate.py": "578706f92cd9d697bf8870227490e319b160415cbad3f45852dab7ebf5f592f2",
+    "src/evozeus_session_signal_skill/lesson_candidate.py": "71824903669cf4d7840ed68aeb798925f5dcd9db667561fc36fd7260b1ef9ec8",
+    "tests/test_lesson_candidate.py": "79c24b259a441efd2fe3571e8b52db16271215ffef9729c6335e4610c363ec66",
 }
 spec = importlib.util.spec_from_file_location("evozeus_user_prompt_runtime", DISPATCHER)
 assert spec and spec.loader

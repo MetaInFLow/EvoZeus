@@ -2,6 +2,19 @@
 
 ## [Unreleased]
 
+## [v0.5.3] - 2026-11-15
+
+### Changed
+
+- 收紧 Lesson 提示门槛：大多数任务不提示；只有用户刚纠正过、以后大概率还会遇到、或这次造成明显返工时才提示，拿不准不提，同一会话最多一次（Claude 插件 SessionStart 与 Codex Session Signal 指引同步）。
+- Lesson 提示改为业务语言并写明去处：`💡 值得记一下：<这次发现了什么，以后会怎么做>。要提到 <repo 短名> 的问题列表吗？`；提交成功显示 `📝 已提交：<Issue 链接>`。除 Repo 短名外不再出现产品名、Lesson、Skill、Harness、Issue、路径、版本号或英文术语。
+- Lesson 只提交为所属 Repo 的 GitHub Issue，不再写本地记录：用户对写明 Repo 的问句明确同意即授权创建一个 Issue；Repo 按 `.projects` 登记 → git origin → `gh repo view` 核对，对不上就问；先查重；公开 Repo 去掉公司、客户和私有项目信息，去不掉先给用户看；提交失败时贴出草稿，不回落到本地。
+- CoEvolve SessionStart 检查健康时不再输出 `[EvoZeus <渠道>]` 横幅；只有需要用户处理时才显示一行提示。
+
+### Verification
+
+- `npm test` 全部通过；Session Signal pack `107 passed, 2 skipped`。
+
 ## [v0.5.2] - 2026-08-16
 
 ### Changed

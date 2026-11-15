@@ -23,7 +23,7 @@ USER_PROMPT_RUNTIME_API = "evozeus.user-prompt.lesson-runtime.v1"
 SESSION_SIGNAL_SOURCE_REVISION = "d98cb74f6b7bde5774b98db4bdc510b76eb94b4d"
 SESSION_SIGNAL_ATTACHMENT_PATH = Path("contracts/v1/user-prompt-lesson-runtime.json")
 SESSION_SIGNAL_ATTACHMENT_SHA256 = (
-    "64d30306b0bd43c9b652835e8558478e549c2a3a20e309b9da08c7675ff0c964"
+    "e523b4dbae546f5988e3fcde2522b323c2078521951df9d695d54008e2fe38f0"
 )
 PROJECTS_DIR = Path(".evozeus/.projects")
 MANIFEST_CANDIDATES = (
@@ -750,9 +750,14 @@ def main() -> int:
 
     if not isinstance(payload, dict):
         payload = _fallback(channel, "CoEvolve hook returned an invalid response; continuing safely.")
-    label = (channel or "unconfigured").upper()
-    coevolve_message = f"[EvoZeus {label}] {payload.get('systemMessage', 'CoEvolve hook evaluated.')}"
-    payload["systemMessage"] = "\n".join([*update_logs, coevolve_message])
+    # Only speak to the user when the CoEvolve hook has something for them; a healthy
+    # start stays silent instead of printing a channel banner on every session.
+    coevolve_message = payload.get("systemMessage")
+    messages = [*update_logs, *([coevolve_message] if isinstance(coevolve_message, str) and coevolve_message else [])]
+    if messages:
+        payload["systemMessage"] = "\n".join(messages)
+    else:
+        payload.pop("systemMessage", None)
     hook_output = payload.setdefault("hookSpecificOutput", {})
     context = str(hook_output.get("additionalContext", "")).strip()
     update_status = "reported" if update_logs else "quiet"

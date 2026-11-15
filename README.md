@@ -142,7 +142,7 @@ Demo 解释产品如何使用；安装和注册始终走上方官网 `/skill` �
 EvoZeus 在正常聊天中给出结果。生命周期事件使用紧凑标记：
 
 ```text
-🧙 EvoZeus · 捕捉到一条 Lesson｜版本检查不应阻断用户的真实任务。要记录下来吗？
+💡 值得记一下：版本检查不该挡住正在做的事，以后只提醒、不拦。要提到 EvoZeus 的问题列表吗？
 ```
 
 正常 Lesson 提示不会输出内部 JSON，用户确认前不会写入记录。
@@ -155,8 +155,8 @@ EvoZeus 在正常聊天中给出结果。生命周期事件使用紧凑标记：
 | --- | --- | --- |
 | `🧙 EvoZeus · 已启动｜复盘这次 Agent 执行` | EvoZeus 已被显式调用 | 开始一次 EvoZeus 任务 |
 | `👁️ EvoZeus · 受管运行｜企业 AI 场景诊断 Skill · UAT` | 当前 Skillware 已进入受管生命周期 | Repo、Harness、渠道身份均已核验 |
-| `🧙 EvoZeus · 捕捉到一条 Lesson｜证据不足时不能直接报完成。要记录下来吗？` | 发现了值得复用的改进 | 业务结果完成后，记录前先询问 |
-| `📝 EvoZeus · Lesson 已记录｜Feedback Issue #12` | 已按授权保存 Lesson | 本地记录或 Issue 创建成功后 |
+| `💡 值得记一下：没核实过的结果不能直接说做完了，以后先核实再报。要提到 EvoZeus 的问题列表吗？` | 发现了值得复用的改进 | 业务结果完成后，提交 Issue 前先询问 |
+| `📝 已提交：Feedback Issue #12` | 已按授权提交 Lesson | GitHub Issue 创建成功后（不写本地记录） |
 | `🔐 EvoZeus · 等待确认｜创建 Feedback Issue` | 下一动作会写入或影响外部系统 | 需要新的具体授权时 |
 | `🧭 EvoZeus · 版本状态｜Stable v0.4.0 → UAT v0.4.1` | 正在判断安装或渠道变化 | 对齐、升级、切换前 |
 | `🧭 EvoZeus · 发现更新｜Stable v0.4.0 → v0.4.1` | 当前订阅渠道有新版本 | 自动检查发现变化后 |

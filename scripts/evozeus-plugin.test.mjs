@@ -118,7 +118,13 @@ test("SessionStart adapter injects the Lesson contract without user-visible outp
   assert.equal(output.continue, true);
   assert.equal(output.suppressOutput, true);
   assert.equal(output.hookSpecificOutput.hookEventName, "SessionStart");
-  assert.match(output.hookSpecificOutput.additionalContext, /捕捉到一条 Lesson/);
+  assert.match(output.hookSpecificOutput.additionalContext, /💡 值得记一下：/);
+  assert.match(output.hookSpecificOutput.additionalContext, /Most tasks need no Lesson/);
+  assert.match(output.hookSpecificOutput.additionalContext, /at most once per session/);
+  assert.match(output.hookSpecificOutput.additionalContext, /要提到 <repo 短名> 的问题列表吗？/);
+  assert.match(output.hookSpecificOutput.additionalContext, /exactly one GitHub Issue/);
+  assert.match(output.hookSpecificOutput.additionalContext, /Never save the Lesson to local files/);
+  assert.doesNotMatch(output.hookSpecificOutput.additionalContext, /EvoZeus · 捕捉到一条 Lesson/);
   assert.match(output.hookSpecificOutput.additionalContext, /Do not persist a Lesson/);
   assert.doesNotMatch(output.hookSpecificOutput.additionalContext, /signal_id|should_capture/);
 });
