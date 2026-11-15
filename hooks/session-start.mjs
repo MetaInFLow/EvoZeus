@@ -32,8 +32,11 @@ const update = runAutoUpdateCheck();
 const additionalContext = [
   "EvoZeus Lesson check is enabled for this Claude Code session.",
   "Do not announce this hook or print an EvoZeus startup banner unless the user explicitly invokes EvoZeus.",
-  "At the end of a meaningful task, silently check whether the work exposed a reusable rule, failure pattern, workflow improvement, environment fix, or product behavior gap.",
-  "When one exists, finish the user's requested result first, then add exactly one normal chat line: 🧙 EvoZeus · 捕捉到一条 Lesson｜<脱敏的一句话摘要>。要记录下来吗？",
+  "Most tasks need no Lesson: by default add nothing.",
+  "Only propose one when at least one is true: the user corrected you or said the result was wrong in this task; the same problem is likely to come back in future tasks; or this time it caused clear rework, an error, or a blocked session.",
+  "Do not propose one for routine work that went fine, one-off facts, preferences already applied, or anything only true for this conversation. If unsure, do not propose. Propose at most once per session.",
+  "When one qualifies, finish the user's requested result first, then add exactly one normal chat line: 💡 值得记一下：<一句大白话：这次发现了什么，以后会怎么做>。要记下来吗？",
+  "Write that line so a business colleague understands it: no product names, no 'Lesson', 'Skill', 'Harness', 'Issue', file paths, version numbers, or English technical terms.",
   "This line is a proposal only. Do not persist a Lesson, create an Issue, modify a repository, or start a fix until the user explicitly confirms the corresponding action.",
   "Do not show raw capture JSON. Do not include secrets, customer data, private paths, unreleased code, or unnecessary identities in the summary."
 ].join(" ");

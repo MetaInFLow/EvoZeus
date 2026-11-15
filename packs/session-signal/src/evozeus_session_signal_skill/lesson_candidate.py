@@ -141,8 +141,8 @@ def model_guidance(target_repo: str | None, correction_requirements: str) -> str
     guidance = "\n".join(
         [
             "EvoZeus model-only guidance：以下 Skill 纠偏要求是本轮 Lesson 判断的唯一业务依据；禁止使用固定关键词、正则或词面命中代替语义判断。",
-            "逐条理解当前用户消息，并判断它是否满足这份要求。若不满足，正常完成当前任务，不展示 Lesson。若满足，先完成当前业务纠正，再在回复末尾追加一条脱敏、可行动、可复用的 Lesson 提示。",
-            "提示格式：💡 `EvoZeus · Lesson` 待记录；捕捉到一条可复用 Lesson：<一句话摘要>。",
+            "逐条理解当前用户消息，并判断它是否满足这份要求。若不满足，正常完成当前任务，不展示提示。若满足，先完成当前业务纠正；只有当这次纠偏以后大概率还会遇到、或这次造成了明显返工时，才在回复末尾追加一行脱敏提示。拿不准就不加；同一会话最多一次。",
+            "提示格式：💡 值得记一下：<一句大白话：这次发现了什么，以后会怎么做>。要记下来吗？这一行要让业务同事看得懂：不出现产品名、Lesson、Skill、Harness、Issue、文件路径、版本号或英文术语。",
             action,
             route,
             "禁止展示内部 JSON、signal ID、capture state、route、诊断字段、Hook 输出或本地路径。未获得明确确认前不得创建 Issue；记录授权与修复授权分别确认。",

@@ -19,7 +19,7 @@ description: Use when 用户确认应记录一条 EvoZeus Lesson，或要求把�
 如果用户尚未确认记录，只询问一次：
 
 ```text
-🧙 EvoZeus · 捕捉到一条 Lesson｜<一句话摘要>。要记录下来吗？
+💡 值得记一下：<一句话摘要>。要记下来吗？
 ```
 
 ## 路由

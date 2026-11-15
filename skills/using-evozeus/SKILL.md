@@ -41,8 +41,8 @@ description: Use when 用户明确调用 EvoZeus，要求基于已确认的本�
 | --- | --- |
 | 明确激活 | `🧙 EvoZeus · 已启动｜<当前任务>` |
 | 受管 Skillware 运行 | `👁️ EvoZeus · 受管运行｜<目标 Skillware> · <stable|uat|development>` |
-| 发现 Lesson 候选 | `🧙 EvoZeus · 捕捉到一条 Lesson｜<一句话摘要>。要记录下来吗？` |
-| 已保存确认的 Lesson | `📝 EvoZeus · Lesson 已记录｜<本地记录或 Issue 链接>` |
+| 发现 Lesson 候选 | `💡 值得记一下：<一句话摘要>。要记下来吗？` |
+| 已保存确认的 Lesson | `📝 已记下：<本地记录或 Issue 链接>` |
 | 需要权限 | `🔐 EvoZeus · 等待确认｜<具体写入或外部动作>` |
 | Stable/UAT 决策 | `🧭 EvoZeus · 版本状态｜<频道及明确下一步>` |
 | 发现已订阅的新版本 | `🧭 EvoZeus · 发现更新｜<当前频道/版本> → <目标版本>` |
@@ -64,7 +64,7 @@ description: Use when 用户明确调用 EvoZeus，要求基于已确认的本�
 在一个有实质内容的任务结束时，检查会话是否暴露出可复用规则、失败模式、工作流改进、环境修复或产品行为缺口。如果有，添加一行普通对话提示：
 
 ```text
-🧙 EvoZeus · 捕捉到一条 Lesson｜<可复用且已脱敏的一句话>。要记录下来吗？
+💡 值得记一下：<可复用且已脱敏的一句话>。要记下来吗？
 ```
 
 这只是提案；记录前必须获得用户确认。Claude Code 通过插件的只读 `SessionStart` adapter 加载这项检查。当前插件 manifest 没有暴露等价的 session hook，因此 Codex 通过明确选择或语义选择激活此 Skill。

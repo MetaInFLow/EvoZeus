@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+### Changed
+
+- 收紧 Lesson 提示门槛：大多数任务不提示；只有用户刚纠正过、以后大概率还会遇到、或这次造成明显返工时才提示，拿不准不提，同一会话最多一次（Claude 插件 SessionStart 与 Codex Session Signal 指引同步）。
+- Lesson 提示改为业务语言：`💡 值得记一下：<这次发现了什么，以后会怎么做>。要记下来吗？`；记录成功改为 `📝 已记下：<记在哪里>`。不再出现产品名、Lesson、Skill、Harness、Issue、路径、版本号或英文术语。
+- CoEvolve SessionStart 检查健康时不再输出 `[EvoZeus <渠道>]` 横幅；只有需要用户处理时才显示一行提示。
+
+### Verification
+
+- `npm test` 全部通过；Session Signal pack `66 tests OK`。
+
 ## [v0.5.2] - 2026-08-16
 
 ### Changed
