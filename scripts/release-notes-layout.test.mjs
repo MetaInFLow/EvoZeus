@@ -5,7 +5,7 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
-const PRODUCT_VERSION = "0.5.5";
+const PRODUCT_VERSION = "0.5.6";
 const PRODUCT_TAG = `v${PRODUCT_VERSION}`;
 const COEVOLVE_VERSION = "v0.15.0";
 const COEVOLVE_COMMIT = "ddd004dda0e8db16503d1e0b0aafa5a495465f2d";

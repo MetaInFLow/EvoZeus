@@ -103,10 +103,21 @@ function pluginRoot(evozeusHome, host) {
   return join(marketplaceRoot(evozeusHome, host), "plugins", PLUGIN_ID);
 }
 
-function copyPlugin(sourceRoot, targetRoot) {
+// Codex fingerprints a plugin's whole folder when a user trusts its hooks, so any release
+// would mark a plugin hook "modified" and Codex would stop running it until re-approved.
+// In Codex the user-level EvoZeus dispatcher (~/.codex/hooks.json) already runs the
+// session-start update check, so the Codex package ships without plugin hooks.
+const HOST_EXCLUDED_ENTRIES = {
+  codex: new Set(["hooks"]),
+  claude: new Set()
+};
+
+function copyPlugin(sourceRoot, targetRoot, host) {
   rmSync(targetRoot, { recursive: true, force: true });
   mkdirSync(targetRoot, { recursive: true });
+  const excluded = HOST_EXCLUDED_ENTRIES[host] ?? new Set();
   for (const entry of PLUGIN_ENTRIES) {
+    if (excluded.has(entry)) continue;
     const source = join(sourceRoot, entry);
     if (!existsSync(source)) continue;
     const target = join(targetRoot, entry);
@@ -259,7 +270,7 @@ export function alignPluginHosts({
   for (const host of hosts) {
     const root = plan.hosts[host].marketplace_root;
     const target = plan.hosts[host].plugin_root;
-    copyPlugin(resolve(sourceRoot), target);
+    copyPlugin(resolve(sourceRoot), target, host);
     const rewritten = rewritePluginManifests(target, channel, productVersion, commit);
     if (host === "codex") {
       writeJson(join(root, ".agents/plugins/marketplace.json"), codexMarketplace(root));

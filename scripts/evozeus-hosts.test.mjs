@@ -81,6 +81,15 @@ describe("EvoZeus plugin host alignment", () => {
       const claudeMarketplace = JSON.parse(readFileSync(claudeMarketplacePath, "utf8"));
       const state = JSON.parse(readFileSync(join(evozeusHome, "hosts/plugin-state.json"), "utf8"));
 
+      assert.equal(
+        existsSync(join(evozeusHome, "hosts/codex-marketplace/plugins/evozeus/hooks")),
+        false,
+        "Codex package must not ship plugin hooks; Codex re-requires approval after every update"
+      );
+      assert.equal(
+        existsSync(join(evozeusHome, "hosts/claude-marketplace/plugins/evozeus/hooks/hooks.json")),
+        true
+      );
       assert.equal(codexManifest.name, "evozeus");
       assert.equal(codexManifest.interface.displayName, "EvoZeus UAT");
       assert.match(codexManifest.interface.defaultPrompt[0], /批准前不要读取历史/);
