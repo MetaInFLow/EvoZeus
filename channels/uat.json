@@ -1,12 +1,12 @@
 {
   "schema_version": "evozeus.product-channel.v2",
-  "product_version": "v0.5.5",
+  "product_version": "v0.5.6",
   "channel": "uat",
-  "generated_at": "2026-11-15T16:34:06Z",
+  "generated_at": "2026-11-15T17:01:59Z",
   "components": {
     "evozeus": {
-      "version": "v0.5.5",
-      "commit": "347911913b62741b0a73f721822e5c07d6b7aabf",
+      "version": "v0.5.6",
+      "commit": "5dfe7718731d3ce86720073a4c1d0250d0607b67",
       "source": {
         "kind": "git",
         "url": "https://github.com/MetaInFLow/EvoZeus.git",
