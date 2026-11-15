@@ -41,8 +41,8 @@ description: Use when 用户明确调用 EvoZeus，要求基于已确认的本�
 | --- | --- |
 | 明确激活 | `🧙 EvoZeus · 已启动｜<当前任务>` |
 | 受管 Skillware 运行 | `👁️ EvoZeus · 受管运行｜<目标 Skillware> · <stable|uat|development>` |
-| 发现 Lesson 候选 | `💡 值得记一下：<一句话摘要>。要记下来吗？` |
-| 已保存确认的 Lesson | `📝 已记下：<本地记录或 Issue 链接>` |
+| 发现 Lesson 候选 | `💡 值得记一下：<一句大白话>。要提到 <repo 短名> 的问题列表吗？` |
+| 已提交确认的 Lesson | `📝 已提交：<Issue 链接>` |
 | 需要权限 | `🔐 EvoZeus · 等待确认｜<具体写入或外部动作>` |
 | Stable/UAT 决策 | `🧭 EvoZeus · 版本状态｜<频道及明确下一步>` |
 | 发现已订阅的新版本 | `🧭 EvoZeus · 发现更新｜<当前频道/版本> → <目标版本>` |
@@ -61,13 +61,13 @@ description: Use when 用户明确调用 EvoZeus，要求基于已确认的本�
 
 ## Lesson 信号
 
-在一个有实质内容的任务结束时，检查会话是否暴露出可复用规则、失败模式、工作流改进、环境修复或产品行为缺口。如果有，添加一行普通对话提示：
+大多数任务不需要提示。只有满足其一时才在任务结果之后加一行：用户刚纠正过；同样的问题以后大概率还会遇到；这次造成了明显返工、出错或会话被挡住。拿不准就不提，同一会话最多一次。
 
 ```text
-💡 值得记一下：<可复用且已脱敏的一句话>。要记下来吗？
+💡 值得记一下：<一句大白话：这次发现了什么，以后会怎么做>。要提到 <repo 短名> 的问题列表吗？
 ```
 
-这只是提案；记录前必须获得用户确认。Claude Code 通过插件的只读 `SessionStart` adapter 加载这项检查。当前插件 manifest 没有暴露等价的 session hook，因此 Codex 通过明确选择或语义选择激活此 Skill。
+这一行要让业务同事看得懂：不出现产品名、Lesson、Skill、Harness、Issue、文件路径、版本号或英文术语（Repo 短名除外）。这只是提案；用户明确同意后，按 `../capture-evozeus-lesson/SKILL.md` 在该 Repo 提交一个 GitHub Issue，不写本地记录。Claude Code 通过插件的只读 `SessionStart` adapter 加载这项检查。当前插件 manifest 没有暴露等价的 session hook，因此 Codex 通过明确选择或语义选择激活此 Skill。
 
 ## 安全边界
 

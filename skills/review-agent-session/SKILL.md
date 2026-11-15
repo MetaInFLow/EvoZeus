@@ -32,7 +32,7 @@ description: Use when 用户要求 EvoZeus 复盘 Agent 会话、任务、对话
 存在可复用 Lesson 时，以以下提示收尾：
 
 ```text
-💡 值得记一下：<一句话>。要记下来吗？
+💡 值得记一下：<一句大白话>。要提到 <repo 短名> 的问题列表吗？
 ```
 
 用户确认前，不要记录 Lesson。

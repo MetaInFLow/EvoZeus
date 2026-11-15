@@ -23,7 +23,7 @@ USER_PROMPT_RUNTIME_API = "evozeus.user-prompt.lesson-runtime.v1"
 SESSION_SIGNAL_SOURCE_REVISION = "d98cb74f6b7bde5774b98db4bdc510b76eb94b4d"
 SESSION_SIGNAL_ATTACHMENT_PATH = Path("contracts/v1/user-prompt-lesson-runtime.json")
 SESSION_SIGNAL_ATTACHMENT_SHA256 = (
-    "ddd9e210d1a999a0dfdbf41aa33718fe0c58020821d8783617d60e0a1845f5f1"
+    "e523b4dbae546f5988e3fcde2522b323c2078521951df9d695d54008e2fe38f0"
 )
 PROJECTS_DIR = Path(".evozeus/.projects")
 MANIFEST_CANDIDATES = (

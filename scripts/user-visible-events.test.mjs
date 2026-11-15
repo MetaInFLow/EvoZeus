@@ -13,7 +13,7 @@ test("README and entry Skill expose the complete user-visible EvoZeus event cata
     "🧙 EvoZeus · 已启动",
     "👁️ EvoZeus · 受管运行",
     "💡 值得记一下：",
-    "📝 已记下：",
+    "📝 已提交：",
     "🔐 EvoZeus · 等待确认",
     "🧭 EvoZeus · 版本状态",
     "🧭 EvoZeus · 发现更新",
