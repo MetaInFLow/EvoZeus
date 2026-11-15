@@ -27,7 +27,7 @@ import {
 import { runInstallPreflight } from "./evozeus-install-preflight.mjs";
 
 const SCHEMA_VERSION = 1;
-const CLI_VERSION = "0.5.3";
+const CLI_VERSION = "0.5.4";
 const SOURCE_ROOT = resolve(fileURLToPath(new URL("..", import.meta.url)));
 
 const CAPABILITIES = [

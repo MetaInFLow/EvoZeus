@@ -25,6 +25,8 @@ import {
 } from "./evozeus-channels.mjs";
 
 const DEFAULT_CHECK_INTERVAL_SECONDS = 3600;
+// Session-start hooks set EVOZEUS_SESSION_UPDATE_CHECK=1; a new session should pick up a fresh release quickly.
+const SESSION_CHECK_INTERVAL_SECONDS = 300;
 const LOCK_STALE_SECONDS = 900;
 const UPDATE_POLICY_SCHEMA = "evozeus.update-policy.v1";
 
@@ -69,21 +71,27 @@ function atomicWriteJson(target, payload) {
 function updatePolicy() {
   const path = join(home, "update-policy.json");
   const current = readJson(path);
-  const intervalOverride = Number(process.env.EVOZEUS_UPDATE_CHECK_INTERVAL_SECONDS);
-  const interval = Number.isFinite(intervalOverride) && intervalOverride >= 0
-    ? intervalOverride
-    : Number(current?.check_interval_seconds ?? DEFAULT_CHECK_INTERVAL_SECONDS);
+  const rawOverride = process.env.EVOZEUS_UPDATE_CHECK_INTERVAL_SECONDS;
+  const intervalOverride = rawOverride === undefined || rawOverride === "" ? Number.NaN : Number(rawOverride);
+  const configured = Number(current?.check_interval_seconds ?? DEFAULT_CHECK_INTERVAL_SECONDS);
+  const stored = Number.isFinite(configured) && configured >= 0 ? configured : DEFAULT_CHECK_INTERVAL_SECONDS;
   const policy = {
     schema_version: UPDATE_POLICY_SCHEMA,
     enabled: process.env.EVOZEUS_AUTO_UPDATE !== "0" && current?.enabled !== false,
-    check_interval_seconds: Number.isFinite(interval) && interval >= 0 ? interval : DEFAULT_CHECK_INTERVAL_SECONDS,
+    check_interval_seconds: stored,
     channels: {
       stable: current?.channels?.stable !== false,
       uat: current?.channels?.uat !== false
     }
   };
   if (!current) atomicWriteJson(path, policy);
-  return policy;
+  let effective = stored;
+  if (Number.isFinite(intervalOverride) && intervalOverride >= 0) {
+    effective = intervalOverride;
+  } else if (process.env.EVOZEUS_SESSION_UPDATE_CHECK === "1") {
+    effective = Math.min(stored, SESSION_CHECK_INTERVAL_SECONDS);
+  }
+  return { ...policy, check_interval_seconds: effective };
 }
 
 function reportPath(channel) {
