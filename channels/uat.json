@@ -2,7 +2,7 @@
   "schema_version": "evozeus.product-channel.v2",
   "product_version": "v0.5.3",
   "channel": "uat",
-  "generated_at": "2026-11-15T09:34:48Z",
+  "generated_at": "2026-11-15T14:38:24Z",
   "components": {
     "evozeus": {
       "version": "v0.5.3",
@@ -35,11 +35,11 @@
     },
     "coevolve": {
       "version": "v0.15.0",
-      "commit": "ddd004dda0e8db16503d1e0b0aafa5a495465f2d",
+      "commit": "48565b5a5f9821bb9e42a62b07be026073c6e230",
       "source": {
         "kind": "git",
         "url": "https://github.com/MetaInFLow/EvoZeus-CoEvolve.git",
-        "ref": "v0.15.0"
+        "ref": "main"
       },
       "required_paths": [
         "SKILL.md",
