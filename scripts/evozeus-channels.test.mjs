@@ -2246,6 +2246,57 @@ describe("channel transactions", () => {
       assert.match(continued.stderr, /EvoZeus · 自动更新失败/);
     }));
 
+  it("checks for updates at session start after five minutes but keeps the hourly throttle for ordinary commands", async () =>
+    fixture(async (root) => {
+      const home = join(root, "home");
+      const components = Object.fromEntries(
+        Object.keys(COMPONENT_PATHS).map((componentId) => [componentId, initComponent(root, componentId)])
+      );
+      const firstPath = writeManifest(root, "uat-session-one.json", uatManifest(components));
+      await applyChannelUpdate({
+        evozeusHome: home,
+        channel: "uat",
+        manifestSource: firstPath,
+        autoRefresh: true,
+        smokeRunner: noSmoke
+      });
+      const before = readChannelState(home).channels.uat.manifest_digest;
+      const reportFile = join(home, "state", "uat", "auto-update-last.json");
+      mkdirSync(dirname(reportFile), { recursive: true });
+      writeFileSync(
+        reportFile,
+        `${JSON.stringify({
+          schema_version: "evozeus.auto-update-report.v1",
+          channel: "uat",
+          checked_at: new Date(Date.now() - 10 * 60 * 1000).toISOString(),
+          status: "current"
+        })}\n`
+      );
+      updateComponent(components.evozeus, "released-after-last-check");
+      const secondPath = writeManifest(root, "uat-session-two.json", uatManifest(components));
+      const baseEnv = { ...process.env, EVOZEUS_HOME: home, EVOZEUS_UAT_MANIFEST: secondPath, EVOZEUS_HOSTS_AVAILABLE: "none" };
+      delete baseEnv.EVOZEUS_UPDATE_CHECK_INTERVAL_SECONDS;
+      delete baseEnv.EVOZEUS_SESSION_UPDATE_CHECK;
+      const runVersion = (extra) =>
+        spawnSync(process.execPath, [LAUNCHER, "version", "--json"], { encoding: "utf8", env: { ...baseEnv, ...extra } });
+
+      const ordinary = runVersion({});
+      assert.equal(ordinary.status, 0, ordinary.stderr);
+      assert.equal(readChannelState(home).channels.uat.manifest_digest, before);
+      assert.doesNotMatch(ordinary.stderr, /EvoZeus · 发现更新/);
+
+      const overridden = runVersion({ EVOZEUS_SESSION_UPDATE_CHECK: "1", EVOZEUS_UPDATE_CHECK_INTERVAL_SECONDS: "3600" });
+      assert.equal(overridden.status, 0, overridden.stderr);
+      assert.equal(readChannelState(home).channels.uat.manifest_digest, before);
+
+      const session = runVersion({ EVOZEUS_SESSION_UPDATE_CHECK: "1" });
+      assert.equal(session.status, 0, session.stderr);
+      assert.notEqual(readChannelState(home).channels.uat.manifest_digest, before);
+      assert.match(session.stderr, /EvoZeus · 发现更新/);
+      assert.match(session.stderr, /EvoZeus · 自动更新完成/);
+      assert.equal(JSON.parse(readFileSync(join(home, "update-policy.json"), "utf8")).check_interval_seconds, 3600);
+    }));
+
   it("reports unsafe-stop refreshes as recovery-required without claiming continuation", async () =>
     fixture(async (root) => {
       const home = join(root, "home");

@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+## [v0.5.4] - 2026-11-15
+
+### Fixed
+
+- 新会话启动时会及时检查更新：会话启动钩子（`EVOZEUS_SESSION_UPDATE_CHECK=1`）的检查间隔从 1 小时缩短为 5 分钟，发布后开新会话即可拿到新版本；普通命令仍按 1 小时检查。`EVOZEUS_UPDATE_CHECK_INTERVAL_SECONDS` 仍优先生效；检查失败或超时照常继续使用当前版本。
+
+### Verification
+
+- `npm test` 全部通过；新增测试覆盖：会话启动距上次检查超过 5 分钟会检查、普通命令 1 小时内不检查、显式间隔优先。
+
 ## [v0.5.3] - 2026-11-15
 
 ### Changed
