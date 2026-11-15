@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [v0.5.3] - 2026-11-15
+
 ### Changed
 
 - 收紧 Lesson 提示门槛：大多数任务不提示；只有用户刚纠正过、以后大概率还会遇到、或这次造成明显返工时才提示，拿不准不提，同一会话最多一次（Claude 插件 SessionStart 与 Codex Session Signal 指引同步）。
