@@ -89,6 +89,24 @@ test("Claude plugin auto-discovers one read-only SessionStart Lesson check", () 
   assert.equal(entries[0].matcher, "startup|resume|clear|compact");
   assert.equal(entries[0].hooks.length, 1);
   assert.match(entries[0].hooks[0].command, /session-start\.mjs/);
+  // Codex treats `${NAME}` in hook commands as its own input placeholders and rejects unknown
+  // names before running the hook, so the plugin root must be read from the environment instead.
+  assert.doesNotMatch(entries[0].hooks[0].command, /\$\{/);
+});
+
+test("Plugin SessionStart command runs with either host's plugin-root variable", () => {
+  const hooks = JSON.parse(readFileSync(new URL("../hooks/hooks.json", import.meta.url), "utf8"));
+  const command = hooks.hooks.SessionStart[0].hooks[0].command;
+  const pluginRoot = fileURLToPath(new URL("..", import.meta.url));
+  for (const variable of ["CLAUDE_PLUGIN_ROOT", "PLUGIN_ROOT"]) {
+    const home = mkdtempSync(join(tmpdir(), "evozeus-plugin-root-"));
+    const env = { ...process.env, EVOZEUS_HOME: home, [variable]: pluginRoot };
+    if (variable === "PLUGIN_ROOT") delete env.CLAUDE_PLUGIN_ROOT;
+    const result = spawnSync("/bin/sh", ["-c", command], { input: "{}", encoding: "utf8", env, cwd: tmpdir() });
+    rmSync(home, { recursive: true, force: true });
+    assert.equal(result.status, 0, `${variable}: ${result.stderr}`);
+    assert.equal(JSON.parse(result.stdout).hookSpecificOutput.hookEventName, "SessionStart");
+  }
 });
 
 test("Claude marketplace exposes the root EvoZeus plugin", () => {

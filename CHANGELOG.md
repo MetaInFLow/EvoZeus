@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+## [v0.5.5] - 2026-11-16
+
+### Fixed
+
+- Codex 中 EvoZeus 插件的会话启动钩子每次更新后都会失效：Codex 会先把 `${CLAUDE_PLUGIN_ROOT}` 展开成带版本号的插件目录再记录信任指纹，所以每次发版命令都"变了"，钩子被标为需要重新审核、不再运行，会话里显示 `hook: SessionStart Failed`。现在命令不再含 `${…}` 占位符，改为在 Node 内读取 `CLAUDE_PLUGIN_ROOT`（或 `PLUGIN_ROOT`）环境变量，命令文本跨版本不变，信任一次后长期有效。Claude Code 同样设置该环境变量，行为不变。
+
+### Verification
+
+- `npm test` 全部通过；新增测试：钩子命令不含 `${`，并能分别仅凭 `CLAUDE_PLUGIN_ROOT` 或 `PLUGIN_ROOT` 通过 shell 运行。
+
 ## [v0.5.4] - 2026-11-15
 
 ### Fixed
