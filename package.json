@@ -1,6 +1,6 @@
 {
   "name": "evozeus",
-  "version": "0.5.5",
+  "version": "0.5.6",
   "description": "构建经确认的 AI 使用画像，并进化独立 Skillware Repo。",
   "private": true,
   "type": "module",

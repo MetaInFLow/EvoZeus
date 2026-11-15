@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+## [v0.5.6] - 2026-11-16
+
+### Fixed
+
+- Codex 插件包不再带会话启动钩子。Codex 在用户信任插件钩子时会对整个插件目录做指纹，任何发版都会让钩子变成"已修改"、需重新审核，审核前不运行（`hook: SessionStart Failed`）。Codex 中会话启动的更新检查本来就由用户级 EvoZeus 调度钩子（`~/.codex/hooks.json`）完成，它不受插件更新影响；Claude 插件包继续保留启动钩子。
+
+### Verification
+
+- `npm test` 全部通过；新增断言：Codex 插件包没有 `hooks`，Claude 插件包有 `hooks/hooks.json`。
+- 在 Codex 中实测：修改插件目录中任一文件（README、钩子脚本、skills）都会让已信任的插件钩子失效。
+
 ## [v0.5.5] - 2026-11-16
 
 ### Fixed
